@@ -4,12 +4,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
-public abstract class FileIngester {
+public abstract class FileIngester implements Ingester {
 
     protected static Logger logger = LoggerFactory.getLogger(FileIngester.class);
 
@@ -17,15 +18,47 @@ public abstract class FileIngester {
     protected String encoding;
     protected int bufferSize;
     protected int limitSize;
-    protected List<String> filePaths;
     protected BufferedReader reader;
     private static final int DEFAULT_BUFFER_SIZE = 100;
     private int readCount;
+    private List<File> files;
 
+    public FileIngester(String filePath, String encoding) {
+        this(filePath, encoding, DEFAULT_BUFFER_SIZE, 0);
+    }
 
-    private File file;
-    public FileIngester(File file) {
-        this.file = file;
+    public FileIngester(String filePath, String encoding, int bufferSize, int limitSize) {
+        this.encoding = encoding;
+        this.bufferSize = bufferSize;
+        this.limitSize = limitSize;
+
+        files = new LinkedList<>();
+        String[] paths = filePath.split(",");
+        for (String path : paths) {
+            path = path.trim();
+            File base = new File(path);
+            if (!base.exists()) {
+                logger.debug("BASE FILE NOT FOUND : {}", base);
+            } else {
+                if (base.isDirectory()) {
+                    base.listFiles(new FileFilter (){
+                        @Override
+                        public boolean accept(File file) {
+                            if (!file.exists()) { return false; }
+                            if (file.isDirectory()) {
+                                file.listFiles(this);
+                            } else if (file.isFile()) {
+                                files.add(file);
+                            }
+                            return false;
+                        }
+                    });
+                } else {
+                    files.add(base);
+                }
+            }
+        }
+        items = new LinkedList<>();
     }
 
     protected abstract void initReader(BufferedReader reader) throws IOException;
@@ -51,9 +84,8 @@ public abstract class FileIngester {
                     reader = null;
                 }
             } else {
-                while (filePaths.size() > 0) {
-                    String path = filePaths.remove(0);
-                    File f = new File(path);
+                while (files.size() > 0) {
+                    File f = files.remove(0);
                     if(!f.exists()) {
                         //파일이 없으면 continue
                         logger.error(String.format("File not exists : %s", f.getAbsolutePath()));
@@ -114,7 +146,7 @@ public abstract class FileIngester {
         return items.size() > 0;
     }
 
-    protected Map<String, Object> next() throws IOException {
+    public Map<String, Object> next() throws IOException {
         if(items.size() == 0) {
             fill();
         }

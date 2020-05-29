@@ -2,9 +2,11 @@ package com.danawa.fastcatx.indexer;
 
 import com.google.gson.JsonObject;
 import org.apache.http.HttpHost;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
@@ -14,15 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
 
 @RestController
 @RequestMapping("/")
@@ -40,9 +34,7 @@ public class CommandController {
 
     // 색인상태조회
     @GetMapping(value = "/status")
-    public ResponseEntity<?> getStatus(HttpServletRequest request,
-                                   @RequestParam Map<String,String> queryStringMap,
-                                   @RequestBody(required = false) byte[] body) {
+    public ResponseEntity<?> getStatus() {
         JsonObject obj =new JsonObject();
         //상태는 3가지 존재. running, finish, error
         obj.addProperty("status", STATUS_RUNNING);
@@ -54,92 +46,104 @@ public class CommandController {
         return new ResponseEntity<>(obj.toString(), HttpStatus.OK);
     }
 
-    // 색인 시작
+    /**
+     *
+     * 색인 시작
+     *
+     * {
+     *     "scheme": "http",
+     *     "host": "es1.danawa.io",
+     *     "port": 80,
+     *     "index": "song5",
+     *     "type": "ndjson",
+     *     "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
+     *     "encoding": "utf-8",
+     *     "bulkSize": 1000
+     * }
+     */
     @PostMapping(value = "/start")
-    public ResponseEntity<?> doStart(HttpServletRequest request,
-                                       @RequestParam Map<String,String> queryStringMap,
-                                       @RequestBody(required = false) byte[] body) {
+    public ResponseEntity<?> doStart(@RequestBody Map<String, Object> payload) {
 
-        RestHighLevelClient client = new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost("localhost", 9200, "http"),
-                        new HttpHost("localhost", 9201, "http")));
+        // 공통
+        String scheme = (String) payload.get("scheme");
+        String host = (String) payload.get("host");
+        Integer port = (Integer) payload.get("port");
+        String index = (String) payload.get("index");
+        String type = (String) payload.get("type");
 
-        // 리스너
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long l, BulkRequest bulkRequest) {
+        // NDJson
+        String path = (String) payload.get("path");
+        String encoding = (String) payload.get("encoding");
+        Integer bulkSize = (Integer) payload.get("bulkSize");
 
-            }
+        Ingester ingester = null;
 
-            @Override
-            public void afterBulk(long l, BulkRequest bulkRequest, BulkResponse bulkResponse) {
+        switch (type) {
+            case "ndjson":
+                ingester = new NDJsonIngester(path, encoding, 1000);
+        }
 
-            }
+        String error = "";
+        try {
+            RestHighLevelClient client = new RestHighLevelClient(
+                    RestClient.builder(new HttpHost(host, port, scheme)));
 
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                int numberOfActions = request.numberOfActions();
-                logger.debug("Executing bulk [{}] with {} requests",
-                        executionId, numberOfActions);
-            }
+            BulkRequest request = new BulkRequest();
 
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                if (response.hasFailures()) {
-                    logger.warn("Bulk [{}] executed with failures", executionId);
-                } else {
-                    logger.debug("Bulk [{}] completed in {} milliseconds",
-                            executionId, response.getTook().getMillis());
+            int count = 0;
+            long totalTime = System.currentTimeMillis();
+            long time = System.nanoTime();
+            while (ingester.hasNext()) {
+                count++;
+                Map<String, Object> record = ingester.next();
+//                logger.info("{}", record);
+
+                request.add(new IndexRequest(index).source(record, XContentType.JSON));
+
+                if (count % bulkSize == 0) {
+                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                    logger.debug("bulk! {}", count);
+                    request = new BulkRequest();
+                }
+
+                if (count % 100000 == 0) {
+                    logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
                 }
             }
 
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-                logger.error("Failed to execute bulk", failure);
+            if (count % bulkSize > 0) {
+                //나머지..
+                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                checkResponse(bulkResponse);
+                logger.debug("Final bulk! {}", count);
             }
-        };
 
-        // 벌크 프로세스 빌더
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                client,
-               listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
+            logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, (System.currentTimeMillis() - totalTime) / 1000 / 60);
 
-        //색인
-        IndexRequest one = new IndexRequest("posts").id("1")
-                .source(XContentType.JSON, "title",
-                        "In which order are my Elasticsearch queries executed?");
-        IndexRequest two = new IndexRequest("posts").id("2")
-                .source(XContentType.JSON, "title",
-                        "Current status and upcoming changes in Elasticsearch");
-        IndexRequest three = new IndexRequest("posts").id("3")
-                .source(XContentType.JSON, "title",
-                        "The Future of Federated Search in Elasticsearch");
-
-        bulkProcessor.add(one);
-        bulkProcessor.add(two);
-        bulkProcessor.add(three);
-
-        // 기다림.
-        boolean terminated = bulkProcessor.awaitClose(30L, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.error("Indexing start error!", e);
+            error = e.toString();
+        }
 
         // 결과  json
         JsonObject obj =new JsonObject();
-        obj.addProperty("index", "test1");
-        obj.addProperty("type", "file");
-        obj.addProperty("file", "/home/search/doc.txt");
-        obj.addProperty("result", "success");
-        obj.addProperty("error", "");
+        obj.addProperty("index", index);
+        obj.addProperty("type", type);
+        obj.addProperty("file", path);
+        obj.addProperty("result", error.length() == 0 ? "success" : "fail");
+        obj.addProperty("error", error);
         return new ResponseEntity<>(obj.toString(), HttpStatus.OK);
+    }
+
+    private void checkResponse(BulkResponse bulkResponse) {
+        if (bulkResponse.hasFailures()) {
+            for (BulkItemResponse bulkItemResponse : bulkResponse) {
+                if (bulkItemResponse.isFailed()) {
+                    BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+                    logger.error("Doc index error >> {}", failure);
+                }
+            }
+        }
     }
 
 }

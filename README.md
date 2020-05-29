@@ -25,3 +25,22 @@
 
 7. 색인이 끝나면 색인기를 명시적으로 종료해준다. spring boot의 actuator를 사용하였으므로, shutdown 명령을 보낼수 있다.
 `POST /actuator/shutdown` => `{"message":"Shutting down, bye..."}`
+
+## 사용법
+
+NDJson 파일색인
+
+`POST http://localhost:5005/start`
+
+```json
+{
+    "scheme": "http",
+    "host": "es1.danawa.io",
+    "port": 80,
+    "index": "song5",
+    "type": "ndjson",
+    "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
+    "encoding": "utf-8",
+    "bulkSize": 1000
+}
+```

@@ -1,0 +1,31 @@
+logging:
+  level:
+    level:
+      root: info
+    com:
+      danawa:
+        fastcatx: debug
+
+elasticsearch:
+  thread: 50
+  username: fastcatx
+  password: fastcatx
+  nodes:
+    - host: es1.danawa.io
+      port: 80
+      scheme: http
+    - host: es1.danawa.io
+      port: 80
+      scheme: http
+
+management:
+  endpoint:
+    shutdown:
+      enabled: true
+    info:
+      enabled: true
+    web:
+      exposure:
+        include: '*'
+
+

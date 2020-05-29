@@ -1,15 +1,30 @@
 package com.danawa.fastcatx.indexer;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
+import java.lang.reflect.Type;
 import java.util.Map;
 
+/**
+ * Newline Delimiter Json 형식을 읽어들인다.
+ * */
 public class NDJsonIngester extends FileIngester {
 
-    public NDJsonIngester(File file) {
-        super(file);
+    private Type entryType;
+    private Gson gson;
+
+    public NDJsonIngester(String filePath, String encoding, int bufferSize) {
+        this(filePath, encoding, bufferSize, 0);
+    }
+
+    public NDJsonIngester(String filePath, String encoding, int bufferSize, int limitSize) {
+        super(filePath, encoding, bufferSize, limitSize);
+        gson = new Gson();
+        entryType = new TypeToken<Map<String, Object>>() {}.getType();
     }
 
     @Override
@@ -19,18 +34,10 @@ public class NDJsonIngester extends FileIngester {
 
     @Override
     protected Map<String, Object> parse(BufferedReader reader) throws IOException {
-        String line = null;
+        String line;
         while ((line = reader.readLine()) != null) {
-            Map<String, Object> record = new HashMap<String, Object>();
             try {
-                String[] els = line.split(",");
-
-                for (int i = 0; i < fieldIndexList.size(); i++) {
-                    Integer index = fieldIndexList.get(i);
-                    if (index != -1) {
-                        record.put(fieldNameList.get(i), els[index]);
-                    }
-                }
+                Map<String, Object> record = gson.fromJson(line, entryType);
                 //정상이면 리턴.
                 return record;
             }catch(Exception e) {
