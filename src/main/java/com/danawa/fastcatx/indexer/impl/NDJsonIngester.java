@@ -1,10 +1,10 @@
-package com.danawa.fastcatx.indexer;
+package com.danawa.fastcatx.indexer.impl;
 
+import com.danawa.fastcatx.indexer.FileIngester;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.Map;

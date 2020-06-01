@@ -4,15 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 public abstract class FileIngester implements Ingester {
-
-    protected static Logger logger = LoggerFactory.getLogger(FileIngester.class);
 
     private LinkedList<Map<String, Object>> items;
     protected String encoding;
@@ -59,6 +56,16 @@ public abstract class FileIngester implements Ingester {
             }
         }
         items = new LinkedList<>();
+    }
+
+    @Override
+    public void close() throws IOException {
+        if(reader != null) {
+            try {
+                reader.close();
+            } catch (IOException ignore) {
+            }
+        }
     }
 
     protected abstract void initReader(BufferedReader reader) throws IOException;

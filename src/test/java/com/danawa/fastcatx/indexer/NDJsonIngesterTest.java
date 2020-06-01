@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer;
 
+import com.danawa.fastcatx.indexer.impl.NDJsonIngester;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

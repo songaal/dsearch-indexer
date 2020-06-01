@@ -1,21 +1,16 @@
 package com.danawa.fastcatx.indexer;
 
-import com.google.gson.JsonObject;
-import org.apache.http.HttpHost;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.xcontent.XContentType;
+import com.danawa.fastcatx.indexer.impl.NDJsonIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -23,9 +18,20 @@ import java.util.Map;
 public class CommandController {
     private static Logger logger = LoggerFactory.getLogger(CommandController.class);
 
+    private static final String STATUS_READY = "ready";
     private static final String STATUS_RUNNING = "running";
     private static final String STATUS_FINISH = "finish";
     private static final String STATUS_ERROR = "error";
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // 상태정보. 색인작업은 하나만 진행할 수 있다.
+    private Map<String, Object> requestPayload = new HashMap<String, Object>();
+    private String status = STATUS_READY;
+    private String error;
+    private IndexService service;
+    private String startTime;
+    private String endTime = "";
+
     @GetMapping(value = "/")
     public ResponseEntity<?> getDefault() {
         String responseBody = "FastcatX Indexer!";
@@ -35,24 +41,31 @@ public class CommandController {
     // 색인상태조회
     @GetMapping(value = "/status")
     public ResponseEntity<?> getStatus() {
-        JsonObject obj =new JsonObject();
+        Map<String, Object> result = new HashMap<>();
+        result.put("payload", requestPayload);
         //상태는 3가지 존재. running, finish, error
-        obj.addProperty("status", STATUS_RUNNING);
-        obj.addProperty("docSize", 1051);
-        obj.addProperty("index", "test1");
-        obj.addProperty("startTime", "2020-05-27T12:40:00+09:00");
-        // 정상종료와 에러발생시 endTime이 기록된다. 실행중이라면 비어있다.
-        obj.addProperty("endTime", "2020-05-27T14:40:00+09:00");
-        return new ResponseEntity<>(obj.toString(), HttpStatus.OK);
+        result.put("status", status);
+        if (error != null) {
+            result.put("error", error);
+        }
+        if (startTime != null) {
+            result.put("startTime", startTime);
+        }
+        if (service != null) {
+            // 정상종료와 에러발생시 endTime이 기록된다. 실행중이라면 비어있다.
+            result.put("endTime", endTime);
+            result.put("docSize", service.getCount());
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Type", "application/json; charset=UTF-8");
+        return new ResponseEntity<>(result, headers, HttpStatus.OK);
     }
 
     /**
-     *
      * 색인 시작
-     *
      * {
      *     "scheme": "http",
-     *     "host": "es1.danawa.io",
+     *     "host": "es1.danawa.io",ZonedDateTime
      *     "port": 80,
      *     "index": "song5",
      *     "type": "ndjson",
@@ -64,14 +77,23 @@ public class CommandController {
     @PostMapping(value = "/start")
     public ResponseEntity<?> doStart(@RequestBody Map<String, Object> payload) {
 
+        if (status.equals(STATUS_RUNNING)) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("error", "Status is " + status);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Type", "application/json; charset=UTF-8");
+            return new ResponseEntity<>(result, headers, HttpStatus.OK);
+        }
+        requestPayload = payload;
+
         // 공통
-        String scheme = (String) payload.get("scheme");
         String host = (String) payload.get("host");
         Integer port = (Integer) payload.get("port");
+        String scheme = (String) payload.get("scheme");
         String index = (String) payload.get("index");
         String type = (String) payload.get("type");
 
-        // NDJson
+        // file
         String path = (String) payload.get("path");
         String encoding = (String) payload.get("encoding");
         Integer bulkSize = (Integer) payload.get("bulkSize");
@@ -83,67 +105,32 @@ public class CommandController {
                 ingester = new NDJsonIngester(path, encoding, 1000);
         }
 
-        String error = "";
-        try {
-            RestHighLevelClient client = new RestHighLevelClient(
-                    RestClient.builder(new HttpHost(host, port, scheme)));
+        // 초기화
+        status = STATUS_RUNNING;
+        service = null;
+        startTime = LocalDateTime.now().format(formatter);
+        endTime = "";
+        error = "";
 
-            BulkRequest request = new BulkRequest();
+        Ingester finalIngester = ingester;
 
-            int count = 0;
-            long totalTime = System.currentTimeMillis();
-            long time = System.nanoTime();
-            while (ingester.hasNext()) {
-                count++;
-                Map<String, Object> record = ingester.next();
-//                logger.info("{}", record);
-
-                request.add(new IndexRequest(index).source(record, XContentType.JSON));
-
-                if (count % bulkSize == 0) {
-                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                    logger.debug("bulk! {}", count);
-                    request = new BulkRequest();
-                }
-
-                if (count % 100000 == 0) {
-                    logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
-                }
+        Thread t = new Thread(() -> {
+            try {
+                service = new IndexService();
+                service.index(finalIngester, host, port, scheme, index, bulkSize);
+                status = STATUS_FINISH;
+            } catch (Exception e) {
+                status = STATUS_ERROR;
+                logger.error("Indexing error!", e);
+                error = e.toString();
+            } finally {
+                endTime = LocalDateTime.now().format(formatter);
             }
-
-            if (count % bulkSize > 0) {
-                //나머지..
-                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                checkResponse(bulkResponse);
-                logger.debug("Final bulk! {}", count);
-            }
-
-            logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, (System.currentTimeMillis() - totalTime) / 1000 / 60);
-
-        } catch (Exception e) {
-            logger.error("Indexing start error!", e);
-            error = e.toString();
-        }
+        });
+        t.start();
 
         // 결과  json
-        JsonObject obj =new JsonObject();
-        obj.addProperty("index", index);
-        obj.addProperty("type", type);
-        obj.addProperty("file", path);
-        obj.addProperty("result", error.length() == 0 ? "success" : "fail");
-        obj.addProperty("error", error);
-        return new ResponseEntity<>(obj.toString(), HttpStatus.OK);
-    }
-
-    private void checkResponse(BulkResponse bulkResponse) {
-        if (bulkResponse.hasFailures()) {
-            for (BulkItemResponse bulkItemResponse : bulkResponse) {
-                if (bulkItemResponse.isFailed()) {
-                    BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-                    logger.error("Doc index error >> {}", failure);
-                }
-            }
-        }
+        return getStatus();
     }
 
 }
