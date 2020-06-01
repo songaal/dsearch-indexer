@@ -5,10 +5,7 @@ import org.apache.tomcat.util.http.fileupload.FileUtils;
 
 import java.io.*;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JDBCIngester implements Ingester {
 
@@ -16,7 +13,7 @@ public class JDBCIngester implements Ingester {
     private static final String LOB_STRING = "LOB_STRING";
 
     private int bulkSize;
-    private Connection con;
+    private Connection connection;
     private PreparedStatement pstmt;
     private ResultSet r;
     private int columnCount;
@@ -36,19 +33,21 @@ public class JDBCIngester implements Ingester {
     private int totalCnt;
 
 
-    public JDBCIngester(String dataSQL, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile) throws IOException {
+    public JDBCIngester(String driverClassName, String url, String user, String password, String dataSQL,
+                        int bulkSize, int fetchSize, int maxRows, boolean useBlobFile) throws IOException {
         this.bulkSize = bulkSize;
         this.useBlobFile = useBlobFile;
         tmpFile = new ArrayList<>();
         dataSet = new Map[bulkSize];
+        connection = getConnection(driverClassName, url, user, password);
 
         try {
             if (fetchSize < 0) {
                 //in mysql, fetch data row by row
-                pstmt = con.prepareStatement(dataSQL, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                pstmt = connection.prepareStatement(dataSQL, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
                 pstmt.setFetchSize(Integer.MIN_VALUE);
             } else {
-                pstmt = con.prepareStatement(dataSQL);
+                pstmt = connection.prepareStatement(dataSQL);
                 if (fetchSize > 0) {
                     pstmt.setFetchSize(fetchSize);
                 }
@@ -126,8 +125,8 @@ public class JDBCIngester implements Ingester {
         }
 
         try {
-            if (con != null && !con.isClosed()) {
-                con.close();
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
             }
         } catch (SQLException ignore) {
         }
@@ -244,8 +243,8 @@ public class JDBCIngester implements Ingester {
             } catch (SQLException ignore) { }
 
             try {
-                if (con != null && !con.isClosed()) {
-                    con.close();
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
                 }
             } catch (SQLException ignore) { }
 
@@ -355,5 +354,26 @@ public class JDBCIngester implements Ingester {
                 logger.debug("Can not delete file : {}", file.getAbsolutePath());
             }
         }
+    }
+
+    private Connection getConnection(String driverClassName, String url, String user, String password) throws IOException {
+        Connection con = null;
+        if (driverClassName != null && driverClassName.length() > 0) {
+            try {
+                Class.forName(driverClassName);
+
+                Properties info = new Properties();
+                info.put("user", user);
+                info.put("password", password);
+                info.put("connectTimeout", "300000");
+                con = DriverManager.getConnection(url, info);
+                con.setAutoCommit(true);
+            } catch (Exception e) {
+                throw new IOException(e);
+            }
+        } else {
+            throw new IOException("JDBC driver is empty!");
+        }
+        return con;
     }
 }

@@ -1,5 +1,7 @@
 package com.danawa.fastcatx.indexer;
 
+import com.danawa.fastcatx.indexer.impl.CSVIngester;
+import com.danawa.fastcatx.indexer.impl.JDBCIngester;
 import com.danawa.fastcatx.indexer.impl.NDJsonIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,13 +99,7 @@ public class CommandController {
         String path = (String) payload.get("path");
         String encoding = (String) payload.get("encoding");
         Integer bulkSize = (Integer) payload.get("bulkSize");
-
-        Ingester ingester = null;
-
-        switch (type) {
-            case "ndjson":
-                ingester = new NDJsonIngester(path, encoding, 1000);
-        }
+        Integer limitSize = (Integer) payload.get("limitSize");
 
         // 초기화
         status = STATUS_RUNNING;
@@ -111,6 +107,31 @@ public class CommandController {
         startTime = LocalDateTime.now().format(formatter);
         endTime = "";
         error = "";
+        Ingester ingester = null;
+        try {
+            switch (type) {
+                case "ndjson":
+                    ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
+                case "csv":
+                    ingester = new CSVIngester(path, encoding, 1000, limitSize);
+                case "jdbc":
+                    String driverClassName = (String) payload.get("driverClassName");
+                    String url = (String) payload.get("url");
+                    String user = (String) payload.get("user");
+                    String password = (String) payload.get("password");
+                    String dataSQL = (String) payload.get("dataSQL");
+                    Integer fetchSize = (Integer) payload.get("fetchSize");
+                    Integer maxRows = (Integer) payload.get("maxRows");
+                    Boolean useBlobFile = (Boolean) payload.get("useBlobFile");
+                    ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+            }
+        } catch (Exception e) {
+            status = STATUS_ERROR;
+            logger.error("Init error!", e);
+            error = e.toString();
+            endTime = LocalDateTime.now().format(formatter);
+            return getStatus();
+        }
 
         Ingester finalIngester = ingester;
 
