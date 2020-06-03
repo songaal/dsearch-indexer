@@ -41,6 +41,10 @@ public class CSVIngester extends FileIngester {
                 Map<String, Object> record = new HashMap<>();
                 try {
                     String[] els = line.split(",");
+                    if (els.length != headerList.size()) {
+                        logger.error("parsing error skip.. {}", line);
+                        continue;
+                    }
                     for (int i = 0; i < headerList.size(); i++) {
                         record.put(headerList.get(i), els[i]);
                     }

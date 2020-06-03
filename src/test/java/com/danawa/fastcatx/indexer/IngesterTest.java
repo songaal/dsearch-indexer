@@ -41,7 +41,7 @@ public class IngesterTest {
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://52.78.31.7:3306/new_schema?characterEncoding=utf-8";
         String user = "gncloud";
-        String password = "gnc=1153";//System.getProperty("password");
+        String password = System.getProperty("password");
         String dataSQL = "SELECT * FROM food";
         int bulkSize = 1000;
         int fetchSize = 1000;
