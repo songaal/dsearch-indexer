@@ -9,35 +9,37 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 
-public class IngesterTest {
+public class IndexServiceTest {
 
     private static Logger logger = LoggerFactory.getLogger(IngesterTest.class);
 
+    String host = "es1.danawa.io";
+    Integer port = 80;
+    String scheme = "http";
+    String index = "sample-unittest";
+    Integer bulkSize = 1000;
+
     @Test
-    public void testJsonRead() throws IOException {
+    public void testJson2Search() throws IOException {
         String filePath = "sample/sample.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
-        while(ingester.hasNext()) {
-            Map<String, Object> record = ingester.next();
-            logger.info("{}", record);
-        }
+        IndexService indexService = new IndexService(host, port, scheme);
+        indexService.index(ingester, index, bulkSize, null);
     }
 
     @Test
-    public void testCSVRead() throws IOException {
+    public void testCVS2Search() throws IOException {
         String filePath = "sample/food.csv";
         logger.info("path: {}" ,new File(filePath).getAbsolutePath());
         CSVIngester ingester = new CSVIngester(filePath, "utf-8", 1000);
-        while(ingester.hasNext()) {
-            Map<String, Object> record = ingester.next();
-            logger.info("{}", record);
-        }
+        Integer bulkSize = 1000;
+        IndexService indexService = new IndexService(host, port, scheme);
+        indexService.index(ingester, index, bulkSize, null);
     }
 
     @Test
-    public void testJDBCRead() throws IOException {
+    public void testJDBC2Search() throws IOException {
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://52.78.31.7:3306/new_schema?characterEncoding=utf-8";
         String user = "gncloud";
@@ -46,26 +48,9 @@ public class IngesterTest {
         int bulkSize = 1000;
         int fetchSize = 1000;
         int maxRows = 0;
-
         JDBCIngester ingester = new JDBCIngester(driver, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, false);
-        while(ingester.hasNext()) {
-            Map<String, Object> record = ingester.next();
-            logger.info("{}", record);
-        }
+        IndexService indexService = new IndexService(host, port, scheme);
+        indexService.index(ingester, index, bulkSize, null);
     }
 
-    @Test
-    public void testJsonReadAndFilter() throws IOException {
-        String filePath = "sample/sample.ndjson";
-        NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
-        String filterClassName = "com.danawa.fastcatx.indexer.filter.MockFilter";
-        Filter filter = (Filter) Utils.newInstance(filterClassName);
-        while(ingester.hasNext()) {
-            Map<String, Object> record = ingester.next();
-            if (filter != null) {
-                record = filter.filter(record);
-            }
-            logger.info("{}", record);
-        }
-    }
 }

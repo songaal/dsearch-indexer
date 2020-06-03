@@ -1,4 +1,4 @@
-package com.danawa.fastcatx.indexer.impl;
+package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.Ingester;
 import org.apache.tomcat.util.http.fileupload.FileUtils;

@@ -1,14 +1,17 @@
 package com.danawa.fastcatx.indexer;
 
 import org.apache.http.HttpHost;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.Index;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,13 +22,32 @@ public class IndexService {
 
     private static Logger logger = LoggerFactory.getLogger(IndexService.class);
 
+    // 몇건 색인중인지.
     private int count;
+
+    //ES 연결정보.
+    private String host;
+    private Integer port;
+    private String scheme;
+
+    public IndexService(String host, Integer port, String scheme) {
+        this.host = host;
+        this.port = port;
+        this.scheme = scheme;
+    }
 
     public int getCount() {
         return count;
     }
 
-    public void index(Ingester ingester, String host, Integer port, String scheme, String index, Integer bulkSize) throws IOException {
+    public boolean deleteIndex(String index) throws IOException {
+        RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
+        DeleteIndexRequest request = new DeleteIndexRequest(index);
+        AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
+        return deleteIndexResponse.isAcknowledged();
+    }
+
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter) throws IOException {
         RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
 
         count = 0;
@@ -35,7 +57,9 @@ public class IndexService {
         while (ingester.hasNext()) {
             count++;
             Map<String, Object> record = ingester.next();
-
+            if (filter != null) {
+                record = filter.filter(record);
+            }
             request.add(new IndexRequest(index).source(record, XContentType.JSON));
 
             if (count % bulkSize == 0) {

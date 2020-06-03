@@ -1,8 +1,8 @@
 package com.danawa.fastcatx.indexer;
 
-import com.danawa.fastcatx.indexer.impl.CSVIngester;
-import com.danawa.fastcatx.indexer.impl.JDBCIngester;
-import com.danawa.fastcatx.indexer.impl.NDJsonIngester;
+import com.danawa.fastcatx.indexer.ingester.CSVIngester;
+import com.danawa.fastcatx.indexer.ingester.JDBCIngester;
+import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -94,6 +94,7 @@ public class CommandController {
         String scheme = (String) payload.get("scheme");
         String index = (String) payload.get("index");
         String type = (String) payload.get("type");
+        String filterClassName = (String) payload.get("filterClass");
 
         // file
         String path = (String) payload.get("path");
@@ -134,11 +135,13 @@ public class CommandController {
         }
 
         Ingester finalIngester = ingester;
+        Filter filter = (Filter) Utils.newInstance(filterClassName);
 
         Thread t = new Thread(() -> {
             try {
-                service = new IndexService();
-                service.index(finalIngester, host, port, scheme, index, bulkSize);
+                service = new IndexService(host, port, scheme);
+                service.deleteIndex(index);
+                service.index(finalIngester, index, bulkSize, filter);
                 status = STATUS_FINISH;
             } catch (Exception e) {
                 status = STATUS_ERROR;

@@ -1,4 +1,4 @@
-package com.danawa.fastcatx.indexer.impl;
+package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.FileIngester;
 import com.google.gson.Gson;
