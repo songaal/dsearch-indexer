@@ -28,7 +28,7 @@
 
 ## 사용법
 
-NDJson 파일색인
+###1. 파일색인 요청
 
 `POST http://localhost:5005/start`
 
@@ -42,5 +42,83 @@ NDJson 파일색인
     "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
     "encoding": "utf-8",
     "bulkSize": 1000
+}
+```
+
+필수파라미터
+- `scheme: string`: http, https
+- `host: string` : ES 호스트주소
+- `port: int` : ES 포트
+- `index: string` : 인덱스명
+- `bulkSize: int` : ES bulk API 사이즈
+- `type: string` : 파서종류. ndjson, jdbc, csv..
+- (옵션) `reset: boolean` : 디폴트 true. 색인전에 index가 존재하는지 확인하여 조재하면 delete 하고 색인진행
+
+ndjson, cvs 파라미터
+- `path: string` : 파일경로
+- `encoding: string` : 파일인코딩
+- (옵션) `limitSize: int` : 색인문서 제한갯수 
+
+JDBC 파라미터
+- `driverClassName: string` : 드라이버이름(패키지 포함). 예) com.mysql.jdbc.Driver  
+- `url: string` : JDBC URL
+- `user: string` : 유저 아이디
+- `password: string` : 유저 패스워드
+- `dataSQL: string` : 색인 SQL문 
+- `fetchSize: int` : JDBC fetch 사이즈. 1000정도가 무난. 문제발생시 -1사용.
+- (옵션) `maxRows: int` : 디폴트 0. 색인문서 제한갯수.
+- (옵션) `useBlobFile: boolean` : 디폴트 false. Blob 컬럼 사용여부. 
+- `` :  
+
+### 2. 상태확인
+
+`GET http://localhost:8080/status`
+
+색인시작전
+```json
+{
+    "payload": {},
+    "status": "READY"
+}
+```
+
+진행중
+```json
+{
+    "payload": {
+        "scheme": "http",
+        "host": "es1.danawa.io",
+        "port": 80,
+        "index": "song6",
+        "type": "csv",
+        "path": "C:\\Projects\\fastcatx-indexer\\sample\\food.csv",
+        "encoding": "utf-8",
+        "bulkSize": 1000
+    },
+    "startTime": 1591245998,
+    "docSize": 231,
+    "error": "",
+    "status": "RUNNING"
+}
+```
+
+완료
+```json
+{
+    "payload": {
+        "scheme": "http",
+        "host": "es1.danawa.io",
+        "port": 80,
+        "index": "song6",
+        "type": "csv",
+        "path": "C:\\Projects\\fastcatx-indexer\\sample\\food.csv",
+        "encoding": "utf-8",
+        "bulkSize": 1000
+    },
+    "startTime": 1591245998,
+    "docSize": 8130,
+    "endTime": 1591246002,
+    "error": "",
+    "status": "SUCCESS"
 }
 ```

@@ -10,6 +10,9 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.enrich.StatsRequest;
+import org.elasticsearch.client.enrich.StatsResponse;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.Index;
 import org.slf4j.Logger;
@@ -38,6 +41,12 @@ public class IndexService {
 
     public int getCount() {
         return count;
+    }
+
+    public boolean existsIndex(String index) throws IOException {
+        RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
+        GetIndexRequest request = new GetIndexRequest(index);
+        return client.indices().exists(request, RequestOptions.DEFAULT);
     }
 
     public boolean deleteIndex(String index) throws IOException {
@@ -93,5 +102,13 @@ public class IndexService {
                 }
             }
         }
+    }
+
+    public String getStorageSize(String index) throws IOException {
+        RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
+        StatsRequest statsRequest = new StatsRequest();
+        StatsResponse statsResponse =
+                client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
+        return null;
     }
 }

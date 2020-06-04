@@ -10,8 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,19 +18,19 @@ import java.util.Map;
 public class CommandController {
     private static Logger logger = LoggerFactory.getLogger(CommandController.class);
 
-    private static final String STATUS_READY = "ready";
-    private static final String STATUS_RUNNING = "running";
-    private static final String STATUS_FINISH = "finish";
-    private static final String STATUS_ERROR = "error";
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String STATUS_READY = "READY";
+    private static final String STATUS_RUNNING = "RUNNING";
+    private static final String STATUS_SUCCESS = "SUCCESS";
+    private static final String STATUS_ERROR = "ERROR";
 
     // 상태정보. 색인작업은 하나만 진행할 수 있다.
     private Map<String, Object> requestPayload = new HashMap<String, Object>();
     private String status = STATUS_READY;
     private String error;
     private IndexService service;
-    private String startTime;
-    private String endTime = "";
+
+    private long startTime;
+    private long endTime;
 
     @GetMapping(value = "/")
     public ResponseEntity<?> getDefault() {
@@ -50,9 +48,10 @@ public class CommandController {
         if (error != null) {
             result.put("error", error);
         }
-        if (startTime != null) {
+        if (startTime != 0) {
             result.put("startTime", startTime);
         }
+
         if (service != null) {
             // 정상종료와 에러발생시 endTime이 기록된다. 실행중이라면 비어있다.
             result.put("endTime", endTime);
@@ -66,14 +65,15 @@ public class CommandController {
     /**
      * 색인 시작
      * {
-     *     "scheme": "http",
-     *     "host": "es1.danawa.io",ZonedDateTime
-     *     "port": 80,
-     *     "index": "song5",
-     *     "type": "ndjson",
-     *     "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
-     *     "encoding": "utf-8",
-     *     "bulkSize": 1000
+     * "scheme": "http",
+     * "host": "es1.danawa.io",
+     * "port": 80,
+     * "index": "song5",
+     * "type": "ndjson",
+     * "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
+     * "encoding": "utf-8",
+     * "bulkSize": 1000,
+     * "reset": true
      * }
      */
     @PostMapping(value = "/start")
@@ -89,48 +89,62 @@ public class CommandController {
         requestPayload = payload;
 
         // 공통
+        // ES 호스트
         String host = (String) payload.get("host");
+        // ES 포트
         Integer port = (Integer) payload.get("port");
+        // http, https
         String scheme = (String) payload.get("scheme");
+        // 색인이름.
         String index = (String) payload.get("index");
+        // 소스타입: ndjson, csv, jdbc 등..
         String type = (String) payload.get("type");
+        // index가 존재하면 색인전에 지우는지 여부. indexTemplate 이 없다면 맵핑과 셋팅은 모두 사라질수 있다.
+        Boolean reset = (Boolean) payload.getOrDefault("reset", true);
+        // 필터 클래스 이름. 패키지명까지 포함해야 한다. 예) com.danawa.fastcatx.filter.MockFilter
         String filterClassName = (String) payload.get("filterClass");
-
-        // file
-        String path = (String) payload.get("path");
-        String encoding = (String) payload.get("encoding");
+        // ES bulk API 사용시 벌크갯수.
         Integer bulkSize = (Integer) payload.get("bulkSize");
-        Integer limitSize = (Integer) payload.get("limitSize");
+
+        /**
+         * file기반 인제스터 설정
+         */
+        //파일 경로.
+        String path = (String) payload.get("path");
+        // 파일 인코딩. utf-8, cp949 등..
+        String encoding = (String) payload.get("encoding");
+        // 테스트용도로 데이터 갯수를 제한하고 싶을때 수치.
+        Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
 
         // 초기화
         status = STATUS_RUNNING;
         service = null;
-        startTime = LocalDateTime.now().format(formatter);
-        endTime = "";
+        long startNano = System.nanoTime();
+        startTime = System.currentTimeMillis() / 1000;
+        endTime = 0;
         error = "";
         Ingester ingester = null;
         try {
-            switch (type) {
-                case "ndjson":
-                    ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
-                case "csv":
-                    ingester = new CSVIngester(path, encoding, 1000, limitSize);
-                case "jdbc":
-                    String driverClassName = (String) payload.get("driverClassName");
-                    String url = (String) payload.get("url");
-                    String user = (String) payload.get("user");
-                    String password = (String) payload.get("password");
-                    String dataSQL = (String) payload.get("dataSQL");
-                    Integer fetchSize = (Integer) payload.get("fetchSize");
-                    Integer maxRows = (Integer) payload.get("maxRows");
-                    Boolean useBlobFile = (Boolean) payload.get("useBlobFile");
-                    ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+            if (type.equals("ndjson")) {
+                ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
+            } else if (type.equals("csv")) {
+                ingester = new CSVIngester(path, encoding, 1000, limitSize);
+            } else if (type.equals("jdbc")) {
+                String driverClassName = (String) payload.get("driverClassName");
+                String url = (String) payload.get("url");
+                String user = (String) payload.get("user");
+                String password = (String) payload.get("password");
+                String dataSQL = (String) payload.get("dataSQL");
+                Integer fetchSize = (Integer) payload.get("fetchSize");
+                Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
+                Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
+                ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
             }
         } catch (Exception e) {
             status = STATUS_ERROR;
             logger.error("Init error!", e);
             error = e.toString();
-            endTime = LocalDateTime.now().format(formatter);
+            endTime = System.currentTimeMillis() / 1000;
             return getStatus();
         }
 
@@ -140,15 +154,23 @@ public class CommandController {
         Thread t = new Thread(() -> {
             try {
                 service = new IndexService(host, port, scheme);
-                service.deleteIndex(index);
+                // 인덱스를 초기화하고 0건부터 색인이라면.
+                if (reset) {
+                    if (service.existsIndex(index)) {
+                        service.deleteIndex(index);
+                    }
+                }
                 service.index(finalIngester, index, bulkSize, filter);
-                status = STATUS_FINISH;
+                status = STATUS_SUCCESS;
+
+                service.getStorageSize(index);
+
             } catch (Exception e) {
                 status = STATUS_ERROR;
                 logger.error("Indexing error!", e);
                 error = e.toString();
             } finally {
-                endTime = LocalDateTime.now().format(formatter);
+                endTime = System.currentTimeMillis() / 1000;
             }
         });
         t.start();

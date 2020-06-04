@@ -4,9 +4,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
 
 public class Utils {
     private static Logger logger = LoggerFactory.getLogger(Utils.class);
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static Object newInstance(String className) {
         if (className == null) {
@@ -21,5 +26,11 @@ public class Utils {
             return null;
         }
 
+    }
+
+    public static String dateTimeString(long timeMillis) {
+        LocalDateTime localDateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(timeMillis),
+                        TimeZone.getDefault().toZoneId());
+        return formatter.format(localDateTime);
     }
 }

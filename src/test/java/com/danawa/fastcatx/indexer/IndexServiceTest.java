@@ -53,4 +53,8 @@ public class IndexServiceTest {
         indexService.index(ingester, index, bulkSize, null);
     }
 
+    public void testStorageSize() {
+        IndexService indexService = new IndexService(host, port, scheme);
+//        indexService. getStorageSize()
+    }
 }
