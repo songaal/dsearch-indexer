@@ -38,6 +38,12 @@ public class CommandController {
         return new ResponseEntity<>(responseBody, HttpStatus.OK);
     }
 
+    @PostMapping(value = "/shutdown")
+    public ResponseEntity<?> shutdown() {
+        System.exit(0);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     // 색인상태조회
     @GetMapping(value = "/status")
     public ResponseEntity<?> getStatus() {
