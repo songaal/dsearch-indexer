@@ -122,3 +122,9 @@ JDBC 파라미터
     "status": "SUCCESS"
 }
 ```
+
+### Konan -> json 컨버터
+konan 수집형식을 ndjson 으로 변환해주는 유틸이다.
+
+`java -cp indexer.jar com.danawa.fastcatx.indexer.KonanToJsonConverter <konan_file_path_or_directory> <file_encoding> <output_file_path>`
+
