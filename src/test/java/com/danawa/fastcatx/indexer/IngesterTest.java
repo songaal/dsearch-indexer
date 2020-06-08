@@ -55,6 +55,24 @@ public class IngesterTest {
     }
 
     @Test
+    public void testAlitibaseJDBCRead() throws IOException {
+        String driver = "Altibase.jdbc.driver.AltibaseDriver";
+        String url = "jdbc:Altibase://localhost:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
+        String user = "DBLINKDATA_1";
+        String password = System.getProperty("password");
+        String dataSQL = "SELECT * FROM TPRODUCTEXTERNALVIDEO";
+        int bulkSize = 1000;
+        int fetchSize = 1000;
+        int maxRows = 0;
+
+        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, false);
+        while(ingester.hasNext()) {
+            Map<String, Object> record = ingester.next();
+            logger.info("{}", record);
+        }
+    }
+
+    @Test
     public void testJsonReadAndFilter() throws IOException {
         String filePath = "sample/sample.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);

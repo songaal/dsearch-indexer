@@ -19,7 +19,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 public class IndexService {
 
@@ -77,16 +82,116 @@ public class IndexService {
                 request = new BulkRequest();
             }
 
-            if (count % 100000 == 0) {
+            if (count % 10000 == 0) {
                 logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
             }
         }
 
-        if (count % bulkSize > 0) {
+        if (request.estimatedSizeInBytes() > 0) {
             //나머지..
             BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
             checkResponse(bulkResponse);
             logger.debug("Final bulk! {}", count);
+        }
+
+        long totalTime = System.currentTimeMillis() - start;
+        logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+    }
+
+
+    class Worker implements Callable {
+        private BlockingQueue queue;
+        private RestHighLevelClient client;
+        public Worker(BlockingQueue queue) {
+            this.queue = queue;
+            this.client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
+        }
+        @Override
+        public Object call() throws Exception {
+            while(true) {
+                Object o = queue.take();
+                if (o instanceof String) {
+                    //종료.
+                    logger.info("Indexing Worker-{} got {}", Thread.currentThread().getId(), o);
+                    break;
+                }
+                BulkRequest request = (BulkRequest) o;
+                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+//                checkResponse(bulkResponse);
+//                logger.debug("bulk! {}", count);
+            }
+            return null;
+        }
+    }
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize) throws IOException {
+        ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
+
+        BlockingQueue queue= new LinkedBlockingQueue(threadSize * 10);
+        //여러 쓰레드가 작업큐를 공유한다.
+        List<Future> list = new ArrayList<>();
+        for (int i = 0; i < threadSize; i++) {
+            Worker w = new Worker(queue);
+            list.add(executorService.submit(w));
+        }
+
+        count = 0;
+        long start = System.currentTimeMillis();
+        BulkRequest request = new BulkRequest();
+        long time = System.nanoTime();
+        try {
+            while (ingester.hasNext()) {
+                count++;
+                Map<String, Object> record = ingester.next();
+                if (filter != null) {
+                    record = filter.filter(record);
+                }
+                request.add(new IndexRequest(index).source(record, XContentType.JSON));
+
+                if (count % bulkSize == 0) {
+                    queue.put(request);
+//                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+//                    logger.debug("bulk! {}", count);
+                    request = new BulkRequest();
+                }
+
+                if (count % 100000 == 0) {
+                    logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                }
+            }
+
+            if (request.estimatedSizeInBytes() > 0) {
+                //나머지..
+                queue.put(request);
+//                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+//                checkResponse(bulkResponse);
+                logger.debug("Final bulk! {}", count);
+            }
+
+
+        } catch (InterruptedException e) {
+            logger.error("interrupted! ", e);
+        } finally {
+            try {
+                for (int i = 0; i < list.size(); i++) {
+                    // 쓰레드 갯수만큼 종료시그널 전달.
+                    queue.put("<END>");
+                }
+            } catch (InterruptedException e) {
+                logger.error("", e);
+                //ignore
+            }
+
+            try {
+                for (int i = 0; i < list.size(); i++) {
+                    Future f = list.get(i);
+                    f.get();
+                }
+            } catch (Exception e) {
+                logger.error("", e);
+                //ignore
+            }
+
+            executorService.shutdown();
         }
 
         long totalTime = System.currentTimeMillis() - start;

@@ -111,6 +111,7 @@ public class CommandController {
         String filterClassName = (String) payload.get("filterClass");
         // ES bulk API 사용시 벌크갯수.
         Integer bulkSize = (Integer) payload.get("bulkSize");
+        Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
 
         /**
          * file기반 인제스터 설정
@@ -148,8 +149,8 @@ public class CommandController {
             }
         } catch (Exception e) {
             status = STATUS_ERROR;
-            logger.error("Init error!", e);
-            error = e.toString();
+//            logger.error("Init error!", e);
+            error = "Cannot establish jdbc connection.";
             endTime = System.currentTimeMillis() / 1000;
             return getStatus();
         }
@@ -166,14 +167,19 @@ public class CommandController {
                         service.deleteIndex(index);
                     }
                 }
-                service.index(finalIngester, index, bulkSize, filter);
+                if (threadSize > 1) {
+                    service.indexParallel(finalIngester, index, bulkSize, filter, threadSize);
+                } else {
+                    service.index(finalIngester, index, bulkSize, filter);
+                }
+
                 status = STATUS_SUCCESS;
 
                 service.getStorageSize(index);
 
             } catch (Exception e) {
                 status = STATUS_ERROR;
-                logger.error("Indexing error!", e);
+//                logger.error("Indexing error!", e);
                 error = e.toString();
             } finally {
                 endTime = System.currentTimeMillis() / 1000;
