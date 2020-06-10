@@ -130,3 +130,9 @@ konan 수집형식을 ndjson 으로 변환해주는 유틸이다.
 
 `java -cp indexer.jar com.danawa.fastcatx.indexer.KonanToJsonConverter <konan_file_path_or_directory> <file_encoding> <output_file_path>`
 
+### jar파일로 색인기 시작하기.
+`java -jar` 로는 classpath를 설정할 수 없다. 그래서 driver나 filter를 사용하려고 할때 외부 jar를 사용하기 어렵다. 그러므로 `-jar`옵션을 사용하지 말고 직접 spring boot 메인클래스를 실행해야 한다.
+
+```
+$ java -classpath indexer.jar:Altibase.jar:danawa-search.jar org.springframework.boot.loader.JarLauncher
+```
