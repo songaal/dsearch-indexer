@@ -1,10 +1,10 @@
 logging:
   level:
-    level:
-      root: info
-    com:
-      danawa:
-        fastcatx: debug
+    root: INFO
+    org.springframework: ERROR
+    com.danawa.fastcatx: INFO
+  file:
+    name: output.log
 
 elasticsearch:
   thread: 50
@@ -17,15 +17,3 @@ elasticsearch:
     - host: es1.danawa.io
       port: 80
       scheme: http
-
-management:
-  endpoint:
-    shutdown:
-      enabled: true
-    info:
-      enabled: true
-    web:
-      exposure:
-        include: '*'
-
-
