@@ -136,3 +136,26 @@ konan 수집형식을 ndjson 으로 변환해주는 유틸이다.
 ```
 $ java -classpath indexer.jar:Altibase.jar:danawa-search.jar org.springframework.boot.loader.JarLauncher
 ```
+
+### 동적색인 호출기 사용하기
+
+`POST http://localhost:5005/dynamic`
+
+```json
+{
+    "scheme": "http",
+    "host": "es1.danawa.io",
+    "port": 80,
+    "index": "song5",
+    "type": "ES",
+    "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
+    "encoding": "utf-8",
+}
+```
+
+필수파라미터
+- `scheme: string`: http, https
+- `host: string` : 검색엔진 호스트 주소
+- `port: int` : 검색엔진 포트
+- `index: string` : 인덱스명( , 로 다수 입력)
+- `type: string` : 검색엔진 종류 (FASTCAT, ES)
