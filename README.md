@@ -53,6 +53,7 @@
 - `bulkSize: int` : ES bulk API 사이즈
 - `type: string` : 파서종류. ndjson, jdbc, csv..
 - (옵션) `reset: boolean` : 디폴트 true. 색인전에 index가 존재하는지 확인하여 조재하면 delete 하고 색인진행
+- (옵션) `filterClass: string` : 소스를 변환할 필터. 패키지명 포함. 생성자는 기본 생성자를 호출하게 됨. 예)com.danawa.fastcatx.indexer.filter.MockFilter 
 - (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
 
 ndjson, cvs 파라미터
@@ -129,3 +130,9 @@ konan 수집형식을 ndjson 으로 변환해주는 유틸이다.
 
 `java -cp indexer.jar com.danawa.fastcatx.indexer.KonanToJsonConverter <konan_file_path_or_directory> <file_encoding> <output_file_path>`
 
+### jar파일로 색인기 시작하기.
+`java -jar` 로는 classpath를 설정할 수 없다. 그래서 driver나 filter를 사용하려고 할때 외부 jar를 사용하기 어렵다. 그러므로 `-jar`옵션을 사용하지 말고 직접 spring boot 메인클래스를 실행해야 한다.
+
+```
+$ java -classpath indexer.jar:Altibase.jar:danawa-search.jar org.springframework.boot.loader.JarLauncher
+```
