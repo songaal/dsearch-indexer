@@ -1,11 +1,15 @@
 package com.danawa.fastcatx.indexer;
 
 import org.apache.http.HttpHost;
+import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
@@ -17,13 +21,25 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.Index;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.autoconfigure.metrics.MetricsProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.web.client.AsyncRestTemplate;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class IndexService {
@@ -68,36 +84,175 @@ public class IndexService {
         long start = System.currentTimeMillis();
         BulkRequest request = new BulkRequest();
         long time = System.nanoTime();
-        while (ingester.hasNext()) {
-            count++;
-            Map<String, Object> record = ingester.next();
-            if (filter != null) {
-                record = filter.filter(record);
-            }
-            request.add(new IndexRequest(index).source(record, XContentType.JSON));
+        try{
+            while (ingester.hasNext()) {
+                count++;
+                Map<String, Object> record = ingester.next();
+                if (filter != null) {
+                    record = filter.filter(record);
+                }
+                //if(record != null) {
+                    request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                //}
 
-            if (count % bulkSize == 0) {
+                if (count % bulkSize == 0) {
+                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                    logger.debug("bulk! {}", count);
+                    request = new BulkRequest();
+                }
+
+                if (count % 10000 == 0) {
+                    logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                }
+            }
+
+            if (request.estimatedSizeInBytes() > 0) {
+                //나머지..
                 BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                logger.debug("bulk! {}", count);
-                request = new BulkRequest();
+                checkResponse(bulkResponse);
+                logger.debug("Final bulk! {}", count);
             }
-
-            if (count % 10000 == 0) {
-                logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+        }catch(Exception e) {
+            StackTraceElement[] exception = e.getStackTrace();
+            for(StackTraceElement element : exception) {
+                logger.error("[Exception] : " + element.toString());
             }
         }
 
-        if (request.estimatedSizeInBytes() > 0) {
-            //나머지..
-            BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-            checkResponse(bulkResponse);
-            logger.debug("Final bulk! {}", count);
+
+
+        long totalTime = System.currentTimeMillis() - start;
+        logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+    }
+
+
+    public void elasticDynamicIndex(Ingester ingester, String index, Filter filter) throws IOException {
+        RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
+
+        count = 0;
+        long start = System.currentTimeMillis();
+
+
+        int cnt = 0;
+        String[] indexArr = index.split(",");
+
+        long time = System.nanoTime();
+        ActionListener<IndexResponse> listener;
+
+        listener = new ActionListener<IndexResponse>() {
+            @Override
+            public void onResponse(IndexResponse indexResponse) {
+
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                logger.error("[DynamicIndex] : " + e.getMessage());
+            }
+        };
+
+
+        try{
+            while (ingester.hasNext()) {
+                count++;
+
+                Map<String, Object> record = ingester.next();
+                if (filter != null) {
+                    record = filter.filter(record);
+                }
+
+                //입력된 인덱스만큼 순차적으로 색인 API 호출
+                if(record.size() > 0) {
+                    IndexRequest request  = new IndexRequest(indexArr[cnt]).source(record, XContentType.JSON);
+                    client.indexAsync(request, RequestOptions.DEFAULT, listener);
+
+                    cnt++;
+                    if(cnt == indexArr.length) {
+                        cnt = 0;
+                    }
+                }
+
+
+                if (count % 10000 == 0) {
+                    logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                }
+            }
+
+        }catch(Exception e) {
+            StackTraceElement[] exception = e.getStackTrace();
+            for(StackTraceElement element : exception) {
+                logger.error("[Exception] : " + element.toString());
+            }
         }
 
         long totalTime = System.currentTimeMillis() - start;
         logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
     }
 
+
+    public void fastcatDynamicIndex(Ingester ingester, String index, Filter filter) throws IOException {
+
+        WebClient webClient = WebClient.create();
+
+        count = 0;
+
+        long start = System.currentTimeMillis();
+        // IndexRequest request = new IndexRequest();
+
+        int cnt = 0;
+
+        String[] indexArr = index.split(",");
+
+        long time = System.nanoTime();
+
+        try{
+            while (ingester.hasNext()) {
+                count++;
+
+                Map<String, Object> record = ingester.next();
+                if (filter != null) {
+                    record = filter.filter(record);
+                }
+
+
+
+                //FASTCAT 동적색인 API 호출
+                if (record.size() > 0) {
+                    String uri = String.format("http://%s:%s/service/index?collectionId=%s",host,port,indexArr[cnt]);
+                    Mono<String> result = webClient.post()
+                            .uri(uri)
+                            .bodyValue(record)
+                            .retrieve()
+                            .bodyToMono(String.class);
+
+                    result.subscribe( s-> {
+                       //logger.info("record");
+                    });
+
+                }
+
+                cnt++;
+                if(cnt == indexArr.length) {
+                    cnt = 0;
+                }
+
+                if (count % 10000 == 0) {
+                    logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                }
+            }
+
+        }catch(Exception e) {
+            StackTraceElement[] exception = e.getStackTrace();
+            for(StackTraceElement element : exception) {
+                logger.error("[Exception] : " + element.toString());
+            }
+        }
+
+
+
+        long totalTime = System.currentTimeMillis() - start;
+        logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+    }
 
     class Worker implements Callable {
         private BlockingQueue queue;
@@ -145,7 +300,10 @@ public class IndexService {
                 if (filter != null) {
                     record = filter.filter(record);
                 }
-                request.add(new IndexRequest(index).source(record, XContentType.JSON));
+
+                //if (record != null) {
+                    request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                //}
 
                 if (count % bulkSize == 0) {
                     queue.put(request);
