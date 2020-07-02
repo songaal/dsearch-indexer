@@ -68,6 +68,33 @@ public class IndexServiceTest {
         indexService.index(ingester, index, bulkSize, null);
     }
 
+    @Test
+    public void testFastCatDI() throws IOException {
+
+        host = "stest3.danawa.com";
+        port = 8090;
+        scheme = "http";
+        index = "TEST_V1,TEST_V2";
+        Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
+
+        String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
+        NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
+        IndexService indexService = new IndexService(host, port, scheme);
+        indexService.fastcatDynamicIndex(ingester, index, filter);
+    }
+
+    @Test
+    public void testESDI() throws IOException {
+
+        index = "prod1,prod2";
+        Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
+
+        String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
+        NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
+        IndexService indexService = new IndexService(host, port, scheme);
+        indexService.elasticDynamicIndex(ingester, index, filter);
+    }
+
     public void testStorageSize() {
         IndexService indexService = new IndexService(host, port, scheme);
 //        indexService. getStorageSize()
