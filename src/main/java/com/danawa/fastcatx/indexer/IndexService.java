@@ -43,6 +43,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.danawa.fastcatx.indexer.Utils;
+
 public class IndexService {
 
     private static Logger logger = LoggerFactory.getLogger(IndexService.class);
@@ -222,12 +224,13 @@ public class IndexService {
     }
 
 
-    public void fastcatDynamicIndex(Ingester ingester, String index, Filter filter) throws IOException {
+    public void fastcatDynamicIndex(Ingester ingester, String index, Filter filter,Integer bulkSize, Integer sleepTime) throws IOException {
 
         WebClient webClient = WebClient.create();
+        Utils utils = new Utils();
 
         count = 0;
-
+        List<Map<String, Object>> indexList = new ArrayList<Map<String, Object>>();
         long start = System.currentTimeMillis();
         // IndexRequest request = new IndexRequest();
 
@@ -246,31 +249,64 @@ public class IndexService {
                     record = filter.filter(record);
                 }
 
-
-
-                //FASTCAT 동적색인 API 호출
+                //필터적용 후 List에 적재
                 if (record.size() > 0) {
+                    indexList.add(record);
+                }
+
+                //bulkSize의 1/10만큼 볼륨에 동적색인
+                if (count % (bulkSize/10) == 0) {
+
                     String uri = String.format("http://%s:%s/service/index?collectionId=%s",host,port,indexArr[cnt]);
+                    //logger.info("bulk! {}", count);
+
+
                     Mono<String> result = webClient.post()
                             .uri(uri)
-                            .bodyValue(record)
+                            .bodyValue(utils.makeJsonData(indexList))
                             .retrieve()
                             .bodyToMono(String.class);
 
                     result.subscribe( s-> {
-                       //logger.info("record");
+                        //logger.info("record");
                     });
 
+                    cnt++;
+                    if(cnt == indexArr.length) {
+                        cnt = 0;
+                    }
+
+                    //ArrayList 초기화
+                    indexList = new ArrayList<>();
                 }
 
-                cnt++;
-                if(cnt == indexArr.length) {
-                    cnt = 0;
+                //bulkSize마다 ThreadSleep
+                if (count % bulkSize == 0) {
+                    if(sleepTime != null) {
+                        logger.info("bulk! {}, sleep : {}", count, sleepTime);
+                        Thread.sleep(sleepTime);
+                    }
                 }
 
                 if (count % 10000 == 0) {
                     logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
                 }
+            }
+
+            if (indexList.size() > 0) {
+
+                String uri = String.format("http://%s:%s/service/index?collectionId=%s",host,port,indexArr[cnt]);
+                //나머지..
+                Mono<String> result = webClient.post()
+                        .uri(uri)
+                        .bodyValue(utils.makeJsonData(indexList))
+                        .retrieve()
+                        .bodyToMono(String.class);
+
+                result.subscribe( s-> {
+                    //logger.info("record");
+                });
+                logger.debug("Final bulk! {}", count);
             }
 
         }catch(Exception e) {

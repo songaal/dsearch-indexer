@@ -260,7 +260,7 @@ public class CommandController {
 
                 //검색엔진에 따라 서비스 구분처리
                 if(type.equals("FASTCAT")) {
-                    service.fastcatDynamicIndex(finalIngester, index,filter);
+                    service.fastcatDynamicIndex(finalIngester, index,filter,bulkSize,sleepTime);
                 }else if(type.equals("ES")) {
                     service.elasticDynamicIndex(finalIngester, index,filter,bulkSize,sleepTime);
                 }

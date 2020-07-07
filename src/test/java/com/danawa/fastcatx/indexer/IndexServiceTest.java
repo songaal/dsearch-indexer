@@ -75,12 +75,15 @@ public class IndexServiceTest {
         port = 8090;
         scheme = "http";
         index = "TEST_V1,TEST_V2";
+        bulkSize = 400;
+
+        Integer sleepTime = 1000;
         Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
 
         String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.fastcatDynamicIndex(ingester, index, filter);
+        indexService.fastcatDynamicIndex(ingester, index, filter,bulkSize,sleepTime);
     }
 
     @Test
