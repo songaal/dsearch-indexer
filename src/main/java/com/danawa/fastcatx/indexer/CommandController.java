@@ -215,6 +215,10 @@ public class CommandController {
         String index = (String) payload.get("index");
         // 필터 클래스 이름. 패키지명까지 포함해야 한다. 예) com.danawa.fastcatx.filter.MockFilter
         String filterClassName = (String) payload.get("filterClass");
+        // 벌크 사이즈
+        Integer bulkSize = (Integer) payload.get("bulkSize");
+        // Sleep
+        Integer sleepTime = (Integer) payload.get("sleepTime");
 
         /**
          * file기반 인제스터 설정
@@ -258,7 +262,7 @@ public class CommandController {
                 if(type.equals("FASTCAT")) {
                     service.fastcatDynamicIndex(finalIngester, index,filter);
                 }else if(type.equals("ES")) {
-                    service.elasticDynamicIndex(finalIngester, index,filter);
+                    service.elasticDynamicIndex(finalIngester, index,filter,bulkSize,sleepTime);
                 }
 
                 status = STATUS_SUCCESS;

@@ -41,6 +41,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class IndexService {
 
@@ -126,12 +127,15 @@ public class IndexService {
     }
 
 
-    public void elasticDynamicIndex(Ingester ingester, String index, Filter filter) throws IOException {
+    public void elasticDynamicIndex(Ingester ingester, String index, Filter filter, Integer bulkSize, Integer sleepTime) throws IOException {
         RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
 
         count = 0;
         long start = System.currentTimeMillis();
 
+        AtomicInteger counter = new AtomicInteger();
+
+        BulkRequest request = new BulkRequest();
 
         int cnt = 0;
         String[] indexArr = index.split(",");
@@ -142,11 +146,12 @@ public class IndexService {
         listener = new ActionListener<IndexResponse>() {
             @Override
             public void onResponse(IndexResponse indexResponse) {
-
+                counter.decrementAndGet();
             }
 
             @Override
             public void onFailure(Exception e) {
+                counter.decrementAndGet();
                 logger.error("[DynamicIndex] : " + e.getMessage());
             }
         };
@@ -154,7 +159,11 @@ public class IndexService {
 
         try{
             while (ingester.hasNext()) {
-                count++;
+
+//                if (counter.get() >= bulkSize) {
+//                    Thread.sleep(20);
+//                    continue;
+//                }
 
                 Map<String, Object> record = ingester.next();
                 if (filter != null) {
@@ -163,19 +172,42 @@ public class IndexService {
 
                 //입력된 인덱스만큼 순차적으로 색인 API 호출
                 if(record.size() > 0) {
-                    IndexRequest request  = new IndexRequest(indexArr[cnt]).source(record, XContentType.JSON);
-                    client.indexAsync(request, RequestOptions.DEFAULT, listener);
 
-                    cnt++;
-                    if(cnt == indexArr.length) {
-                        cnt = 0;
+                    request.add(new IndexRequest(indexArr[count % indexArr.length]).source(record, XContentType.JSON));
+                    //IndexRequest request  = new IndexRequest(indexArr[count % indexArr.length]).source(record, XContentType.JSON);
+                    //client.indexAsync(request, RequestOptions.DEFAULT, listener);
+                    //counter.incrementAndGet();
+
+//                    cnt++;
+//                    if(cnt == indexArr.length) {dmd
+//                        cnt = 0;
+//                    }
+                }
+
+
+                count++;
+                if (count % bulkSize == 0) {
+                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                    logger.info("bulk! {}, sleep : {}", count, sleepTime);
+                    request = new BulkRequest();
+
+                    //sleepTime 만큼 대기
+                    if(sleepTime != null) {
+                        Thread.sleep(sleepTime);
                     }
                 }
 
-
                 if (count % 10000 == 0) {
-                    logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                    //logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms. async_counter[{}]", count, (System.nanoTime() - time) / 1000000, counter.get());
+                    logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms. SleepTime[{}]", count, (System.nanoTime() - time) / 1000000, sleepTime);
                 }
+            }
+
+            if (request.estimatedSizeInBytes() > 0) {
+                //나머지..
+                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                checkResponse(bulkResponse);
+                logger.debug("Final bulk! {}", count);
             }
 
         }catch(Exception e) {

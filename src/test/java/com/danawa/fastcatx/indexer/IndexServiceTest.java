@@ -87,12 +87,14 @@ public class IndexServiceTest {
     public void testESDI() throws IOException {
 
         index = "prod1,prod2";
+        Integer bulkSize = 500;
+        Integer sleepTime = 1000;
         Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
 
         String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.elasticDynamicIndex(ingester, index, filter);
+        indexService.elasticDynamicIndex(ingester, index, filter,bulkSize,sleepTime);
     }
 
     public void testStorageSize() {

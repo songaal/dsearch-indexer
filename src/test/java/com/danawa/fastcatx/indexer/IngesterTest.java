@@ -57,10 +57,10 @@ public class IngesterTest {
     @Test
     public void testAlitibaseJDBCRead() throws IOException {
         String driver = "Altibase.jdbc.driver.AltibaseDriver";
-        String url = "jdbc:Altibase://localhost:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
+        String url = "jdbc:Altibase://112.175.252.198:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
         String user = "DBLINKDATA_1";
-        String password = System.getProperty("password");
-        String dataSQL = "SELECT * FROM TPRODUCTEXTERNALVIDEO";
+        String password = "fldzmepdlxj**(";
+        String dataSQL = "SELECT CATE_C FROM TCATE limit 1";
         int bulkSize = 1000;
         int fetchSize = 1000;
         int maxRows = 0;
