@@ -9,14 +9,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-public class JobRunner implements Runnable {
-    private static Logger logger = LoggerFactory.getLogger(JobRunner.class);
+public class IndexJobRunner implements Runnable {
+    private static Logger logger = LoggerFactory.getLogger(IndexJobRunner.class);
     private enum STATUS { READY, RUNNING, SUCCESS, ERROR, STOP }
     private Job job;
     private IndexService service;
     private Ingester ingester;
 
-    public JobRunner(Job job) {
+    public IndexJobRunner(Job job) {
         this.job = job;
         job.setStatus(STATUS.READY.name());
         job.setStartTime(System.currentTimeMillis() / 1000);

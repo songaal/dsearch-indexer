@@ -1,7 +1,6 @@
 package com.danawa.fastcatx.indexer.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -14,6 +13,7 @@ public class Job implements Serializable {
     private String error;
     private long startTime;
     private long endTime;
+    private String action;
 
     @JsonIgnore
     private boolean stopSignal;
@@ -72,5 +72,13 @@ public class Job implements Serializable {
 
     public void setStopSignal(boolean stopSignal) {
         this.stopSignal = stopSignal;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
     }
 }

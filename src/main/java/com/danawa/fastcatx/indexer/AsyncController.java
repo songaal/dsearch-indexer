@@ -16,6 +16,7 @@ import java.util.UUID;
 public class AsyncController {
     private static Logger logger = LoggerFactory.getLogger(AsyncController.class);
 
+    private enum ACTION {FULL_INDEX, DYNAMIC_INDEX }
     private final IndexJobManager indexJobManager;
 
     public AsyncController(IndexJobManager indexJobManager) {
@@ -36,7 +37,13 @@ public class AsyncController {
 
     @PostMapping(value = "/start")
     public ResponseEntity<?> doStart(@RequestBody Map<String, Object> payload) {
-        Job job = indexJobManager.start(payload);
+        Job job = indexJobManager.start(ACTION.FULL_INDEX.name(), payload);
+        return new ResponseEntity<>(job, HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/dynamic")
+    public ResponseEntity<?> doDynamic(@RequestBody Map<String, Object> payload) {
+        Job job = indexJobManager.start(ACTION.DYNAMIC_INDEX.name(), payload);
         return new ResponseEntity<>(job, HttpStatus.OK);
     }
 

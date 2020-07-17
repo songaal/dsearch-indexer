@@ -25,13 +25,18 @@ public class IndexJobManager {
         return jobs.get(id);
     }
 
-    public Job start(Map<String, Object> payload) {
+    public Job start(String action, Map<String, Object> payload) {
         UUID id = genId();
         Job job = new Job();
         job.setId(id);
         job.setRequest(payload);
+        job.setAction(action);
         jobs.put(id, job);
-        new Thread(new JobRunner(job)).start();
+        if ("FULL_INDEX".equalsIgnoreCase(action)) {
+            new Thread(new IndexJobRunner(job)).start();
+        } else if ("DYNAMIC_INDEX".equalsIgnoreCase(action)) {
+            new Thread(new DynamicIndexJobRunner(job)).start();
+        }
         return job;
     }
 
@@ -46,4 +51,6 @@ public class IndexJobManager {
         }
         return id;
     }
+
+
 }
