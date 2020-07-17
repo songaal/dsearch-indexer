@@ -1,10 +1,12 @@
 package com.danawa.fastcatx.indexer;
 
+import com.danawa.fastcatx.indexer.entity.Job;
 import org.apache.http.HttpHost;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -82,10 +84,11 @@ public class IndexService {
         }
     }
 
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter) throws IOException {
+
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter) throws IOException, StopSignalException {
         index(ingester, index, bulkSize, filter, null);
     }
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Boolean stopSignal) throws IOException {
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job) throws IOException, StopSignalException {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             count = 0;
             long start = System.currentTimeMillis();
@@ -93,9 +96,9 @@ public class IndexService {
             long time = System.nanoTime();
             try{
                 while (ingester.hasNext()) {
-                    if (stopSignal != null && stopSignal) {
+                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
-                        break;
+                        throw new StopSignalException();
                     }
 
                     count++;
@@ -124,7 +127,9 @@ public class IndexService {
                     checkResponse(bulkResponse);
                     logger.debug("Final bulk! {}", count);
                 }
-            }catch(Exception e) {
+            } catch (StopSignalException e) {
+              throw e;
+            } catch(Exception e) {
                 StackTraceElement[] exception = e.getStackTrace();
                 for(StackTraceElement element : exception) {
                     logger.error("[Exception] : " + element.toString());
@@ -141,7 +146,7 @@ public class IndexService {
     public void elasticDynamicIndex(Ingester ingester, String index, Filter filter, Integer bulkSize, Integer sleepTime) throws IOException, StopSignalException, InterruptedException {
         elasticDynamicIndex(ingester,index, filter, bulkSize, sleepTime, null);
     }
-    public void elasticDynamicIndex(Ingester ingester, String index, Filter filter, Integer bulkSize, Integer sleepTime, Boolean stopSignal) throws IOException, StopSignalException, InterruptedException {
+    public void elasticDynamicIndex(Ingester ingester, String index, Filter filter, Integer bulkSize, Integer sleepTime, Job job) throws IOException, StopSignalException, InterruptedException {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             count = 0;
             long start = System.currentTimeMillis();
@@ -172,7 +177,7 @@ public class IndexService {
 
             try{
                 while (ingester.hasNext()) {
-                    if (stopSignal != null && stopSignal) {
+                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
                         throw new StopSignalException();
                     }
@@ -367,7 +372,7 @@ public class IndexService {
     public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize) throws IOException, StopSignalException {
         indexParallel(ingester, index, bulkSize, filter, threadSize, null);
     }
-    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Boolean stopSignal) throws IOException, StopSignalException {
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job) throws IOException, StopSignalException {
         ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
 
         BlockingQueue queue= new LinkedBlockingQueue(threadSize * 10);
@@ -384,7 +389,7 @@ public class IndexService {
         long time = System.nanoTime();
         try {
             while (ingester.hasNext()) {
-                if (stopSignal != null && stopSignal) {
+                if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                     logger.info("Stop Signal");
                     throw new StopSignalException();
                 }

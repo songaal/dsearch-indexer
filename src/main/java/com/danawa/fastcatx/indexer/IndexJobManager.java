@@ -3,19 +3,34 @@ package com.danawa.fastcatx.indexer;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class IndexJobManager {
     private ConcurrentHashMap<UUID, Job> jobs = new ConcurrentHashMap<>();
 
-    private enum STATUS { READY, RUNNING, SUCCESS, ERROR, STOP }
+    public Job remove(UUID id) {
+        Job job = jobs.get(id);
+        if (job != null && !"RUNNING".equalsIgnoreCase(job.getStatus())) {
+            jobs.remove(id);
+        } else {
+            job = null;
+        }
+        return job;
+    }
+    public List<UUID> getIds() {
+        List<UUID> ids = new ArrayList<>();
+        Iterator<UUID> iterator = jobs.keySet().iterator();
+        while (iterator.hasNext()) {
+            ids.add(iterator.next());
+        }
+        return ids;
+    }
 
     public Job stop(UUID id) {
         Job job = jobs.get(id);
-        if (job != null && STATUS.RUNNING.equals(job.getStatus())) {
+        if (job != null && "RUNNING".equalsIgnoreCase(job.getStatus())) {
             job.setStopSignal(true);
         }
         return job;

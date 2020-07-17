@@ -16,7 +16,7 @@ public class Job implements Serializable {
     private String action;
 
     @JsonIgnore
-    private boolean stopSignal;
+    private Boolean stopSignal;
 
     public Map<String, Object> getRequest() {
         return request;
@@ -66,11 +66,11 @@ public class Job implements Serializable {
         this.id = id;
     }
 
-    public boolean isStopSignal() {
+    public Boolean getStopSignal() {
         return stopSignal;
     }
 
-    public void setStopSignal(boolean stopSignal) {
+    public void setStopSignal(Boolean stopSignal) {
         this.stopSignal = stopSignal;
     }
 

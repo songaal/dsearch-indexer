@@ -21,7 +21,7 @@ public class IndexServiceTest {
     Integer bulkSize = 1000;
 
     @Test
-    public void testJson2Search() throws IOException {
+    public void testJson2Search() throws IOException, StopSignalException {
         String filePath = "C:\\Users\\admin\\data\\converted\\prodExt_6_all_utf8";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
         IndexService indexService = new IndexService(host, port, scheme);
@@ -44,7 +44,7 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testCVS2Search() throws IOException {
+    public void testCVS2Search() throws IOException, StopSignalException {
         String filePath = "sample/food.csv";
         logger.info("path: {}", new File(filePath).getAbsolutePath());
         CSVIngester ingester = new CSVIngester(filePath, "utf-8", 1000);
@@ -54,7 +54,7 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testJDBC2Search() throws IOException {
+    public void testJDBC2Search() throws IOException, StopSignalException {
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://52.78.31.7:3306/new_schema?characterEncoding=utf-8";
         String user = "gncloud";

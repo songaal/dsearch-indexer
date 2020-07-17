@@ -87,7 +87,7 @@ public class CommandController {
 
         if (status.equals(STATUS_RUNNING)) {
             Map<String, Object> result = new HashMap<>();
-            result.put("error", "Status is " + status);
+            result.put("error", "STATUS is " + status);
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Type", "application/json; charset=UTF-8");
             return new ResponseEntity<>(result, headers, HttpStatus.OK);
@@ -196,7 +196,7 @@ public class CommandController {
 
         if (status.equals(STATUS_RUNNING)) {
             Map<String, Object> result = new HashMap<>();
-            result.put("error", "Status is " + status);
+            result.put("error", "STATUS is " + status);
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Type", "application/json; charset=UTF-8");
             return new ResponseEntity<>(result, headers, HttpStatus.OK);
@@ -215,6 +215,10 @@ public class CommandController {
         String index = (String) payload.get("index");
         // 필터 클래스 이름. 패키지명까지 포함해야 한다. 예) com.danawa.fastcatx.filter.MockFilter
         String filterClassName = (String) payload.get("filterClass");
+        // 벌크 사이즈
+        Integer bulkSize = (Integer) payload.get("bulkSize");
+        // Sleep
+        Integer sleepTime = (Integer) payload.get("sleepTime");
 
         /**
          * file기반 인제스터 설정
@@ -256,9 +260,9 @@ public class CommandController {
 
                 //검색엔진에 따라 서비스 구분처리
                 if(type.equals("FASTCAT")) {
-                    service.fastcatDynamicIndex(finalIngester, index,filter);
+                    service.fastcatDynamicIndex(finalIngester, index,filter,bulkSize,sleepTime);
                 }else if(type.equals("ES")) {
-                    service.elasticDynamicIndex(finalIngester, index,filter);
+                    service.elasticDynamicIndex(finalIngester, index,filter,bulkSize,sleepTime);
                 }
 
                 status = STATUS_SUCCESS;

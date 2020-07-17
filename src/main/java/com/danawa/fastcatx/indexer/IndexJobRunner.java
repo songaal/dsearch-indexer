@@ -86,16 +86,16 @@ public class IndexJobRunner implements Runnable {
                 }
             }
 
-            Boolean stopSignal = job.isStopSignal();
             if (threadSize > 1) {
-                service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, stopSignal);
+                service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job);
             } else {
-                service.index(finalIngester, index, bulkSize, filter, stopSignal);
+                service.index(finalIngester, index, bulkSize, filter, job);
             }
+
             job.setStatus(STATUS.SUCCESS.name());
         } catch (StopSignalException e) {
             job.setStatus(STATUS.STOP.name());
-        } catch (Throwable e) {
+        } catch (Exception e) {
             job.setStatus(STATUS.ERROR.name());
             job.setError(e.getMessage());
             logger.error("error .... ", e);

@@ -47,5 +47,15 @@ public class AsyncController {
         return new ResponseEntity<>(job, HttpStatus.OK);
     }
 
+    @DeleteMapping(value = "/{id}")
+    public ResponseEntity<?> remove(@PathVariable UUID id) {
+        return new ResponseEntity<>(indexJobManager.remove(id), HttpStatus.OK);
+    }
+
+    @GetMapping
+    public ResponseEntity<?> ids() {
+        return new ResponseEntity<>(indexJobManager.getIds(), HttpStatus.OK);
+    }
+
 }
 
