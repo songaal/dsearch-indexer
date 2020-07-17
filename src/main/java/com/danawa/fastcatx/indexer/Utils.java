@@ -9,6 +9,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 public class Utils {
@@ -41,7 +43,7 @@ public class Utils {
 
 
 
-    public <E> String makeJsonData(ArrayList<E> list){
+    public <E> String makeJsonData(List<Map<String, Object>> list){
         int listSize = list.size();
         //logger.debug("json 생성 시작");
         StringBuilder sb = new StringBuilder();

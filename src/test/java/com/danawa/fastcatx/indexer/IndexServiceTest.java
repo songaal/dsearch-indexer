@@ -32,7 +32,7 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testJson2SearchMultiThreads() throws IOException {
+    public void testJson2SearchMultiThreads() throws IOException, StopSignalException {
         int threadSize = 20;
         String filePath = "C:\\Users\\admin\\data\\converted\\prodExt_6_all_utf8";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
@@ -75,24 +75,29 @@ public class IndexServiceTest {
         port = 8090;
         scheme = "http";
         index = "TEST_V1,TEST_V2";
+        bulkSize = 400;
+
+        Integer sleepTime = 1000;
         Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
 
         String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.fastcatDynamicIndex(ingester, index, filter);
+        indexService.fastcatDynamicIndex(ingester, index, filter,bulkSize,sleepTime);
     }
 
     @Test
-    public void testESDI() throws IOException {
+    public void testESDI() throws IOException, StopSignalException, InterruptedException {
 
         index = "prod1,prod2";
+        Integer bulkSize = 500;
+        Integer sleepTime = 1000;
         Filter filter = (Filter) Utils.newInstance("com.danawa.fastcatx.indexer.filter.DanawaProductFilter");
 
         String filePath = "C:\\Users\\admin\\Desktop\\indexFile\\test.ndjson";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.elasticDynamicIndex(ingester, index, filter);
+        indexService.elasticDynamicIndex(ingester, index, filter,bulkSize,sleepTime);
     }
 
     public void testStorageSize() {
