@@ -12,7 +12,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/async")
-@CrossOrigin(value = "*", methods = {RequestMethod.DELETE, RequestMethod.GET, RequestMethod.DELETE, RequestMethod.PUT, RequestMethod.POST})
 public class AsyncController {
     private static Logger logger = LoggerFactory.getLogger(AsyncController.class);
 
