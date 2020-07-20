@@ -29,7 +29,7 @@ public class IndexJobRunner implements Runnable {
         try {
             job.setStatus(STATUS.RUNNING.name());
             Map<String, Object> payload = job.getRequest();
-
+            logger.info("Started Indexing Job Runner");
             // 공통
             // ES 호스트
             String host = (String) payload.get("host");
@@ -49,6 +49,7 @@ public class IndexJobRunner implements Runnable {
             Integer bulkSize = (Integer) payload.get("bulkSize");
             Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
 
+            logger.debug("index: {}", index);
             /**
              * file기반 인제스터 설정
              */

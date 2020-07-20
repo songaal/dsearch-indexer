@@ -1,6 +1,8 @@
 package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -8,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class IndexJobManager {
+    private static Logger logger = LoggerFactory.getLogger(IndexJobManager.class);
     private ConcurrentHashMap<UUID, Job> jobs = new ConcurrentHashMap<>();
 
     public Job remove(UUID id) {
@@ -47,6 +50,7 @@ public class IndexJobManager {
         job.setRequest(payload);
         job.setAction(action);
         jobs.put(id, job);
+        logger.info("job ID: {}", id.toString());
         if ("FULL_INDEX".equalsIgnoreCase(action)) {
             new Thread(new IndexJobRunner(job)).start();
         } else if ("DYNAMIC_INDEX".equalsIgnoreCase(action)) {
