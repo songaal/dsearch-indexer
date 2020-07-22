@@ -18,6 +18,7 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.enrich.StatsRequest;
 import org.elasticsearch.client.enrich.StatsResponse;
+import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.Index;
@@ -80,6 +81,15 @@ public class IndexService {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             DeleteIndexRequest request = new DeleteIndexRequest(index);
             AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
+            return deleteIndexResponse.isAcknowledged();
+        }
+    }
+
+    public boolean createIndex(String index, Map<String, ?> settings) throws IOException {
+        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+            CreateIndexRequest request = new CreateIndexRequest(index);
+            request.settings(settings);
+            AcknowledgedResponse deleteIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
             return deleteIndexResponse.isAcknowledged();
         }
     }

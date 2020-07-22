@@ -7,6 +7,7 @@ import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class IndexJobRunner implements Runnable {
@@ -49,6 +50,15 @@ public class IndexJobRunner implements Runnable {
             Integer bulkSize = (Integer) payload.get("bulkSize");
             Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
 
+            Map<String, Object> indexSettings;
+            try {
+                indexSettings = (Map<String, Object>) payload.get("_indexingSettings");
+                if (indexSettings == null) {
+                    throw new ClassCastException();
+                }
+            } catch (ClassCastException e) {
+                indexSettings = new HashMap<>();
+            }
             logger.debug("index: {}", index);
             /**
              * file기반 인제스터 설정
@@ -83,7 +93,9 @@ public class IndexJobRunner implements Runnable {
             // 인덱스를 초기화하고 0건부터 색인이라면.
             if (reset) {
                 if (service.existsIndex(index)) {
-                    service.deleteIndex(index);
+                    if(service.deleteIndex(index)) {
+                        service.createIndex(index, indexSettings);
+                    }
                 }
             }
 
