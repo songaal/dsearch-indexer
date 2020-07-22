@@ -75,15 +75,20 @@ public class IndexJobRunner implements Runnable {
             } else if (type.equals("csv")) {
                 ingester = new CSVIngester(path, encoding, 1000, limitSize);
             } else if (type.equals("jdbc")) {
-                String driverClassName = (String) payload.get("driverClassName");
-                String url = (String) payload.get("url");
-                String user = (String) payload.get("user");
-                String password = (String) payload.get("password");
                 String dataSQL = (String) payload.get("dataSQL");
                 Integer fetchSize = (Integer) payload.get("fetchSize");
                 Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
                 Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
-                ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+                if (payload.get("_jdbc") != null) {
+                    Map<String, Object> jdbcMap = (Map<String, Object>) payload.get("_jdbc");
+                    String driverClassName = (String) jdbcMap.get("driverClassName");
+                    String url = (String) jdbcMap.get("url");
+                    String user = (String) jdbcMap.get("user");
+                    String password = (String) jdbcMap.get("password");
+                    ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+                } else {
+                    throw new IllegalArgumentException("jdbc argument");
+                }
             }
 
             Ingester finalIngester = ingester;
