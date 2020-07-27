@@ -87,7 +87,7 @@ public class CommandController {
 
         if (status.equals(STATUS_RUNNING)) {
             Map<String, Object> result = new HashMap<>();
-            result.put("error", "Status is " + status);
+            result.put("error", "STATUS is " + status);
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Type", "application/json; charset=UTF-8");
             return new ResponseEntity<>(result, headers, HttpStatus.OK);
@@ -196,7 +196,7 @@ public class CommandController {
 
         if (status.equals(STATUS_RUNNING)) {
             Map<String, Object> result = new HashMap<>();
-            result.put("error", "Status is " + status);
+            result.put("error", "STATUS is " + status);
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Type", "application/json; charset=UTF-8");
             return new ResponseEntity<>(result, headers, HttpStatus.OK);

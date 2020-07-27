@@ -159,3 +159,22 @@ $ java -classpath indexer.jar:Altibase.jar:danawa-search.jar org.springframework
 - `port: int` : 검색엔진 포트
 - `index: string` : 인덱스명( , 로 다수 입력)
 - `type: string` : 검색엔진 종류 (FASTCAT, ES)
+
+
+### 비동기 호출 사용방법
+파일, 동적 요청과 동일한 파라미터를 사용하면됩니다. 차이점은 uri의 async 가 포함됩니다.   
+
+`POST http://localhost:5005/async/start`
+
+```json
+{
+    "scheme": "http",
+    "host": "es1.danawa.io",
+    "port": 80,
+    "index": "song5",
+    "type": "ndjson",
+    "path": "C:\\Projects\\fastcatx-indexer\\src\\test\\resources\\sample.ndjson",
+    "encoding": "utf-8",
+    "bulkSize": 1000
+}
+```
