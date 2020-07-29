@@ -3,6 +3,7 @@ package com.danawa.fastcatx.indexer;
 import com.danawa.fastcatx.indexer.ingester.CSVIngester;
 import com.danawa.fastcatx.indexer.ingester.JDBCIngester;
 import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
+import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -83,7 +84,7 @@ public class CommandController {
      * }
      */
     @PostMapping(value = "/start")
-    public ResponseEntity<?> doStart(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> doStart(@RequestBody Map<String, Object> payload) throws InterruptedException {
 
         if (status.equals(STATUS_RUNNING)) {
             Map<String, Object> result = new HashMap<>();
@@ -146,20 +147,44 @@ public class CommandController {
                 Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
                 Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
                 ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+            } else if (type.equals("procedure")) {
+
+                //프로시저 호출에 필요한 정보
+                String driverClassName = (String) payload.get("driverClassName");
+                String url = (String) payload.get("url");
+                String user = (String) payload.get("user");
+                String password = (String) payload.get("password");
+                String procedureName = (String) payload.get("procedureName");
+                Integer groupSeq = (Integer) payload.get("groupSeq");
+
+
+                //프로시져 호출
+                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
+
+                boolean execProdure = procedure.callSearchProcedure();
+                logger.info("call : {}", execProdure);
+                //ingester
+                if(execProdure) {
+                    ingester = new ProcedureIngester(path, encoding, 1000, limitSize);
+                }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             status = STATUS_ERROR;
 //            logger.error("Init error!", e);
             error = "Cannot establish jdbc connection.";
             endTime = System.currentTimeMillis() / 1000;
             return getStatus();
         }
+        Thread.sleep(3000);
 
         Ingester finalIngester = ingester;
         Filter filter = (Filter) Utils.newInstance(filterClassName);
 
         Thread t = new Thread(() -> {
             try {
+
+                //프로시저 ingester의 경우...
                 service = new IndexService(host, port, scheme);
                 // 인덱스를 초기화하고 0건부터 색인이라면.
                 if (reset) {
@@ -186,7 +211,7 @@ public class CommandController {
             }
         });
         t.start();
-
+        //t.join();
         // 결과  json
         return getStatus();
     }

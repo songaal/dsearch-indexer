@@ -16,6 +16,7 @@ public class DynamicIndexJobRunner implements Runnable {
     private IndexService service;
     private Ingester ingester;
 
+
     public DynamicIndexJobRunner(Job job) {
         this.job = job;
         job.setStatus(STATUS.READY.name());

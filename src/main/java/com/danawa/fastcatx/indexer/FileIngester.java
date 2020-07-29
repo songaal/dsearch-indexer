@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer;
 
+import org.omg.PortableServer.THREAD_POLICY_ID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,11 +59,17 @@ public abstract class FileIngester implements Ingester {
         items = new LinkedList<>();
     }
 
+    public FileIngester() {
+
+    }
+
     @Override
     public void close() throws IOException {
         if(reader != null) {
             try {
+                logger.info("EXIT");
                 reader.close();
+                Thread.interrupted();
             } catch (IOException ignore) {
             }
         }

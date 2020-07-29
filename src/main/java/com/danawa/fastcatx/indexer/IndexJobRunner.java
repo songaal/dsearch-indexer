@@ -4,6 +4,7 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.CSVIngester;
 import com.danawa.fastcatx.indexer.ingester.JDBCIngester;
 import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
+import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +89,25 @@ public class IndexJobRunner implements Runnable {
                     ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
                 } else {
                     throw new IllegalArgumentException("jdbc argument");
+                }
+            } else if (type.equals("procedure")) {
+
+                //프로시저 호출에 필요한 정보
+                String driverClassName = (String) payload.get("driverClassName");
+                String url = (String) payload.get("url");
+                String user = (String) payload.get("user");
+                String password = (String) payload.get("password");
+                String procedureName = (String) payload.get("procedureName");
+                Integer groupSeq = (Integer) payload.get("groupSeq");
+
+                //프로시져 호출
+                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
+
+                boolean execProdure = procedure.callSearchProcedure();
+                logger.info("call : {}", execProdure);
+                //ingester
+                if(execProdure) {
+                    ingester = new ProcedureIngester(path, encoding, 1000, limitSize);
                 }
             }
 

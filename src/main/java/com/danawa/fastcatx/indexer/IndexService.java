@@ -104,6 +104,10 @@ public class IndexService {
             BulkRequest request = new BulkRequest();
             long time = System.nanoTime();
             try{
+                //ingeter에 없어도 바로 종료 X
+
+                logger.info("index 시작");
+
                 while (ingester.hasNext()) {
                     if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
@@ -111,13 +115,15 @@ public class IndexService {
                     }
 
                     count++;
+
                     Map<String, Object> record = ingester.next();
-                    if (filter != null) {
+                    if (filter != null && record != null) {
                         record = filter.filter(record);
                     }
-                    //if(record != null) {
-                    request.add(new IndexRequest(index).source(record, XContentType.JSON));
-                    //}
+                    //logger.info("{}", record);
+                    if(record != null) {
+                        request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                    }
 
                     if (count % bulkSize == 0) {
                         BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
@@ -128,6 +134,7 @@ public class IndexService {
                     if (count % 10000 == 0) {
                         logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
                     }
+                   //logger.info("{}",count);
                 }
 
                 if (request.estimatedSizeInBytes() > 0) {
@@ -139,9 +146,13 @@ public class IndexService {
             } catch (StopSignalException e) {
               throw e;
             } catch(Exception e) {
+                logger.info("{}",e);
                 StackTraceElement[] exception = e.getStackTrace();
+                //logger.info("{}", record);
                 for(StackTraceElement element : exception) {
+                    e.printStackTrace();
                     logger.error("[Exception] : " + element.toString());
+                    continue;
                 }
             }
 
@@ -405,7 +416,7 @@ public class IndexService {
 
                 count++;
                 Map<String, Object> record = ingester.next();
-                if (filter != null) {
+                if (filter != null && record != null) {
                     record = filter.filter(record);
                 }
 

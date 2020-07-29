@@ -80,6 +80,7 @@ public class KonanToJsonConverter implements FileFilter {
                                 //row 처음에 한번만 실행.
                                 writer = new StringWriter();
                                 generator = new JsonFactory().createGenerator(writer);
+
                                 generator.writeStartObject();
                             }
                             isSourceFile = true;
