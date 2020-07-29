@@ -156,16 +156,25 @@ public class CommandController {
                 String password = (String) payload.get("password");
                 String procedureName = (String) payload.get("procedureName");
                 Integer groupSeq = (Integer) payload.get("groupSeq");
+                Integer dumpFormat = (Integer) payload.get("dumpFormat"); //ndjson, konan
 
 
                 //프로시져 호출
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
 
+
                 boolean execProdure = procedure.callSearchProcedure();
                 logger.info("call : {}", execProdure);
-                //ingester
+
+                boolean rsyncStarted = false;
                 if(execProdure) {
-                    ingester = new ProcedureIngester(path, encoding, 1000, limitSize);
+                    RsyncCopy rsyncCopy = new RsyncCopy();
+                    rsyncStarted = rsyncCopy.copyAsync();
+
+                }
+                //ingester
+                if(rsyncStarted) {
+                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }
         } catch (Exception e) {

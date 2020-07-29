@@ -23,14 +23,14 @@ public class ProcedureIngester extends FileIngester {
     private Gson gson;
     private boolean isRun;
 
-    public ProcedureIngester(String filePath, String encoding, int bufferSize) {
+    public ProcedureIngester(String filePath, String dumpFormat, String encoding, int bufferSize) {
         this(filePath, encoding, bufferSize, 0);
     }
 
-    public ProcedureIngester(String filePath, String encoding, int bufferSize, int limitSize) {
+    public ProcedureIngester(String filePath, String dumpFormat, String encoding, int bufferSize, int limitSize) {
 
         super(filePath, encoding, bufferSize, limitSize);
-        logger.info(filePath);
+        logger.info("filePath : {}", filePath);
         gson = new Gson();
         entryType = new TypeToken<Map<String, Object>>() {}.getType();
         isRun = true;
@@ -54,12 +54,15 @@ public class ProcedureIngester extends FileIngester {
                 line = reader.readLine();
                 if(line != null) {
                     waitCount=0;
+                    //TODO String dumpFormat,
                     Map<String, Object> record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
 
                     //정상이면 리턴.
                     return record;
                 }else{
                     //대기 상태가 연속으로 X회 이상이면 반복 중지
+                    // FIXME rsync 전송이 갑자기 느려져서 20초간 한문서도 전송받지 못하거나
+                    // 그외 어떤 이유(시스템 부하)로 잠시 멈출때는 전송완료와 구별하지 못함.
                     if(waitCount > 20) {
                         stop();
                     }

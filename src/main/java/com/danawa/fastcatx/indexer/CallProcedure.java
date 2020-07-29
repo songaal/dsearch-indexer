@@ -44,7 +44,7 @@ public class CallProcedure {
     //프로시저 호출 따로
     public boolean callSearchProcedure() throws IOException {
 
-        try{
+        try {
 
 //            connection =  getConnection(driverClassName, url, user, password);
 //            //프로시저 호출
@@ -67,24 +67,28 @@ public class CallProcedure {
 //            }
 
 
-            //Rsync 호출
-            //별도의 쓰레드로 RSYNC 호출
-            RsyncFile rsync = new RsyncFile();
-            rsync.start();
-            Thread.sleep(3000);
-            return true;
+//            //Rsync 호출
+//            //별도의 쓰레드로 RSYNC 호출
+//            RsyncFile rsync = new RsyncFile();
+//            rsync.start();
+//            Thread.sleep(3000);
+//
+//            // TODO Destination file 생성됬는지 확인. while.. (timeout 1분 에러발생..)
+//
+//            return true;
+//
+//
+//            //Rsync로 받은 파일 실시간 READ
+//            //read 시에는 konan 형식을 ndjson으로 변환해야한다.
+//            //변환한 ndjson이 정상적인지 확인
+//            //buffer가 비어있어도 바로 종료하면 X
 
-
-
-            //Rsync로 받은 파일 실시간 READ
-            //read 시에는 konan 형식을 ndjson으로 변환해야한다.
-            //변환한 ndjson이 정상적인지 확인
-            //buffer가 비어있어도 바로 종료하면 X
-
-        }catch (Exception e) {
-            //closeConnection();
+        } catch (Exception e) {
+            if (connection != null) {
+                closeConnection();
+            }
             logger.error(e.getMessage());
-            return false;
+            throw new IOException(e);
         }
 
     }
@@ -127,14 +131,14 @@ public class CallProcedure {
         }
     }
 
-     class RsyncFile  extends Thread {
+    class RsyncFile extends Thread {
         public void run() {
 
             logger.info("path : {}", path);
-            File file = new File(path+"\\prodExt_"+groupSeq);
+            File file = new File(path + "\\prodExt_" + groupSeq);
 
 
-            if(file.exists()) {
+            if (file.exists()) {
                 logger.info("기존 파일 삭제 : {}", file);
                 file.delete();
             }
@@ -150,7 +154,8 @@ public class CallProcedure {
             try {
                 output.monitor(rsync.builder());
             } catch (Exception e) {
-                logger.error("Rsync Exception : {}",e);
+                logger.error("Rsync Exception : {}", e);
+                throw new RuntimeException(e);
             }
         }
     }

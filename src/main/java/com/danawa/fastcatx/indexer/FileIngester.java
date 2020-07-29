@@ -1,6 +1,5 @@
 package com.danawa.fastcatx.indexer;
 
-import org.omg.PortableServer.THREAD_POLICY_ID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
