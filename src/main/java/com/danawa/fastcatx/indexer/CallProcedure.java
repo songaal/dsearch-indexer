@@ -13,6 +13,7 @@ import com.github.fracpete.rsync4j.RSync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 public class CallProcedure {
 
     Logger logger = LoggerFactory.getLogger(CallProcedure.class);
@@ -42,55 +43,37 @@ public class CallProcedure {
 
 
     //프로시저 호출 따로
-    public boolean callSearchProcedure() throws IOException {
+    public boolean callSearchProcedure() {
 
         try {
+            connection =  getConnection(driverClassName, url, user, password);
+            //프로시저 호출
+            if(procedureName.length() > 0 &&  groupSeq != null) {
+                cs = connection.prepareCall("{call " + procedureName + "(?,?)}");
+                String exportFileName = "prodExt_" + groupSeq;
 
-//            connection =  getConnection(driverClassName, url, user, password);
-//            //프로시저 호출
-//            if(procedureName.length() > 0 &&  groupSeq != null) {
-//                cs = connection.prepareCall("{call "+procedureName+"(?,?)}");
-//                String exportFileName = "prodExt_"  + groupSeq;
-//
-//                cs.setInt(1, groupSeq);
-//                cs.setString(2, exportFileName);
-//
-//                //프로시저 호출 소요시간 체크
-//                long start = System.nanoTime();
-//                logger.info("{} 프로시저 호출 : GROUPSEQ-{}, FileName-{}", procedureName, groupSeq, exportFileName);
-//                cs.execute();
-//                long end = System.nanoTime();
-//                logger.info("{} 프로시저 완료 : GROUPSEQ-{}, FileName-{}", procedureName, groupSeq, exportFileName);
-//                logger.info("프로시저 호출 시간 : {}", (end-start) / 1000000   );
-//
-//                closeConnection();
-//            }
+                cs.setInt(1, groupSeq);
+                cs.setString(2, exportFileName);
 
+                //프로시저 호출 소요시간 체크
+                long start = System.nanoTime();
+                logger.info("{} 프로시저 호출 : GROUPSEQ-{}, FileName-{}", procedureName, groupSeq, exportFileName);
+                cs.execute();
+                long end = System.nanoTime();
+                logger.info("{} 프로시저 완료 : GROUPSEQ-{}, FileName-{}", procedureName, groupSeq, exportFileName);
+                logger.info("프로시저 호출 시간 : {}", (end - start) / 1000000 + "ms");
 
-//            //Rsync 호출
-//            //별도의 쓰레드로 RSYNC 호출
-//            RsyncFile rsync = new RsyncFile();
-//            rsync.start();
-//            Thread.sleep(3000);
-//
-//            // TODO Destination file 생성됬는지 확인. while.. (timeout 1분 에러발생..)
-//
-//            return true;
-//
-//
-//            //Rsync로 받은 파일 실시간 READ
-//            //read 시에는 konan 형식을 ndjson으로 변환해야한다.
-//            //변환한 ndjson이 정상적인지 확인
-//            //buffer가 비어있어도 바로 종료하면 X
+                closeConnection();
+            }
+            return true;
 
         } catch (Exception e) {
             if (connection != null) {
                 closeConnection();
             }
             logger.error(e.getMessage());
-            throw new IOException(e);
+            return false;
         }
-
     }
 
     private Connection getConnection(String driverClassName, String url, String user, String password) throws IOException {

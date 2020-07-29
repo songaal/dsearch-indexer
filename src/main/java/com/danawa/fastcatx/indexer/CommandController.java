@@ -154,26 +154,38 @@ public class CommandController {
                 String url = (String) payload.get("url");
                 String user = (String) payload.get("user");
                 String password = (String) payload.get("password");
-                String procedureName = (String) payload.get("procedureName");
+                String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
                 Integer groupSeq = (Integer) payload.get("groupSeq");
-                Integer dumpFormat = (Integer) payload.get("dumpFormat"); //ndjson, konan
+                String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
+                //String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
+                String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
+                String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
+                boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
+                boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
 
-
-                //프로시져 호출
+                //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
+                //RSNYC
+                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,path,bwlimit,groupSeq);
 
-
-                boolean execProdure = procedure.callSearchProcedure();
-                logger.info("call : {}", execProdure);
-
+                boolean execProdure = false;
                 boolean rsyncStarted = false;
-                if(execProdure) {
-                    RsyncCopy rsyncCopy = new RsyncCopy();
-                    rsyncStarted = rsyncCopy.copyAsync();
 
+                //SKIP 여부에 따라 프로시저 호출
+                if(procedureSkip == false) {
+                    execProdure = procedure.callSearchProcedure();
                 }
-                //ingester
-                if(rsyncStarted) {
+                logger.info("execProdure : {}",execProdure);
+
+                //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                    rsyncCopy.start();
+                    Thread.sleep(3000);
+                    rsyncStarted = rsyncCopy.copyAsync();
+                }
+                logger.info("rsyncStarted : {}" , rsyncStarted );
+
+                if(rsyncStarted || rsyncSkip) {
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }
@@ -185,7 +197,6 @@ public class CommandController {
             endTime = System.currentTimeMillis() / 1000;
             return getStatus();
         }
-        Thread.sleep(3000);
 
         Ingester finalIngester = ingester;
         Filter filter = (Filter) Utils.newInstance(filterClassName);
@@ -220,8 +231,6 @@ public class CommandController {
             }
         });
         t.start();
-        //t.join();
-        // 결과  json
         return getStatus();
     }
 

@@ -420,9 +420,9 @@ public class IndexService {
                     record = filter.filter(record);
                 }
 
-                //if (record != null) {
+                if (record != null) {
                     request.add(new IndexRequest(index).source(record, XContentType.JSON));
-                //}
+                }
 
                 if (count % bulkSize == 0) {
                     queue.put(request);
