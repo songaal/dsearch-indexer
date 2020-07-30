@@ -114,15 +114,16 @@ public class IndexService {
                         throw new StopSignalException();
                     }
 
-                    count++;
+
 
                     Map<String, Object> record = ingester.next();
-                    if (filter != null && record != null) {
+                    if (filter != null && record != null && record.size() > 0) {
                         record = filter.filter(record);
                     }
                     //logger.info("{}", record);
-                    if(record != null) {
+                    if(record != null && record.size() >0) {
                         request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                        count++;
                     }
 
                     if (count % bulkSize == 0) {
@@ -207,7 +208,7 @@ public class IndexService {
 //                }
 
                     Map<String, Object> record = ingester.next();
-                    if (filter != null) {
+                    if (filter != null && record.size() > 0) {
                         record = filter.filter(record);
                     }
 
@@ -414,13 +415,16 @@ public class IndexService {
                     throw new StopSignalException();
                 }
 
-                count++;
                 Map<String, Object> record = ingester.next();
-                if (filter != null && record != null) {
+
+                //logger.info("record : {}" ,record.size());
+
+                if (filter != null && record != null && record.size() > 0) {
                     record = filter.filter(record);
                 }
 
-                if (record != null) {
+                if (record != null && record.size() > 0) {
+                    count++;
                     request.add(new IndexRequest(index).source(record, XContentType.JSON));
                 }
 

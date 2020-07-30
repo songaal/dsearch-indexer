@@ -121,7 +121,7 @@ public class IngesterTest {
 
         Thread.sleep(1000);
 
-        ProcedureIngester ingester = new ProcedureIngester(filePath,"CP949",1000);
+        ProcedureIngester ingester = new ProcedureIngester(filePath, "konan","CP949",1000,0);
 
         ReadFile th = new ReadFile(ingester);
         th.start();
@@ -218,7 +218,7 @@ public class IngesterTest {
         Thread.sleep(1000);
 
 
-        FileLineWatcher watcher = new FileLineWatcher(new File("D:\\result\\prodExt_5_1"));
+        FileLineWatcher watcher = new FileLineWatcher(new File("D:\\result\\prodExt_5"));
 
         Thread thread = new Thread(watcher);
         thread.setDaemon(true);
@@ -231,12 +231,15 @@ public class IngesterTest {
 
     class RsyncFile  extends Thread {
         public void run() {
+
             RSync rsync = new RSync()
-                    .source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5_1")
+                    .source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
                     .destination("D:\\result")
                     .recursive(true)
-                    .progress(true)
-                   // .bwlimit("5000")
+                    .archive(true)
+                    .compress(true)
+                    //.progress(true)
+                    .bwlimit("20")
                     .inplace(true);
 
             ConsoleOutputProcessOutput output = new ConsoleOutputProcessOutput();
@@ -257,6 +260,7 @@ public class IngesterTest {
 
         public FileLineWatcher(File file) {
             this.file = file;
+
         }
 
         @Override
@@ -265,13 +269,14 @@ public class IngesterTest {
 
             isRun = true;
             if (!file.exists()) {
-                System.out.println("Failed to find a file - " + file.getPath());
+                System.out.println("not exists file - ");
+
             }
 
             //try 문에서 Stream을 열면 블럭이 끝났을 때 close를 해줌
             try (
-
                 BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "CP949"))) {
+                StringBuilder sb = new StringBuilder();
 
                 int cnt = 0;
                 while (isRun) {
@@ -279,11 +284,44 @@ public class IngesterTest {
                     if(cnt > 122346) {
                         stop();
                     }
+
                     String line = br.readLine();
 
                     if (line != null) {
-                        System.out.println(cnt + " - " + Utils.convertKonanToNdJson((line)));
-                        cnt ++;
+
+
+                        if(line.contains("[%PRODUCTCODE%]") && line.contains("[%ADDDESCRIPTION%]")) {
+                            cnt ++;
+//                            if(line.length() < 300) {
+//                                System.out.println(line);
+//                            }
+                           // System.out.println(cnt + " - " + Utils.convertKonanToNdJson((line)));
+                        }else{
+                            sb.append(line);
+                           // System.out.println("sb append : " + line);
+                        }
+
+                        if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")){
+                            System.out.println("sb " + cnt + " - " + Utils.convertKonanToNdJson((sb.toString())));
+                            sb.setLength(0);
+                            cnt ++;
+                        }else if(sb.length() > 15 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0){
+                            System.out.println("First Text is Not Product Code : " + sb.toString());
+                            sb.setLength(0);
+                        }
+
+
+//                        else if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")) {
+//                            System.out.println("sb " + cnt + " - " + Utils.convertKonanToNdJson((sb.toString())));
+//                            sb.setLength(0);
+//                        }else if(sb.length() > 0 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0) {
+//                            System.out.println("sb start Not Product Code : " + sb.toString());
+//                            sb.setLength(0);
+//                        }else{
+//                            System.out.println("sb append : " + line);
+//                            sb.append(line);
+//                        }
+
                     } else {
                         Thread.sleep(DELAY_MILLIS);
                     }

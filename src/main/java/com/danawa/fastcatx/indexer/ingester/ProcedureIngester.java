@@ -17,6 +17,7 @@ public class ProcedureIngester extends FileIngester {
     private Gson gson;
     private String dumpFormat;
     private boolean isRun;
+    private StringBuilder sb;
 
     public ProcedureIngester(String filePath, String dumpFormat, String encoding, int bufferSize, int limitSize) {
 
@@ -25,6 +26,7 @@ public class ProcedureIngester extends FileIngester {
         gson = new Gson();
         entryType = new TypeToken<Map<String, Object>>() {}.getType();
         isRun = true;
+        sb = new StringBuilder();
 
         this.dumpFormat = dumpFormat;
 
@@ -39,7 +41,6 @@ public class ProcedureIngester extends FileIngester {
     @Override
     protected Map<String, Object> parse(BufferedReader reader) throws IOException {
         String line="";
-
         //종료 체크용 카운트
         int waitCount = 0;
         while (isRun) {
@@ -50,9 +51,27 @@ public class ProcedureIngester extends FileIngester {
                     //TODO String dumpFormat,
                     Map<String, Object> record = new HashMap<>();
                     if(dumpFormat.equals("konan")){
-                        record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
+
+                        //받아온 readline이 정상적인 상품 ROW가 아닐 수 있음
+                        if(line.contains("[%PRODUCTCODE%]") && line.contains("[%ADDDESCRIPTION%]")) {
+                            record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
+                        }else{
+                            sb.append(line);
+                        }
+
+                        if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")){
+                            record = gson.fromJson(Utils.convertKonanToNdJson(sb.toString()), entryType);
+                            sb.setLength(0);
+
+                        }else if(sb.length() > 15 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0){
+                            //dumb text는 항상 productcode가 시작이므로 비정상적인 StringBuilder는 초기화
+                            sb.setLength(0);
+                        }
+
                     }else if(dumpFormat.equals("ndjson")) {
+
                         record = gson.fromJson(line, entryType);
+
                     }
                     return record;
                 }else{
@@ -73,6 +92,7 @@ public class ProcedureIngester extends FileIngester {
         }
         throw new IOException("EOF");
     }
+
 
     public void stop() {
         isRun =false;

@@ -49,7 +49,9 @@ public class RsyncCopy extends Thread {
                 //.source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
                 .destination(rsyncPath)
                 .recursive(true)
-                .progress(true)
+                //.progress(true)
+                .archive(true)
+                .compress(true)
                 .bwlimit(bwlimit)
                 .inplace(true);
 

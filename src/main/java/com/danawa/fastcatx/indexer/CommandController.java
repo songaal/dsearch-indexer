@@ -6,6 +6,7 @@ import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
 import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.origin.SystemEnvironmentOrigin;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -186,6 +187,9 @@ public class CommandController {
                 logger.info("rsyncStarted : {}" , rsyncStarted );
 
                 if(rsyncStarted || rsyncSkip) {
+                    if(rsyncSkip) {
+                        logger.info("rsyncSkip : {}" , rsyncSkip);
+                    }
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }
