@@ -43,6 +43,8 @@ public class ProcedureIngester extends FileIngester {
         String line="";
         //종료 체크용 카운트
         int waitCount = 0;
+        String startStr="";
+        String endStr="";
         while (isRun) {
             try {
                 line = reader.readLine();
@@ -50,29 +52,48 @@ public class ProcedureIngester extends FileIngester {
                     waitCount=0;
                     //TODO String dumpFormat,
                     Map<String, Object> record = new HashMap<>();
+
+                    //dumpFormat에 따라 체크하는 텍스트를 지정해준다.
                     if(dumpFormat.equals("konan")){
-
-                        //받아온 readline이 정상적인 상품 ROW가 아닐 수 있음
-                        if(line.contains("[%PRODUCTCODE%]") && line.contains("[%ADDDESCRIPTION%]")) {
-                            record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
-                        }else{
-                            sb.append(line);
-                        }
-
-                        if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")){
-                            record = gson.fromJson(Utils.convertKonanToNdJson(sb.toString()), entryType);
-                            sb.setLength(0);
-
-                        }else if(sb.length() > 15 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0){
-                            //dumb text는 항상 productcode가 시작이므로 비정상적인 StringBuilder는 초기화
-                            sb.setLength(0);
-                        }
-
-                    }else if(dumpFormat.equals("ndjson")) {
-
-                        record = gson.fromJson(line, entryType);
-
+                        startStr = "[%PRODUCTCODE%]";
+                        endStr = "[%ADDDESCRIPTION%]";
+                    }else if(dumpFormat.equals("ndjson")){
+                        startStr = "{\"PRODUCTCODE\":";
+                        endStr = "\"ADDDESCRIPTION\":";
                     }
+
+                    //시작,끝 필드텍스트가 모두 포함되어 있으면 dumpFormat에 따라 ndjson 변환 혹은 그대로 반환
+                    if(line.contains(startStr) && line.contains(endStr)) {
+
+                        if(dumpFormat.equals("konan")){
+                            record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
+                        }else if(dumpFormat.equals("ndjson")){
+                            record = gson.fromJson(line, entryType);
+                        }
+
+                    }else{
+                        //정상적인 상품 ROW가 아니면 StringBuilder에 append
+                        logger.debug("append line : {}", line);
+                        sb.append(line);
+                    }
+
+                    //append된 StringBuilder가 시작, 끝 텍스트를 포함하고 있으면 반환 후 StringBuilder 초기화
+                    if(sb.toString().contains(startStr) && sb.toString().contains(endStr)) {
+                        logger.debug("sb : {}", sb.toString());
+
+                        if(dumpFormat.equals("konan")){
+                            record = gson.fromJson(Utils.convertKonanToNdJson(sb.toString()), entryType);
+                        }else if(dumpFormat.equals("ndjson")){
+                            record = gson.fromJson(sb.toString(), entryType);
+                        }
+                        sb.setLength(0);
+                    }else if(sb.length() > startStr.length() && sb.toString().indexOf(startStr) != 0) {
+                        //문서 ROW의 시작은 항상 상품코드이므로 상품코드가 먼저 시작되지 않았다면 초기화
+                        //sb.length 체크 이유는 상품코드 텍스트가 짤렸을때 초기화 되는것을 방지( ex. [%PRODU  )
+                        logger.debug("reset sb : {} ", sb.toString());
+                        sb.setLength(0);
+                    }
+
                     return record;
                 }else{
                     //대기 상태가 연속으로 X회 이상이면 반복 중지

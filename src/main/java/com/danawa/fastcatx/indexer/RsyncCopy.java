@@ -45,8 +45,8 @@ public class RsyncCopy extends Thread {
             file.delete();
         }
         RSync rsync = new RSync()
-                .source(rsyncIp+"::search_data_alti/"+rsyncFileName)
                 //.source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
+                .source(rsyncIp+"::search_data_alti/"+rsyncFileName)
                 .destination(rsyncPath)
                 .recursive(true)
                 //.progress(true)

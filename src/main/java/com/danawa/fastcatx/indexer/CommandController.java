@@ -158,7 +158,6 @@ public class CommandController {
                 String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
                 Integer groupSeq = (Integer) payload.get("groupSeq");
                 String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
-                //String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
                 String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
@@ -171,6 +170,8 @@ public class CommandController {
 
                 boolean execProdure = false;
                 boolean rsyncStarted = false;
+                //덤프파일 이름
+                String dumpFileName = "prodExt_"+groupSeq;
 
                 //SKIP 여부에 따라 프로시저 호출
                 if(procedureSkip == false) {
@@ -184,12 +185,14 @@ public class CommandController {
                     Thread.sleep(3000);
                     rsyncStarted = rsyncCopy.copyAsync();
                 }
-                logger.info("rsyncStarted : {}" , rsyncStarted );
+                logger.info("rsyncStarted : {}", rsyncStarted );
 
                 if(rsyncStarted || rsyncSkip) {
                     if(rsyncSkip) {
                         logger.info("rsyncSkip : {}" , rsyncSkip);
                     }
+                    //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+                    path += "/"+dumpFileName;
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }

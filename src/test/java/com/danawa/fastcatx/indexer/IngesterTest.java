@@ -12,6 +12,7 @@ import jdk.nashorn.internal.codegen.CompilerConstants;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.origin.SystemEnvironmentOrigin;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -160,52 +161,6 @@ public class IngesterTest {
 
     }
 
-
-//    @Test
-//    public void sshRsync() throws Exception {
-//
-//        RSync rsync = new RSync()
-//                .rsh("ssh -i")
-//                .source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5_1")
-//                .destination("D:\\result")
-//                .recursive(true)
-//                .progress(true)
-//                .inplace(true);
-//
-//
-//
-//        ConsoleOutputProcessOutput output = new ConsoleOutputProcessOutput();
-//        try {
-//            output.monitor(rsync.builder());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//
-//    }
-//
-//    @Test
-//    public void getRsync() throws Exception {
-//        RSync rsync = new RSync()
-//                .source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5_1")
-//                .destination("D:\\result")
-//                .recursive(true)
-//                .progress(true)
-//                .port(22)
-//                .address("stest3.danawa.com")
-//                .rsh(Binaries.sshBinary() + " -i ")
-//                .inplace(true);
-//
-//        ConsoleOutputProcessOutput output = new ConsoleOutputProcessOutput();
-//        try {
-//            output.monitor(rsync.builder());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-
-
-
     //rsync 호출, rsync 파일을 바로 읽어 njson 형식으로..
     @Test
     public void readRsyncFile() throws Exception {
@@ -214,11 +169,11 @@ public class IngesterTest {
         System.out.println("RSYNC");
 
         //rsync 쓰레드
-        rsync.start();
-        Thread.sleep(1000);
+        //rsync.start();
+        //Thread.sleep(1000);
 
 
-        FileLineWatcher watcher = new FileLineWatcher(new File("D:\\result\\prodExt_5"));
+        FileLineWatcher watcher = new FileLineWatcher(new File("D:\\result\\prod5.ndjson"));
 
         Thread thread = new Thread(watcher);
         thread.setDaemon(true);
@@ -250,8 +205,7 @@ public class IngesterTest {
             }
         }
     }
-
-
+    
     class FileLineWatcher implements Runnable {
         private static final int DELAY_MILLIS = 1000;
 
@@ -289,37 +243,37 @@ public class IngesterTest {
 
                     if (line != null) {
 
-
-                        if(line.contains("[%PRODUCTCODE%]") && line.contains("[%ADDDESCRIPTION%]")) {
-                            cnt ++;
-//                            if(line.length() < 300) {
-//                                System.out.println(line);
-//                            }
-                           // System.out.println(cnt + " - " + Utils.convertKonanToNdJson((line)));
+                        //NDJSON
+                        if(line.contains("{\"PRODUCTCODE\":") && line.contains("\"ADDDESCRIPTION\":")) {
+                            cnt++;
                         }else{
+                            System.out.println("sb append : " + line);
                             sb.append(line);
-                           // System.out.println("sb append : " + line);
                         }
 
-                        if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")){
-                            System.out.println("sb " + cnt + " - " + Utils.convertKonanToNdJson((sb.toString())));
+                        if(sb.toString().contains("{\"PRODUCTCODE\":") && sb.toString().contains("\"ADDDESCRIPTION\":")) {
+                            System.out.println("sb " + cnt + " - " + (sb.toString()));
                             sb.setLength(0);
-                            cnt ++;
-                        }else if(sb.length() > 15 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0){
+                        }else if(sb.length() > 14 && sb.toString().indexOf("{\"PRODUCTCODE\":") != 0) {
                             System.out.println("First Text is Not Product Code : " + sb.toString());
                             sb.setLength(0);
                         }
 
-
-//                        else if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")) {
+                        //KONAN
+//                        if(line.contains("[%PRODUCTCODE%]") && line.contains("[%ADDDESCRIPTION%]")) {
+//                            cnt ++;
+//                        }else{
+//                            sb.append(line);
+//                           // System.out.println("sb append : " + line);
+//                        }
+//
+//                        if(sb.toString().contains("[%PRODUCTCODE%]") && sb.toString().contains("[%ADDDESCRIPTION%]")){
 //                            System.out.println("sb " + cnt + " - " + Utils.convertKonanToNdJson((sb.toString())));
 //                            sb.setLength(0);
-//                        }else if(sb.length() > 0 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0) {
-//                            System.out.println("sb start Not Product Code : " + sb.toString());
+//                            cnt ++;
+//                        }else if(sb.length() > 15 && sb.toString().indexOf("[%PRODUCTCODE%]") != 0){
+//                            System.out.println("First Text is Not Product Code : " + sb.toString());
 //                            sb.setLength(0);
-//                        }else{
-//                            System.out.println("sb append : " + line);
-//                            sb.append(line);
 //                        }
 
                     } else {
@@ -331,7 +285,6 @@ public class IngesterTest {
             }
             System.out.println("Stop to tail a file - " + file.getName());
         }
-
 
         public void stop() {
             isRun = false;

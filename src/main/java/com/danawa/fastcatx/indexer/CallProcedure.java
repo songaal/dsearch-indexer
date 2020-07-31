@@ -114,32 +114,4 @@ public class CallProcedure {
         }
     }
 
-    class RsyncFile extends Thread {
-        public void run() {
-
-            logger.info("path : {}", path);
-            File file = new File(path + "\\prodExt_" + groupSeq);
-
-
-            if (file.exists()) {
-                logger.info("기존 파일 삭제 : {}", file);
-                file.delete();
-            }
-            RSync rsync = new RSync()
-                    .source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
-                    .destination("D:\\result")
-                    .recursive(true)
-                    .progress(true)
-                    .bwlimit("1000")
-                    .inplace(true);
-
-            ConsoleOutputProcessOutput output = new ConsoleOutputProcessOutput();
-            try {
-                output.monitor(rsync.builder());
-            } catch (Exception e) {
-                logger.error("Rsync Exception : {}", e);
-                throw new RuntimeException(e);
-            }
-        }
-    }
 }

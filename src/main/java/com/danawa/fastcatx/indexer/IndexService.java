@@ -104,7 +104,6 @@ public class IndexService {
             BulkRequest request = new BulkRequest();
             long time = System.nanoTime();
             try{
-                //ingeter에 없어도 바로 종료 X
 
                 logger.info("index 시작");
 
