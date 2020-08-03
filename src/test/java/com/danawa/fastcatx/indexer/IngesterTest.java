@@ -205,7 +205,7 @@ public class IngesterTest {
             }
         }
     }
-    
+
     class FileLineWatcher implements Runnable {
         private static final int DELAY_MILLIS = 1000;
 

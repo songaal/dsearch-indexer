@@ -162,11 +162,13 @@ public class CommandController {
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+                String rsyncPath = (String) payload.getOrDefault("rsyncPath", "search_data_alti");
+                //String rsyncCommand = (String) payload.getOrDefault("rsyncCommand","rsync -av --inplace --progress --bwlimit=1000 --progress 192.168.4.198::search_data_alti/prodExt_0 /home/danawa/temp/");
 
                 //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
                 //RSNYC
-                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,path,bwlimit,groupSeq);
+                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeq);
 
                 boolean execProdure = false;
                 boolean rsyncStarted = false;

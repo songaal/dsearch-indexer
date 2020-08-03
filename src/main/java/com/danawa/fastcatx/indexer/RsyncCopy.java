@@ -16,14 +16,16 @@ public class RsyncCopy extends Thread {
     Logger logger = LoggerFactory.getLogger(RsyncCopy.class);
 
     private String rsyncIp;
+    private String path;
     private String rsyncPath;
     private Integer groupSeq;
     private String bwlimit;
     private boolean isCopy = true;
 
-    public RsyncCopy(String rsyncIp, String rsyncPath, String bwlimit, Integer groupSeq) {
+    public RsyncCopy(String rsyncIp, String rsyncPath, String path, String bwlimit, Integer groupSeq) {
         this.rsyncIp = rsyncIp;
         this.rsyncPath = rsyncPath;
+        this.path = path;
         this.groupSeq = groupSeq;
         this.bwlimit = bwlimit;
     }
@@ -34,7 +36,8 @@ public class RsyncCopy extends Thread {
 
     public void run() {
 
-        logger.info("path : {}", rsyncPath);
+        logger.info("rsyncPath : {}", rsyncPath);
+        logger.info("path : {}", path);
         logger.info("bwlimit : {}", bwlimit);
         String rsyncFileName = "prodExt_"+groupSeq;
         File file = new File(rsyncPath +"/"+rsyncFileName);
@@ -44,10 +47,11 @@ public class RsyncCopy extends Thread {
             logger.info("기존 파일 삭제 : {}", file);
             file.delete();
         }
+        logger.info("Rsync Command : {} ", "rsync av --inplace --bwlimit="+bwlimit +" "+rsyncIp+"::" + rsyncPath+"/"+rsyncFileName + " " +path);
         RSync rsync = new RSync()
                 //.source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
-                .source(rsyncIp+"::search_data_alti/"+rsyncFileName)
-                .destination(rsyncPath)
+                .source(rsyncIp+"::" + rsyncPath+"/"+rsyncFileName)
+                .destination(path)
                 .recursive(true)
                 //.progress(true)
                 .archive(true)
