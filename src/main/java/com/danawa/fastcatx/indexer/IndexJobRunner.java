@@ -100,7 +100,7 @@ public class IndexJobRunner implements Runnable {
                 String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
                 Integer groupSeq = (Integer) payload.get("groupSeq");
                 String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
-                //String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
+                String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
                 String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
@@ -109,7 +109,7 @@ public class IndexJobRunner implements Runnable {
                 //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
                 //RSNYC
-                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,path,bwlimit,groupSeq);
+                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeq);
 
                 boolean execProdure = false;
                 boolean rsyncStarted = false;

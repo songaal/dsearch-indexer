@@ -121,8 +121,13 @@ public class IndexService {
                     }
                     //logger.info("{}", record);
                     if(record != null && record.size() >0) {
-                        request.add(new IndexRequest(index).source(record, XContentType.JSON));
                         count++;
+                        if(record.get("ID") != null) {
+                            request.add(new IndexRequest(index).source(record, XContentType.JSON).id(record.get("ID").toString()));
+                        }else{
+                            request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                        }
+
                     }
 
                     if (count % bulkSize == 0) {
@@ -424,7 +429,12 @@ public class IndexService {
 
                 if (record != null && record.size() > 0) {
                     count++;
-                    request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                    //_id 자동생성이 아닌 고정 필드로 색인
+                    if(record.get("ID") != null) {
+                        request.add(new IndexRequest(index).source(record, XContentType.JSON).id(record.get("ID").toString()));
+                    }else{
+                        request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                    }
                 }
 
                 if (count % bulkSize == 0) {
