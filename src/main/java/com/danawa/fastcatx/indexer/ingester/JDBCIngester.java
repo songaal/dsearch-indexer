@@ -1,8 +1,12 @@
 package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.Ingester;
+import com.mysql.cj.protocol.Resultset;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
 import java.io.*;
 import java.sql.*;
 import java.util.*;
@@ -16,16 +20,25 @@ public class JDBCIngester implements Ingester {
     private Connection connection;
     private PreparedStatement pstmt;
     private ResultSet r;
+    private int lastQueryListCount;
+    private int currentQueryListCount;
+
+    private CachedRowSet cachedRowSet;
+
     private int columnCount;
     private String[] columnName;
     private Map<String, Object>[] dataSet;
-
     private List<File> tmpFile;
+    private  ArrayList<String> sqlList;
 
     private int bulkCount;
     private int readCount;
 
     private boolean useBlobFile;
+
+    private int fetchSize;
+    private int maxRows;
+
 
     private boolean isClosed;
 
@@ -33,21 +46,36 @@ public class JDBCIngester implements Ingester {
     private int totalCnt;
 
 
-    public JDBCIngester(String driverClassName, String url, String user, String password, String dataSQL,
-                        int bulkSize, int fetchSize, int maxRows, boolean useBlobFile) throws IOException {
+    public JDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
         this.bulkSize = bulkSize;
         this.useBlobFile = useBlobFile;
+        this.fetchSize = fetchSize;
+        this.maxRows = maxRows;
+        this.sqlList = sqlList;
+
         tmpFile = new ArrayList<>();
         dataSet = new Map[bulkSize];
         connection = getConnection(driverClassName, url, user, password);
 
+        lastQueryListCount = sqlList.size();
+        currentQueryListCount = 0;
+
+        //SQL 실행
+        logger.info("dataSQL total_Count : {}",sqlList.size());
+        executeQuery(currentQueryListCount);
+
+    }
+
+    public void executeQuery(int currentQueryListCount) throws IOException {
+
         try {
+            logger.info("Num-{} QUERY Start", currentQueryListCount);
             if (fetchSize < 0) {
                 //in mysql, fetch data row by row
-                pstmt = connection.prepareStatement(dataSQL, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
                 pstmt.setFetchSize(Integer.MIN_VALUE);
             } else {
-                pstmt = connection.prepareStatement(dataSQL);
+                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount));
                 if (fetchSize > 0) {
                     pstmt.setFetchSize(fetchSize);
                 }
@@ -62,26 +90,45 @@ public class JDBCIngester implements Ingester {
             ResultSetMetaData rsMetadata = r.getMetaData();
             columnCount = rsMetadata.getColumnCount();
             columnName = new String[columnCount];
+
             for (int i = 0; i < columnCount; i++) {
                 columnName[i] = rsMetadata.getColumnLabel(i + 1).toUpperCase();
                 String typeName = rsMetadata.getColumnTypeName(i + 1);
                 logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
             }
+
         } catch (Exception e) {
             closeConnection();
-
             throw new IOException(e);
         }
     }
+
+    //다음 쿼리가 있는지 체크
+    public boolean hasNextQuery(int currentQueryListCount, int lastQueryListCount) {
+
+        if(currentQueryListCount == lastQueryListCount) {
+            logger.info("Current : {} - last : {}", currentQueryListCount, lastQueryListCount);
+            return false;
+        }else{
+            return true;
+        }
+    }
+
 
     @Override
     public boolean hasNext() throws IOException {
         if (readCount >= bulkCount) {
             fill();
-
-            if (bulkCount == 0)
-                return false;
-
+            if (bulkCount == 0) {
+                //다음 쿼리 실행
+                currentQueryListCount++;
+                logger.info("next Query Start : {}",currentQueryListCount);
+                if(hasNextQuery(currentQueryListCount,lastQueryListCount)) {
+                    executeQuery(currentQueryListCount);
+                }else{
+                    return false;
+                }
+            }
             readCount = 0;
         }
         return true;

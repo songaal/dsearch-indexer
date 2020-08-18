@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class IndexServiceTest {
 
@@ -54,7 +57,7 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testJDBC2Search() throws IOException, StopSignalException {
+    public void testJDBC2Search() throws IOException, StopSignalException, SQLException {
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://52.78.31.7:3306/new_schema?characterEncoding=utf-8";
         String user = "gncloud";
@@ -63,7 +66,11 @@ public class IndexServiceTest {
         int bulkSize = 1000;
         int fetchSize = 1000;
         int maxRows = 0;
-        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, false);
+
+        ArrayList<String> sqlList = new ArrayList<String>();
+        sqlList.add(dataSQL);
+
+        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, bulkSize, fetchSize, maxRows, false, sqlList);
         IndexService indexService = new IndexService(host, port, scheme);
         indexService.index(ingester, index, bulkSize, null);
     }

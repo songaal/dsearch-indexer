@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.sql.rowset.CachedRowSet;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -132,6 +134,7 @@ public class CommandController {
         startTime = System.currentTimeMillis() / 1000;
         endTime = 0;
         error = "";
+
         Ingester ingester = null;
         try {
             if (type.equals("ndjson")) {
@@ -139,15 +142,29 @@ public class CommandController {
             } else if (type.equals("csv")) {
                 ingester = new CSVIngester(path, encoding, 1000, limitSize);
             } else if (type.equals("jdbc")) {
+
+                int sqlCount = 2;
+                ArrayList<String> sqlList = new ArrayList<String>();
+
                 String driverClassName = (String) payload.get("driverClassName");
                 String url = (String) payload.get("url");
                 String user = (String) payload.get("user");
                 String password = (String) payload.get("password");
                 String dataSQL = (String) payload.get("dataSQL");
+
+                sqlList.add(dataSQL);
+                //dataSQL, dataSQL2, dataSQL3.. 있을 경우
+                while ( payload.get("dataSQL" + String.valueOf(sqlCount)) != null ) {
+                    sqlList.add((String) payload.get("dataSQL" + String.valueOf(sqlCount)));
+                    sqlCount++;
+                }
+
+                logger.info("SQL COUNT : {} ",sqlList.size());
+
                 Integer fetchSize = (Integer) payload.get("fetchSize");
                 Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
                 Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
-                ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+                ingester = new JDBCIngester(driverClassName, url, user, password, bulkSize, fetchSize, maxRows, useBlobFile, sqlList);
             } else if (type.equals("procedure")) {
 
                 //프로시저 호출에 필요한 정보

@@ -47,7 +47,7 @@ public class RsyncCopy extends Thread {
             logger.info("기존 파일 삭제 : {}", file);
             file.delete();
         }
-        logger.info("Rsync Command : {} ", "rsync av --inplace --bwlimit="+bwlimit +" "+rsyncIp+"::" + rsyncPath+"/"+rsyncFileName + " " +path);
+        logger.info("Rsync Command : {} ", "rsync -av --inplace --bwlimit="+bwlimit +" "+rsyncIp+"::" + rsyncPath+"/"+rsyncFileName + " " +path);
         RSync rsync = new RSync()
                 //.source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
                 .source(rsyncIp+"::" + rsyncPath+"/"+rsyncFileName)

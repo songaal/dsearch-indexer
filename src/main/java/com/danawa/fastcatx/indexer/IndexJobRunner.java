@@ -8,6 +8,7 @@ import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -82,11 +83,23 @@ public class IndexJobRunner implements Runnable {
                 Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
                 if (payload.get("_jdbc") != null) {
                     Map<String, Object> jdbcMap = (Map<String, Object>) payload.get("_jdbc");
+
+                    int sqlCount = 2;
+                    ArrayList<String> sqlList = new ArrayList<String>();
+
                     String driverClassName = (String) jdbcMap.get("driverClassName");
                     String url = (String) jdbcMap.get("url");
                     String user = (String) jdbcMap.get("user");
                     String password = (String) jdbcMap.get("password");
-                    ingester = new JDBCIngester(driverClassName, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, useBlobFile);
+
+                    sqlList.add(dataSQL);
+                    //dataSQL2,3.... 있을 경우
+                    while ( payload.get("dataSQL" + String.valueOf(sqlCount)) != null ) {
+                        sqlList.add((String) payload.get("dataSQL" + String.valueOf(sqlCount)));
+                        sqlCount++;
+                    }
+
+                    ingester = new JDBCIngester(driverClassName, url, user, password, bulkSize, fetchSize, maxRows, useBlobFile, sqlList);
                 } else {
                     throw new IllegalArgumentException("jdbc argument");
                 }

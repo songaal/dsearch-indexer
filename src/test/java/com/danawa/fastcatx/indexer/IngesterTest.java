@@ -20,6 +20,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.WatchService;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,17 +53,21 @@ public class IngesterTest {
     }
 
     @Test
-    public void testJDBCRead() throws IOException {
+    public void testJDBCRead() throws IOException, SQLException {
         String driver = "com.mysql.jdbc.Driver";
         String url = "jdbc:mysql://52.78.31.7:3306/new_schema?characterEncoding=utf-8";
         String user = "gncloud";
         String password = System.getProperty("password");
         String dataSQL = "SELECT * FROM food";
+        ArrayList<String> sqlList = new ArrayList<String>();
+
         int bulkSize = 1000;
         int fetchSize = 1000;
         int maxRows = 0;
 
-        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, false);
+        sqlList.add(dataSQL);
+
+        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, bulkSize, fetchSize, maxRows, false, sqlList);
         while(ingester.hasNext()) {
             Map<String, Object> record = ingester.next();
             logger.info("{}", record);
@@ -69,7 +75,7 @@ public class IngesterTest {
     }
 
     @Test
-    public void testAlitibaseJDBCRead() throws IOException {
+    public void testAlitibaseJDBCRead() throws IOException, SQLException {
         String driver = "Altibase.jdbc.driver.AltibaseDriver";
         String url = "jdbc:Altibase://112.175.252.198:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
         String user = "DBLINKDATA_1";
@@ -79,7 +85,10 @@ public class IngesterTest {
         int fetchSize = 1000;
         int maxRows = 0;
 
-        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, dataSQL, bulkSize, fetchSize, maxRows, false);
+        ArrayList<String> sqlList = new ArrayList<String>();
+        sqlList.add(dataSQL);
+
+        JDBCIngester ingester = new JDBCIngester(driver, url, user, password, bulkSize, fetchSize, maxRows, false, sqlList);
         while(ingester.hasNext()) {
             Map<String, Object> record = ingester.next();
             logger.info("{}", record);
