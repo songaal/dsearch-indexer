@@ -57,6 +57,7 @@ public class JDBCIngester implements Ingester {
         dataSet = new Map[bulkSize];
         connection = getConnection(driverClassName, url, user, password);
 
+        //쿼리 갯수 체크용 카운트
         lastQueryListCount = sqlList.size();
         currentQueryListCount = 0;
 
@@ -92,7 +93,7 @@ public class JDBCIngester implements Ingester {
             columnName = new String[columnCount];
 
             for (int i = 0; i < columnCount; i++) {
-                columnName[i] = rsMetadata.getColumnLabel(i + 1).toUpperCase();
+                columnName[i] = rsMetadata.getColumnLabel(i + 1);
                 String typeName = rsMetadata.getColumnTypeName(i + 1);
                 logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
             }
@@ -107,7 +108,7 @@ public class JDBCIngester implements Ingester {
     public boolean hasNextQuery(int currentQueryListCount, int lastQueryListCount) {
 
         if(currentQueryListCount == lastQueryListCount) {
-            logger.info("Current : {} - last : {}", currentQueryListCount, lastQueryListCount);
+            logger.info("Current : {} - Last : {} - Query End", currentQueryListCount, lastQueryListCount);
             return false;
         }else{
             return true;
@@ -122,8 +123,8 @@ public class JDBCIngester implements Ingester {
             if (bulkCount == 0) {
                 //다음 쿼리 실행
                 currentQueryListCount++;
-                logger.info("next Query Start : {}",currentQueryListCount);
                 if(hasNextQuery(currentQueryListCount,lastQueryListCount)) {
+                    logger.info("next Query Start : {}",currentQueryListCount);
                     executeQuery(currentQueryListCount);
                 }else{
                     return false;

@@ -159,8 +159,6 @@ public class CommandController {
                     sqlCount++;
                 }
 
-                logger.info("SQL COUNT : {} ",sqlList.size());
-
                 Integer fetchSize = (Integer) payload.get("fetchSize");
                 Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
                 Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
