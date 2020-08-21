@@ -100,6 +100,8 @@ public class IndexService {
     public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job) throws IOException, StopSignalException {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             count = 0;
+
+            String id = "";
             long start = System.currentTimeMillis();
             BulkRequest request = new BulkRequest();
             long time = System.nanoTime();
@@ -122,8 +124,15 @@ public class IndexService {
                     //logger.info("{}", record);
                     if(record != null && record.size() >0) {
                         count++;
+
                         if(record.get("ID") != null) {
-                            request.add(new IndexRequest(index).source(record, XContentType.JSON).id(record.get("ID").toString()));
+                            id = record.get("ID").toString();
+                        }else if(record.get("id") != null) {
+                            id = record.get("id").toString();
+                        }
+
+                        if(id.length() > 0) {
+                            request.add(new IndexRequest(index).source(record, XContentType.JSON).id(id));
                         }else{
                             request.add(new IndexRequest(index).source(record, XContentType.JSON));
                         }

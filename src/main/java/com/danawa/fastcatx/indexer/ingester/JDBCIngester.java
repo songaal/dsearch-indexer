@@ -4,7 +4,6 @@ import com.danawa.fastcatx.indexer.Ingester;
 import com.mysql.cj.protocol.Resultset;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
-import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetFactory;
 import javax.sql.rowset.RowSetProvider;
 import java.io.*;
@@ -22,8 +21,6 @@ public class JDBCIngester implements Ingester {
     private ResultSet r;
     private int lastQueryListCount;
     private int currentQueryListCount;
-
-    private CachedRowSet cachedRowSet;
 
     private int columnCount;
     private String[] columnName;
@@ -70,6 +67,9 @@ public class JDBCIngester implements Ingester {
     public void executeQuery(int currentQueryListCount) throws IOException {
 
         try {
+            if(pstmt != null) {
+                pstmt.close();
+            }
             logger.info("Num-{} QUERY Start", currentQueryListCount);
             if (fetchSize < 0) {
                 //in mysql, fetch data row by row
@@ -109,8 +109,14 @@ public class JDBCIngester implements Ingester {
 
         if(currentQueryListCount == lastQueryListCount) {
             logger.info("Current : {} - Last : {} - Query End", currentQueryListCount, lastQueryListCount);
+
+            //쿼리가 완전히 끝나면 커넥션을 포함한 sql close
+            closeConnection();
             return false;
         }else{
+
+            //남은 쿼리가 있다면 resultSet, pstmt 만 close
+            closePstmt();
             return true;
         }
     }
@@ -153,6 +159,22 @@ public class JDBCIngester implements Ingester {
             deleteTmpLob();
             closeConnection();
             isClosed = true;
+        }
+    }
+
+    private  void closePstmt() {
+        try {
+            if (r != null) {
+                r.close();
+            }
+        } catch (SQLException ignore) {
+        }
+
+        try {
+            if (pstmt != null) {
+                pstmt.close();
+            }
+        } catch (SQLException ignore) {
         }
     }
 
