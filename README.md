@@ -50,6 +50,7 @@
 - (옵션) `reset: boolean` : 디폴트 true. 색인전에 index가 존재하는지 확인하여 조재하면 delete 하고 색인진행
 - (옵션) `filterClass: string` : 소스를 변환할 필터. 패키지명 포함. 생성자는 기본 생성자를 호출하게 됨. 예)com.danawa.fastcatx.indexer.filter.MockFilter 
 - (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
+- (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
 
 ndjson, cvs 파라미터
 - `path: string` : 파일경로
