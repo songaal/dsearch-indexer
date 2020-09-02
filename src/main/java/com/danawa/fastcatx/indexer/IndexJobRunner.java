@@ -51,6 +51,7 @@ public class IndexJobRunner implements Runnable {
             // ES bulk API 사용시 벌크갯수.
             Integer bulkSize = (Integer) payload.get("bulkSize");
             Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
+            String pipeLine = (String) payload.get("pipeLine");
 
             Map<String, Object> indexSettings;
             try {
@@ -160,9 +161,9 @@ public class IndexJobRunner implements Runnable {
             }
 
             if (threadSize > 1) {
-                service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job);
+                service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
             } else {
-                service.index(finalIngester, index, bulkSize, filter, job);
+                service.index(finalIngester, index, bulkSize, filter, job, pipeLine);
             }
 
             job.setStatus(STATUS.SUCCESS.name());

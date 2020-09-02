@@ -94,10 +94,10 @@ public class IndexService {
     }
 
 
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter) throws IOException, StopSignalException {
-        index(ingester, index, bulkSize, filter, null);
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, String pipeLine) throws IOException, StopSignalException {
+        index(ingester, index, bulkSize, filter, null, pipeLine);
     }
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job) throws IOException, StopSignalException {
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             count = 0;
 
@@ -125,6 +125,8 @@ public class IndexService {
                     if(record != null && record.size() >0) {
                         count++;
 
+                        IndexRequest indexRequest = new IndexRequest(index).source(record, XContentType.JSON);
+
                         if(record.get("ID") != null) {
                             id = record.get("ID").toString();
                         }else if(record.get("id") != null) {
@@ -132,11 +134,14 @@ public class IndexService {
                         }
 
                         if(id.length() > 0) {
-                            request.add(new IndexRequest(index).source(record, XContentType.JSON).id(id));
-                        }else{
-                            request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                            indexRequest.id(id);
                         }
 
+                        if(pipeLine.length() > 0) {
+                            indexRequest.setPipeline(pipeLine);
+                        }
+
+                        request.add(indexRequest);
                     }
 
                     if (count % bulkSize == 0) {
@@ -403,10 +408,10 @@ public class IndexService {
             return null;
         }
     }
-    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize) throws IOException, StopSignalException {
-        indexParallel(ingester, index, bulkSize, filter, threadSize, null);
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, String pipeLine) throws IOException, StopSignalException {
+        indexParallel(ingester, index, bulkSize, filter, threadSize, null, pipeLine);
     }
-    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job) throws IOException, StopSignalException {
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job, String pipeLine) throws IOException, StopSignalException {
         ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
 
         BlockingQueue queue= new LinkedBlockingQueue(threadSize * 10);
@@ -417,6 +422,7 @@ public class IndexService {
             list.add(executorService.submit(w));
         }
 
+        String id = "";
         count = 0;
         long start = System.currentTimeMillis();
         BulkRequest request = new BulkRequest();
@@ -438,12 +444,26 @@ public class IndexService {
 
                 if (record != null && record.size() > 0) {
                     count++;
+
+                    IndexRequest indexRequest = new IndexRequest(index).source(record, XContentType.JSON);
+
                     //_id 자동생성이 아닌 고정 필드로 색인
                     if(record.get("ID") != null) {
-                        request.add(new IndexRequest(index).source(record, XContentType.JSON).id(record.get("ID").toString()));
-                    }else{
-                        request.add(new IndexRequest(index).source(record, XContentType.JSON));
+                        id = record.get("ID").toString();
+                    }else if(record.get("id") != null) {
+                        id = record.get("id").toString();
                     }
+
+                    if(id.length() > 0) {
+                        indexRequest.id(id);
+                    }
+
+                    if(pipeLine.length() > 0) {
+                        indexRequest.setPipeline(pipeLine);
+                    }
+
+                    request.add(indexRequest);
+
                 }
 
                 if (count % bulkSize == 0) {
@@ -469,6 +489,8 @@ public class IndexService {
 
         } catch (InterruptedException e) {
             logger.error("interrupted! ", e);
+        } catch (Exception e) {
+            logger.error("[Exception] ", e);
         } finally {
             try {
                 for (int i = 0; i < list.size(); i++) {

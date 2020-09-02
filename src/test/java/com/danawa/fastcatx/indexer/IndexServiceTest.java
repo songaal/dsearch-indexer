@@ -31,7 +31,7 @@ public class IndexServiceTest {
         if (indexService.existsIndex(index)) {
             indexService.deleteIndex(index);
         }
-        indexService.index(ingester, index, bulkSize, null);
+        indexService.index(ingester, index, bulkSize, null, null);
     }
 
     @Test
@@ -43,7 +43,7 @@ public class IndexServiceTest {
         if (indexService.existsIndex(index)) {
             indexService.deleteIndex(index);
         }
-        indexService.indexParallel(ingester, index, bulkSize, null, threadSize);
+        indexService.indexParallel(ingester, index, bulkSize, null, threadSize, null);
     }
 
     @Test
@@ -53,7 +53,7 @@ public class IndexServiceTest {
         CSVIngester ingester = new CSVIngester(filePath, "utf-8", 1000);
         Integer bulkSize = 1000;
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.index(ingester, index, bulkSize, null);
+        indexService.index(ingester, index, bulkSize, null, null);
     }
 
     @Test
@@ -72,7 +72,7 @@ public class IndexServiceTest {
 
         JDBCIngester ingester = new JDBCIngester(driver, url, user, password, bulkSize, fetchSize, maxRows, false, sqlList);
         IndexService indexService = new IndexService(host, port, scheme);
-        indexService.index(ingester, index, bulkSize, null);
+        indexService.index(ingester, index, bulkSize, null, null);
     }
 
     @Test

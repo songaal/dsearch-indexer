@@ -205,6 +205,7 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
 - (옵션) `rsyncSkip : boolean` : rsync 스킵 (default : false)
 - (옵션) `filterClass: string` : 소스를 변환할 필터. 패키지명 포함. 생성자는 기본 생성자를 호출하게 됨. 예)com.danawa.fastcatx.indexer.filter.MockFilter 
 - (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
+- (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
 
 
 ```json

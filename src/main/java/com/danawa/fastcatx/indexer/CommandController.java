@@ -116,6 +116,7 @@ public class CommandController {
         // ES bulk API 사용시 벌크갯수.
         Integer bulkSize = (Integer) payload.get("bulkSize");
         Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
+        String pipeLine = (String) payload.get("pipeLine");
 
         /**
          * file기반 인제스터 설정
@@ -237,9 +238,9 @@ public class CommandController {
                     }
                 }
                 if (threadSize > 1) {
-                    service.indexParallel(finalIngester, index, bulkSize, filter, threadSize);
+                    service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, pipeLine);
                 } else {
-                    service.index(finalIngester, index, bulkSize, filter);
+                    service.index(finalIngester, index, bulkSize, filter, pipeLine);
                 }
 
                 status = STATUS_SUCCESS;
