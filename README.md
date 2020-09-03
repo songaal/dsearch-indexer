@@ -57,6 +57,18 @@ ndjson, cvs 파라미터
 - `encoding: string` : 파일인코딩
 - (옵션) `limitSize: int` : 색인문서 제한갯수 
 
+file 파라미터
+
+- `headerText: string` : 파일텍스트 헤더네임 
+- `delimiter: string` : 파일 구분 문자
+
+```
+ex) 아이폰^레드^10000
+
+- headerText:"name,color,price"
+- delimiter: "^"
+```
+
 JDBC 파라미터
 - `driverClassName: string` : 드라이버이름(패키지 포함). 예) com.mysql.jdbc.Driver  
 - `url: string` : JDBC URL

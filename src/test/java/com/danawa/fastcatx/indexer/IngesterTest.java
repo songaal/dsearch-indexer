@@ -1,14 +1,12 @@
 package com.danawa.fastcatx.indexer;
 
-import com.danawa.fastcatx.indexer.ingester.CSVIngester;
-import com.danawa.fastcatx.indexer.ingester.JDBCIngester;
-import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
-import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
+import com.danawa.fastcatx.indexer.ingester.*;
 import com.github.fracpete.processoutput4j.output.ConsoleOutputProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.github.fracpete.rsync4j.Ssh;
 import com.github.fracpete.rsync4j.core.Binaries;
 import jdk.nashorn.internal.codegen.CompilerConstants;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +46,18 @@ public class IngesterTest {
         CSVIngester ingester = new CSVIngester(filePath, "utf-8", 1000);
         while(ingester.hasNext()) {
             Map<String, Object> record = ingester.next();
+            logger.info("{}", record);
+        }
+    }
+
+    @Test
+    public void testFileRead() throws IOException {
+        String filePath = "sample/click_log";
+        logger.info("path: {}" ,new File(filePath).getAbsolutePath());
+        DelimiterFileIngester ingester = new DelimiterFileIngester(filePath, "utf-8", 1000,"keyword,click_id,count","\t");
+        while(ingester.hasNext()) {
+            Map<String, Object> record = ingester.next();
+            System.out.print(record);
             logger.info("{}", record);
         }
     }
