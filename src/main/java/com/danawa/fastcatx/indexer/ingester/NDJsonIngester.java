@@ -3,6 +3,7 @@ package com.danawa.fastcatx.indexer.ingester;
 import com.danawa.fastcatx.indexer.FileIngester;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.apache.commons.lang.StringEscapeUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -38,6 +39,13 @@ public class NDJsonIngester extends FileIngester {
         while ((line = reader.readLine()) != null) {
             try {
                 Map<String, Object> record = gson.fromJson(line, entryType);
+
+                // HTML Decode 처리
+                for (String key : record.keySet()){
+                    Object value = record.get(key);
+                    record.put(key,StringEscapeUtils.unescapeHtml(String.valueOf(value)));
+                }
+
                 //정상이면 리턴.
                 return record;
             }catch(Exception e) {

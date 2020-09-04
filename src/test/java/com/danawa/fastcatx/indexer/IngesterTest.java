@@ -8,7 +8,6 @@ import com.github.fracpete.processoutput4j.output.ConsoleOutputProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.github.fracpete.rsync4j.Ssh;
 import com.github.fracpete.rsync4j.core.Binaries;
-import jdk.nashorn.internal.codegen.CompilerConstants;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

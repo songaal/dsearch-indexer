@@ -1,6 +1,7 @@
 package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.FileIngester;
+import org.apache.commons.lang.StringEscapeUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -46,7 +47,8 @@ public class CSVIngester extends FileIngester {
                         continue;
                     }
                     for (int i = 0; i < headerList.size(); i++) {
-                        record.put(headerList.get(i), els[i]);
+                        // HTML Decode 
+                        record.put(headerList.get(i), StringEscapeUtils.unescapeHtml(els[i]));
                     }
                     //정상이면 리턴.
                     return record;

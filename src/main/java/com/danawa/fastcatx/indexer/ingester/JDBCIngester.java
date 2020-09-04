@@ -2,6 +2,7 @@ package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.Ingester;
 import com.mysql.cj.protocol.Resultset;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
 import javax.sql.rowset.RowSetFactory;
@@ -237,7 +238,8 @@ public class JDBCIngester implements Ingester {
                         str = r.getString(columnIdx);
 
                         if(str != null) {
-                            keyValueMap.put(columnName[i], str);
+                            // HTML Decode 처리
+                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
                         } else {
                             // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
                             keyValueMap.put(columnName[i], "");
