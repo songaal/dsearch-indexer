@@ -1,5 +1,6 @@
 server:
-  port: 5005
+  port: 9350
+  #port: 5005
 logging:
   level:
     root: INFO
