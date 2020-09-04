@@ -1,5 +1,5 @@
 server:
-  port: 5005
+  port: 9350
 logging:
   level:
     root: INFO
@@ -14,8 +14,8 @@ elasticsearch:
   password: fastcatx
   nodes:
     - host: es1.danawa.io
-      port: 80
+      port: 9200
       scheme: http
     - host: es1.danawa.io
-      port: 80
+      port: 9200
       scheme: http
