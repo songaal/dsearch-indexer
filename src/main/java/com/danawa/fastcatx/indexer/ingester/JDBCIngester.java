@@ -239,6 +239,8 @@ public class JDBCIngester implements Ingester {
 
                         if(str != null) {
                             // HTML Decode 처리
+                            System.out.println("변환된 내용 : "+ StringEscapeUtils.unescapeHtml(str)+", 변환하기 전 내용 {}" + str);
+                            logger.debug("변환된 내용 :{}, 변환하기 전 내용 {}", StringEscapeUtils.unescapeHtml(str), str);
                             keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
                         } else {
                             // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
