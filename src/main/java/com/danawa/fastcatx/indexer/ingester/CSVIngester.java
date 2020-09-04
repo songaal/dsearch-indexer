@@ -5,6 +5,7 @@ import org.apache.commons.lang.StringEscapeUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,9 +49,11 @@ public class CSVIngester extends FileIngester {
                     }
                     for (int i = 0; i < headerList.size(); i++) {
                         // HTML Decode
-                        System.out.println("변환된 내용 : "+ StringEscapeUtils.unescapeHtml(els[i]) +", 변환하기 전 내용 {}" + els[i]);
-                        logger.debug("변환된 내용 :{}, 변환하기 전 내용 {}", StringEscapeUtils.unescapeHtml(els[i]), els[i]);
-                        record.put(headerList.get(i), StringEscapeUtils.unescapeHtml(els[i]));
+                        byte[] euckrStringBuffer = els[i].getBytes(Charset.forName("euc-kr"));
+                        String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
+                        byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
+                        String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
+                        record.put(headerList.get(i), StringEscapeUtils.unescapeHtml(decodedFromUtf8));
                     }
                     //정상이면 리턴.
                     return record;
