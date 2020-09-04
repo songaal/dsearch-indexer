@@ -241,12 +241,10 @@ public class JDBCIngester implements Ingester {
 
                         if(str != null) {
                             // HTML Decode 처리
-                            // String 을 euc-kr 로 인코딩.
                             byte[] euckrStringBuffer = str.getBytes(Charset.forName("euc-kr"));
                             String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
                             byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
                             String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
-                            if(columnIdx == 13){logger.info(decodedFromUtf8);}
                             keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
 //                            keyValueMap.put(columnName[i], str);
                         } else {
