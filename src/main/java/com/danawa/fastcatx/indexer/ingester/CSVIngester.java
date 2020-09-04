@@ -48,6 +48,8 @@ public class CSVIngester extends FileIngester {
                     }
                     for (int i = 0; i < headerList.size(); i++) {
                         // HTML Decode
+                        System.out.println("변환된 내용 : "+ StringEscapeUtils.unescapeHtml(els[i]) +", 변환하기 전 내용 {}" + els[i]);
+                        logger.debug("변환된 내용 :{}, 변환하기 전 내용 {}", StringEscapeUtils.unescapeHtml(els[i]), els[i]);
                         record.put(headerList.get(i), StringEscapeUtils.unescapeHtml(els[i]));
                     }
                     //정상이면 리턴.

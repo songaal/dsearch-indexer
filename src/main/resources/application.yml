@@ -14,8 +14,8 @@ elasticsearch:
   password: fastcatx
   nodes:
     - host: es1.danawa.io
-      port: 9200
+      port: 80
       scheme: http
     - host: es1.danawa.io
-      port: 9200
+      port: 80
       scheme: http

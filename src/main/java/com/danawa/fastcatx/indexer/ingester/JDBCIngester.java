@@ -8,6 +8,8 @@ import org.apache.tomcat.util.http.fileupload.FileUtils;
 import javax.sql.rowset.RowSetFactory;
 import javax.sql.rowset.RowSetProvider;
 import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
@@ -239,7 +241,14 @@ public class JDBCIngester implements Ingester {
 
                         if(str != null) {
                             // HTML Decode 처리
-                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
+                            // String 을 euc-kr 로 인코딩.
+                            byte[] euckrStringBuffer = str.getBytes(Charset.forName("euc-kr"));
+                            String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
+                            byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
+                            String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
+                            if(columnIdx == 13){logger.info(decodedFromUtf8);}
+                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
+//                            keyValueMap.put(columnName[i], str);
                         } else {
                             // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
                             keyValueMap.put(columnName[i], "");
@@ -278,7 +287,13 @@ public class JDBCIngester implements Ingester {
                             if(useBlobFile) {
                                 keyValueMap.put(columnName[i], file);
                             } else {
-                                keyValueMap.put(columnName[i], sb.toString());
+                                byte[] euckrStringBuffer = sb.toString().getBytes(Charset.forName("euc-kr"));
+                                String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
+                                byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
+                                String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
+
+//                                keyValueMap.put(columnName[i], sb.toString());
+                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
                             }
                         }
 
