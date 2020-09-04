@@ -1,10 +1,7 @@
 package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
-import com.danawa.fastcatx.indexer.ingester.CSVIngester;
-import com.danawa.fastcatx.indexer.ingester.JDBCIngester;
-import com.danawa.fastcatx.indexer.ingester.NDJsonIngester;
-import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
+import com.danawa.fastcatx.indexer.ingester.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +48,7 @@ public class IndexJobRunner implements Runnable {
             // ES bulk API 사용시 벌크갯수.
             Integer bulkSize = (Integer) payload.get("bulkSize");
             Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
-            String pipeLine = (String) payload.get("pipeLine");
+            String pipeLine = (String) payload.getOrDefault("pipeLine","");
 
             Map<String, Object> indexSettings;
             try {
@@ -77,6 +74,10 @@ public class IndexJobRunner implements Runnable {
                 ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
             } else if (type.equals("csv")) {
                 ingester = new CSVIngester(path, encoding, 1000, limitSize);
+            } else if (type.equals("file")) {
+                String headerText = (String) payload.get("headerText");
+                String delimiter = (String) payload.get("delimiter");
+                ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText,delimiter);
             } else if (type.equals("jdbc")) {
                 String dataSQL = (String) payload.get("dataSQL");
                 Integer fetchSize = (Integer) payload.get("fetchSize");

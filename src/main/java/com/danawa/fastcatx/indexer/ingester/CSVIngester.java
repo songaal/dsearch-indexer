@@ -47,7 +47,7 @@ public class CSVIngester extends FileIngester {
                         continue;
                     }
                     for (int i = 0; i < headerList.size(); i++) {
-                        // HTML Decode 
+                        // HTML Decode
                         record.put(headerList.get(i), StringEscapeUtils.unescapeHtml(els[i]));
                     }
                     //정상이면 리턴.
