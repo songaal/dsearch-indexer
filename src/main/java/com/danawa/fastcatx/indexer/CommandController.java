@@ -183,6 +183,7 @@ public class CommandController {
                 String rsyncPath = (String) payload.getOrDefault("rsyncPath", "search_data_alti");
                 //String rsyncCommand = (String) payload.getOrDefault("rsyncCommand","rsync -av --inplace --progress --bwlimit=1000 --progress 192.168.4.198::search_data_alti/prodExt_0 /home/danawa/temp/");
 
+
                 //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
                 //RSNYC
@@ -213,6 +214,7 @@ public class CommandController {
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
                     path += "/"+dumpFileName;
+                    logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }

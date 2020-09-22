@@ -128,6 +128,8 @@ public class IndexJobRunner implements Runnable {
 
                 boolean execProdure = false;
                 boolean rsyncStarted = false;
+                //덤프파일 이름
+                String dumpFileName = "prodExt_"+groupSeq;
 
                 //SKIP 여부에 따라 프로시저 호출
                 if(procedureSkip == false) {
@@ -144,6 +146,13 @@ public class IndexJobRunner implements Runnable {
                 logger.info("rsyncStarted : {}" , rsyncStarted );
 
                 if(rsyncStarted || rsyncSkip) {
+
+                    if(rsyncSkip) {
+                        logger.info("rsyncSkip : {}" , rsyncSkip);
+                    }
+                    //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+                    path += "/"+dumpFileName;
+                    logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }

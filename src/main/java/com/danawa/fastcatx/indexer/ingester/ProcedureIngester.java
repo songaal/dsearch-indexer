@@ -57,11 +57,11 @@ public class ProcedureIngester extends FileIngester {
 
                     //dumpFormat에 따라 체크하는 텍스트를 지정해준다.
                     if(dumpFormat.equals("konan")){
-                        startStr = "[%PRODUCTCODE%]";
-                        endStr = "[%ADDDESCRIPTION%]";
+                        startStr = "[%productCode%]";
+                        endStr = "[%addDescription%]";
                     }else if(dumpFormat.equals("ndjson")){
-                        startStr = "{\"PRODUCTCODE\":";
-                        endStr = "\"ADDDESCRIPTION\":";
+                        startStr = "{\"productCode\":";
+                        endStr = "\"addDescription\":";
                     }
 
 

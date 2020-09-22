@@ -40,7 +40,7 @@ public class RsyncCopy extends Thread {
         logger.info("path : {}", path);
         logger.info("bwlimit : {}", bwlimit);
         String rsyncFileName = "prodExt_"+groupSeq;
-        File file = new File(rsyncPath +"/"+rsyncFileName);
+        File file = new File(path +"/"+rsyncFileName);
         //File file = new File(rsyncPath +"\\"+rsyncFileName);
 
         if (file.exists()) {
