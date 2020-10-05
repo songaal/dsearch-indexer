@@ -63,6 +63,7 @@ public class IndexService {
         this.host = host;
         this.port = port;
         this.scheme = scheme;
+        logger.info("host : {} , port : {}, scheme : {} ", host, port,scheme);
     }
 
     public int getCount() {
@@ -73,6 +74,10 @@ public class IndexService {
         try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
             GetIndexRequest request = new GetIndexRequest(index);
             return client.indices().exists(request, RequestOptions.DEFAULT);
+
+        }catch (IOException e) {
+            logger.error("", e);
+            throw e;
         }
     }
 
