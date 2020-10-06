@@ -1,7 +1,7 @@
 FROM dcr.danawa.io/alpine-k8s-java:8
 
 
-RUN yum -y update && yum install -y wget rsync openssh-server openssh-clients openssh-askpass
+RUN yum -y update && yum install -y wget rsync
 
 ENV PATH=$PATH:${JAVA_HOME}/bin
 ENV spring_logging_level=debug
