@@ -89,6 +89,8 @@
             <groupId>danawa</groupId>
             <artifactId>danawa-product</artifactId>
             <version>1.1.1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/danawa-product-1.1.1.jar</systemPath>
         </dependency>
 
         <dependency>
