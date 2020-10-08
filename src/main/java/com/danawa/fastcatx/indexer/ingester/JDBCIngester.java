@@ -39,6 +39,11 @@ public class JDBCIngester implements Ingester {
     private int fetchSize;
     private int maxRows;
 
+    private String driverClassName;
+    private String url;
+    private String user;
+    private String password;
+
 
     private boolean isClosed;
 
@@ -47,6 +52,13 @@ public class JDBCIngester implements Ingester {
 
 
     public JDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
+
+        this.driverClassName = driverClassName;
+        this.user = user;
+        this.url = url;
+        this.password = password;
+
+
         this.bulkSize = bulkSize;
         this.useBlobFile = useBlobFile;
         this.fetchSize = fetchSize;
@@ -70,6 +82,10 @@ public class JDBCIngester implements Ingester {
     public void executeQuery(int currentQueryListCount) throws IOException {
 
         try {
+            if(currentQueryListCount > 0) {
+                connection = getConnection(driverClassName, url, user, password);
+            }
+
             if(pstmt != null) {
                 pstmt.close();
             }
@@ -119,7 +135,7 @@ public class JDBCIngester implements Ingester {
         }else{
 
             //남은 쿼리가 있다면 resultSet, pstmt 만 close
-            closePstmt();
+            closeConnection();
             return true;
         }
     }
