@@ -1,0 +1,22 @@
+server:
+  port: 10350
+
+logging:
+  level:
+    root: INFO
+    org.springframework: ERROR
+    com.danawa.fastcatx: INFO
+  file:
+    name: output.log
+
+elasticsearch:
+  thread: 50
+  username: fastcatx
+  password: fastcatx
+  nodes:
+    - host: es1.danawa.io
+      port: 80
+      scheme: http
+    - host: es1.danawa.io
+      port: 80
+      scheme: http
