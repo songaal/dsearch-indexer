@@ -14,9 +14,9 @@ elasticsearch:
   username: fastcatx
   password: fastcatx
   nodes:
-    - host: es1.danawa.io
-      port: 80
+    - host: 192.168.1.122
+      port: 9200
       scheme: http
-    - host: es1.danawa.io
-      port: 80
+    - host: 192.168.1.122
+      port: 9200
       scheme: http
