@@ -36,6 +36,7 @@ public class IndexJobManager {
         if (job != null && "RUNNING".equalsIgnoreCase(job.getStatus())) {
             job.setStopSignal(true);
         }
+        job.setStatus("STOP");
         return job;
     }
 
