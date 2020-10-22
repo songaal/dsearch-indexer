@@ -44,7 +44,6 @@ public class ProcedureIngester extends FileIngester {
         //종료 체크용 카운트
         int waitCount = 0;
         String startStr="";
-        String startStr2="";
         String endStr="";
         while (isRun) {
             try {
@@ -58,10 +57,10 @@ public class ProcedureIngester extends FileIngester {
 
                     //dumpFormat에 따라 체크하는 텍스트를 지정해준다.
                     if(dumpFormat.equals("konan")){
-                        startStr = "[%shopCode%]";
+                        startStr = "[%productCode%]";
                         endStr = "[%promotionName%]";
                     }else if(dumpFormat.equals("ndjson")){
-                        startStr = "{\"shopCode\":";
+                        startStr = "{\"productCode\":";
                         endStr = "\"promotionName\":";
                     }
 
