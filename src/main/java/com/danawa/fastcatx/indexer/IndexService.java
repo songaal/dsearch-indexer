@@ -172,7 +172,7 @@ public class IndexService {
             } catch(Exception e) {
                 logger.info("{}",e);
                 StackTraceElement[] exception = e.getStackTrace();
-                //logger.info("{}", record);
+                logger.error("[Exception] : request id : {}" , id);
                 for(StackTraceElement element : exception) {
                     e.printStackTrace();
                     logger.error("[Exception] : " + element.toString());
