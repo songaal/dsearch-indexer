@@ -156,7 +156,7 @@ public class IndexService {
                     }
 
                     if (count % 10000 == 0) {
-                        logger.info("index: {} -> {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                        logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                     }
                    //logger.info("{}",count);
                 }
@@ -183,7 +183,7 @@ public class IndexService {
 
 
             long totalTime = System.currentTimeMillis() - start;
-            logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+            logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
         }
     }
 
@@ -264,7 +264,7 @@ public class IndexService {
 
                     if (count % 10000 == 0) {
                         //logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms. async_counter[{}]", count, (System.nanoTime() - time) / 1000000, counter.get());
-                        logger.info("index: {} -> {} DynamicIndex API Call ROWS FLUSHED! in {}ms. SleepTime[{}]", index, count, (System.nanoTime() - time) / 1000000, sleepTime);
+                        logger.info("index: [{}] {} DynamicIndex API Call ROWS FLUSHED! in {}ms. SleepTime[{}]", index, count, (System.nanoTime() - time) / 1000000, sleepTime);
                     }
                 }
 
@@ -286,7 +286,7 @@ public class IndexService {
             }
 
             long totalTime = System.currentTimeMillis() - start;
-            logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+            logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
         }
     }
 
@@ -356,7 +356,7 @@ public class IndexService {
                 }
 
                 if (count % 10000 == 0) {
-                    logger.info("index: {} -> {} DynamicIndex API Call ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                    logger.info("index: [{}] {} DynamicIndex API Call ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                 }
             }
 
@@ -386,7 +386,7 @@ public class IndexService {
 
 
         long totalTime = System.currentTimeMillis() - start;
-        logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+        logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
     }
 
     class Worker implements Callable {
@@ -479,7 +479,7 @@ public class IndexService {
                 }
 
                 if (count % 100000 == 0) {
-                    logger.info("index: {} -> {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                    logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                 }
             }
 
@@ -521,7 +521,7 @@ public class IndexService {
         }
 
         long totalTime = System.currentTimeMillis() - start;
-        logger.info("Flush Finished! doc[{}] elapsed[{}m]", count, totalTime / 1000 / 60);
+        logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
     }
 
     private void checkResponse(BulkResponse bulkResponse) {
