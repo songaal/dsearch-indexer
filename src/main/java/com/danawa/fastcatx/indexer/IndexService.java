@@ -156,7 +156,7 @@ public class IndexService {
                     }
 
                     if (count % 10000 == 0) {
-                        logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                        logger.info("index: {} -> {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                     }
                    //logger.info("{}",count);
                 }
@@ -264,7 +264,7 @@ public class IndexService {
 
                     if (count % 10000 == 0) {
                         //logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms. async_counter[{}]", count, (System.nanoTime() - time) / 1000000, counter.get());
-                        logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms. SleepTime[{}]", count, (System.nanoTime() - time) / 1000000, sleepTime);
+                        logger.info("index: {} -> {} DynamicIndex API Call ROWS FLUSHED! in {}ms. SleepTime[{}]", index, count, (System.nanoTime() - time) / 1000000, sleepTime);
                     }
                 }
 
@@ -356,7 +356,7 @@ public class IndexService {
                 }
 
                 if (count % 10000 == 0) {
-                    logger.info("{} DynamicIndex API Call ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                    logger.info("index: {} -> {} DynamicIndex API Call ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                 }
             }
 
@@ -479,7 +479,7 @@ public class IndexService {
                 }
 
                 if (count % 100000 == 0) {
-                    logger.info("{} ROWS FLUSHED! in {}ms", count, (System.nanoTime() - time) / 1000000);
+                    logger.info("index: {} -> {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
                 }
             }
 

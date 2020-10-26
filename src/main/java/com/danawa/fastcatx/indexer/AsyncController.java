@@ -15,7 +15,7 @@ import java.util.UUID;
 public class AsyncController {
     private static Logger logger = LoggerFactory.getLogger(AsyncController.class);
 
-    private enum ACTION {FULL_INDEX, DYNAMIC_INDEX }
+    private enum ACTION { FULL_INDEX, DYNAMIC_INDEX }
     private final IndexJobManager indexJobManager;
 
     public AsyncController(IndexJobManager indexJobManager) {
