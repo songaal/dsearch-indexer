@@ -151,6 +151,7 @@ public class IndexService {
 
                     if (count % bulkSize == 0) {
                         BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                        checkResponse(bulkResponse); // 추가
                         logger.debug("bulk! {}", count);
                         request = new BulkRequest();
                     }
@@ -407,7 +408,7 @@ public class IndexService {
                 }
                 BulkRequest request = (BulkRequest) o;
                 BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-//                checkResponse(bulkResponse);
+                checkResponse(bulkResponse);
 //                logger.debug("bulk! {}", count);
             }
             return null;
