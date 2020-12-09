@@ -111,9 +111,9 @@ public abstract class FileIngester implements Ingester {
                         } else {
                             reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), encoding));
                         }
-                        logger.info("{} start ", f.getAbsolutePath());
+                        logger.info("{} start / remain count : {}", f.getAbsolutePath(), files.size());
                         initReader(reader);
-                        continue;
+                        break;
                     } catch (IOException ex) {
                         logger.error("", ex);
                         if(reader != null) {
@@ -126,7 +126,7 @@ public abstract class FileIngester implements Ingester {
                     }
                 }
                 //파일이 더 이상 없으면 끝낸다.
-                if(files.size() == 0 && reader == null) {
+                if(reader == null) {
                     break;
                 }
             }

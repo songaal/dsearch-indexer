@@ -35,8 +35,8 @@ public class ProcedureLinkIngester extends FileIngester {
 
     @Override
     protected void initReader(BufferedReader reader) {
-        if(reader != null) reset();
         this.reader = reader;
+        reset();
     }
 
     @Override
