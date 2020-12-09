@@ -34,15 +34,14 @@ public class ProcedureLinkIngester extends FileIngester {
 
 
     @Override
-    protected void initReader(BufferedReader reader) throws IOException {
-        this.reader = reader;
+    protected void initReader(BufferedReader reader) {
         if(reader != null) reset();
+        this.reader = reader;
     }
 
     @Override
     protected Map<String, Object> parse(BufferedReader reader) throws IOException {
         String line = "";
-        int waitCount = 0;
         //종료 체크용 카운트
         while (isRun) {
             try {
@@ -58,14 +57,8 @@ public class ProcedureLinkIngester extends FileIngester {
 
                     return record;
                 }else{
-                    if(waitCount > 20) {
-                        stop();
-                    }
-                    logger.info(("wait"));
-                    waitCount++;
-                    Thread.sleep(1000);
+                    stop();
                 }
-
             } catch (Exception e) {
                 logger.error("parsing error : line= " + line, e);
             }

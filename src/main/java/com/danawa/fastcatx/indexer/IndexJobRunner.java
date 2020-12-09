@@ -215,7 +215,6 @@ public class IndexJobRunner implements Runnable {
                         String filepath = path + "/" + dumpFileName;
                         sb.append(filepath + ",");
                         logger.info("file Path - Name  : {} - {}", filepath, dumpFileName);
-//                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
 //                        ingester = new ProcedureIngester(filepath , dumpFormat, encoding, 1000, limitSize);
                     }
                 }
@@ -225,7 +224,6 @@ public class IndexJobRunner implements Runnable {
                 }
 
                 ingester = new ProcedureLinkIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
-//                ingester = new ProcedureLinkIngester(path, dumpFormat, encoding, 1000, limitSize);
             }
 
             Ingester finalIngester = ingester;
