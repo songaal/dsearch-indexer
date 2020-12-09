@@ -126,7 +126,7 @@ public abstract class FileIngester implements Ingester {
                     }
                 }
                 //파일이 더 이상 없으면 끝낸다.
-                if(reader == null) {
+                if(files.size() == 0 && reader == null) {
                     break;
                 }
             }
