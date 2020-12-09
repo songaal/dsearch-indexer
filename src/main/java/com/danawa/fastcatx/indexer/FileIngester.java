@@ -54,6 +54,7 @@ public abstract class FileIngester implements Ingester {
                     files.add(base);
                 }
             }
+            logger.info("Ingester Files: {} ",files.toString());
         }
         items = new LinkedList<>();
     }

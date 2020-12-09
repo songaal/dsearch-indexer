@@ -172,10 +172,14 @@ public class IndexJobRunner implements Runnable {
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
 
                 String[] groupSeqLists = groupSeqs.split(",");
+
                 // 1. groupSeqLists 수 만큼 프로시저 호출
                 // 2. 체크
                 // 3. 다 끝나면 rsync
+                StringBuffer sb = new StringBuffer();
+
                 for(String groupSeq : groupSeqLists){
+                    logger.info("groupSeq : {}", groupSeq);
                     Integer groupSeqNumber = Integer.parseInt(groupSeq);
                     //프로시져
                     CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path);
@@ -209,13 +213,20 @@ public class IndexJobRunner implements Runnable {
                         }
                         //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
                         String filepath = path + "/" + dumpFileName;
+                        sb.append(filepath + ",");
                         logger.info("file Path - Name  : {} - {}", filepath, dumpFileName);
 //                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
 //                        ingester = new ProcedureIngester(filepath , dumpFormat, encoding, 1000, limitSize);
                     }
                 }
 
-                ingester = new ProcedureLinkIngester(path, dumpFormat, encoding, 1000, limitSize);
+                if(sb.charAt(sb.length()-1) == ','){
+                    sb.deleteCharAt(sb.length()-1);
+                }
+
+                ingester = new ProcedureIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
+//                ingester = new ProcedureLinkIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
+//                ingester = new ProcedureLinkIngester(path, dumpFormat, encoding, 1000, limitSize);
             }
 
             Ingester finalIngester = ingester;
