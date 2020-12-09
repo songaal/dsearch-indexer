@@ -224,8 +224,7 @@ public class IndexJobRunner implements Runnable {
                     sb.deleteCharAt(sb.length()-1);
                 }
 
-                ingester = new ProcedureIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
-//                ingester = new ProcedureLinkIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
+                ingester = new ProcedureLinkIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
 //                ingester = new ProcedureLinkIngester(path, dumpFormat, encoding, 1000, limitSize);
             }
 

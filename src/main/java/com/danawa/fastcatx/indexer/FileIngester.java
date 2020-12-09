@@ -100,6 +100,7 @@ public abstract class FileIngester implements Ingester {
             } else {
                 while (files.size() > 0) {
                     File f = files.remove(0);
+                    logger.info(files.size() + " , " + f.getName());
                     if(!f.exists()) {
                         //파일이 없으면 continue
                         logger.error(String.format("File not exists : %s", f.getAbsolutePath()));
