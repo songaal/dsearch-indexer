@@ -111,6 +111,7 @@ public abstract class FileIngester implements Ingester {
                         } else {
                             reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), encoding));
                         }
+                        logger.info("{} start ", f.getAbsolutePath());
                         initReader(reader);
                         continue;
                     } catch (IOException ex) {
