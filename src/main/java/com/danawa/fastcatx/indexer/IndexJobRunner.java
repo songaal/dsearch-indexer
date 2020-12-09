@@ -155,6 +155,56 @@ public class IndexJobRunner implements Runnable {
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
+            }else if (type.equals("procedure-link")) {
+
+                //프로시저 호출에 필요한 정보
+                String driverClassName = (String) payload.get("driverClassName");
+                String url = (String) payload.get("url");
+                String user = (String) payload.get("user");
+                String password = (String) payload.get("password");
+                String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
+                Integer groupSeq = (Integer) payload.get("groupSeq");
+                String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
+                String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
+                String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
+                String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
+                boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
+                boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+
+                //프로시져
+                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
+                //RSNYC
+                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeq);
+
+                boolean execProdure = false;
+                boolean rsyncStarted = false;
+                //덤프파일 이름
+                String dumpFileName = "linkExt_"+groupSeq;
+
+                //SKIP 여부에 따라 프로시저 호출
+                if(procedureSkip == false) {
+                    execProdure = procedure.callSearchProcedure();
+                }
+                logger.info("execProdure : {}",execProdure);
+
+                //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                    rsyncCopy.start();
+                    Thread.sleep(3000);
+                    rsyncStarted = rsyncCopy.copyAsync();
+                }
+                logger.info("rsyncStarted : {}" , rsyncStarted );
+
+                if(rsyncStarted || rsyncSkip) {
+
+                    if(rsyncSkip) {
+                        logger.info("rsyncSkip : {}" , rsyncSkip);
+                    }
+                    //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+                    path += "/"+dumpFileName;
+                    logger.info("file Path - Name  : {} - {}", path, dumpFileName);
+                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
+                }
             }
 
             Ingester finalIngester = ingester;
