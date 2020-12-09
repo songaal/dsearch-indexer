@@ -182,7 +182,7 @@ public class IndexJobRunner implements Runnable {
                     logger.info("groupSeq : {}", groupSeq);
                     Integer groupSeqNumber = Integer.parseInt(groupSeq);
                     //프로시져
-                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path);
+                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path, true);
                     //RSNYC
                     RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
 

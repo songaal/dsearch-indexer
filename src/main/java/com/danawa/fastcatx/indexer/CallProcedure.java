@@ -28,6 +28,7 @@ public class CallProcedure {
     private String procedureName;
     private Integer groupSeq;
     private String path;
+    private boolean isLink = false;
 
     public CallProcedure(String driverClassName, String url, String user, String password, String procedureName, Integer groupSeq, String path) {
 
@@ -41,6 +42,18 @@ public class CallProcedure {
 
     }
 
+    public CallProcedure(String driverClassName, String url, String user, String password, String procedureName, Integer groupSeq, String path, boolean isLink) {
+
+        this.driverClassName = driverClassName;
+        this.url = url;
+        this.user = user;
+        this.password = password;
+        this.procedureName = procedureName;
+        this.groupSeq = groupSeq;
+        this.path = path;
+        this.isLink = isLink;
+
+    }
 
     //프로시저 호출 따로
     public boolean callSearchProcedure() {
@@ -50,7 +63,9 @@ public class CallProcedure {
             //프로시저 호출
             if(procedureName.length() > 0 &&  groupSeq != null) {
                 cs = connection.prepareCall("{call " + procedureName + "(?,?)}");
-                String exportFileName = "prodExt_" + groupSeq;
+                String exportFileName = "";
+                if(isLink) exportFileName = "linkExt_" + groupSeq;
+                else       exportFileName = "prodExt_" + groupSeq;
 
                 cs.setInt(1, groupSeq);
                 cs.setString(2, exportFileName);

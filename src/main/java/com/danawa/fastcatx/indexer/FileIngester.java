@@ -96,6 +96,7 @@ public abstract class FileIngester implements Ingester {
                         reader.close();
                     } catch (IOException ignore) { }
                     reader = null;
+                    continue;
                 }
             } else {
                 while (files.size() > 0) {
