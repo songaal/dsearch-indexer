@@ -35,7 +35,7 @@ public class ProcedureLinkIngester extends FileIngester {
 
     @Override
     protected void initReader(BufferedReader reader) throws IOException {
-
+        this.reader = reader;
     }
 
     @Override
@@ -74,7 +74,7 @@ public class ProcedureLinkIngester extends FileIngester {
 
 
     public void stop() {
-        isRun =false;
+        isRun = false;
     }
 
 }
