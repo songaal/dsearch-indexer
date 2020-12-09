@@ -54,7 +54,6 @@ public abstract class FileIngester implements Ingester {
                     files.add(base);
                 }
             }
-            logger.info("Ingester Files: {} ",files.toString());
         }
         items = new LinkedList<>();
     }
@@ -113,7 +112,7 @@ public abstract class FileIngester implements Ingester {
                             reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), encoding));
                         }
                         initReader(reader);
-                        break;
+                        continue;
                     } catch (IOException ex) {
                         logger.error("", ex);
                         if(reader != null) {
