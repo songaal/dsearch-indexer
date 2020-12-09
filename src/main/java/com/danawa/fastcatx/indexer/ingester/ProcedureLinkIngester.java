@@ -41,20 +41,30 @@ public class ProcedureLinkIngester extends FileIngester {
     @Override
     protected Map<String, Object> parse(BufferedReader reader) throws IOException {
         String line = "";
+        int waitCount = 0;
         //종료 체크용 카운트
         while (isRun) {
             try {
-                //byte X -> char
                 line = reader.readLine();
-                Map<String, Object> record = new HashMap<>();
+                if(line != null){
+                    Map<String, Object> record = new HashMap<>();
 
-                if (dumpFormat.equals("konan")) {
-                    record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
-                } else if (dumpFormat.equals("ndjson")) {
-                    record = gson.fromJson(line, entryType);
+                    if (dumpFormat.equals("konan")) {
+                        record = gson.fromJson(Utils.convertKonanToNdJson(line), entryType);
+                    } else if (dumpFormat.equals("ndjson")) {
+                        record = gson.fromJson(line, entryType);
+                    }
+
+                    return record;
+                }else{
+                    if(waitCount > 20) {
+                        stop();
+                    }
+                    logger.info(("wait"));
+                    waitCount++;
+                    Thread.sleep(1000);
                 }
 
-                return record;
             } catch (Exception e) {
                 logger.error("parsing error : line= " + line, e);
             }
