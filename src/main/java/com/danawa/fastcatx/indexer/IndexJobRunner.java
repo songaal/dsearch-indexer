@@ -184,7 +184,7 @@ public class IndexJobRunner implements Runnable {
                     //프로시져
                     CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path);
                     //RSNYC
-                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber);
+                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
 
                     boolean execProdure = false;
                     boolean rsyncStarted = false;

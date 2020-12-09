@@ -96,13 +96,10 @@ public abstract class FileIngester implements Ingester {
                         reader.close();
                     } catch (IOException ignore) { }
                     reader = null;
-                    continue;
                 }
             } else {
-                logger.info("files 갯수 : {} ", files.size());
                 while (files.size() > 0) {
                     File f = files.remove(0);
-                    logger.info("{} : {}", f.getAbsolutePath(), f.getName());
                     if(!f.exists()) {
                         //파일이 없으면 continue
                         logger.error(String.format("File not exists : %s", f.getAbsolutePath()));
@@ -127,7 +124,6 @@ public abstract class FileIngester implements Ingester {
                         }
                     }
                 }
-                logger.info("reader is null ? : {} ", reader == null);
                 //파일이 더 이상 없으면 끝낸다.
                 if(reader == null) {
                     break;
