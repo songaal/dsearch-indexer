@@ -113,6 +113,7 @@ public abstract class FileIngester implements Ingester {
                             reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), encoding));
                         }
                         initReader(reader);
+                        logger.info("reader is null ? : {} ", reader == null);
                         break;
                     } catch (IOException ex) {
                         logger.error("", ex);
@@ -125,8 +126,9 @@ public abstract class FileIngester implements Ingester {
                         }
                     }
                 }
+                logger.info("reader is null ? : {} ", reader == null);
                 //파일이 더 이상 없으면 끝낸다.
-                if(files.size() == 0 && reader == null) {
+                if(reader == null) {
                     break;
                 }
             }
