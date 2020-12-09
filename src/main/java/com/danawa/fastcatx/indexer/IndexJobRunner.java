@@ -201,9 +201,13 @@ public class IndexJobRunner implements Runnable {
                         logger.info("rsyncSkip : {}" , rsyncSkip);
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
-                    path += "/"+dumpFileName;
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(path + "/" + dumpFileName);
+                    sb.append("," + path + "/linkExt_17" );
+
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
-                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
+//                    ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
+                    ingester = new ProcedureIngester(sb.toString(), dumpFormat, encoding, 1000, limitSize);
                 }
             }
 
