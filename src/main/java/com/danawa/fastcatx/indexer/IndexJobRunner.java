@@ -2,8 +2,6 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
-import com.sun.org.apache.xerces.internal.xs.datatypes.ObjectList;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
