@@ -2,12 +2,16 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
+import com.sun.org.apache.xerces.internal.xs.datatypes.ObjectList;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 public class IndexJobRunner implements Runnable {
     private static Logger logger = LoggerFactory.getLogger(IndexJobRunner.class);
@@ -177,12 +181,46 @@ public class IndexJobRunner implements Runnable {
                 // 2. 체크
                 // 3. 다 끝나면 rsync
                 StringBuffer sb = new StringBuffer();
+                Map<String, Boolean> procedureMap = new HashMap<>();
+
+                if(procedureSkip == false) {
+                    logger.info("Call Procedure");
+                    ExecutorService threadPool = Executors.newFixedThreadPool(4);
+
+                    List threadsResults = new ArrayList<Future<Object>>();
+                    for(String groupSeq : groupSeqLists){
+                        Integer groupSeqNumber = Integer.parseInt(groupSeq);
+                        Callable callable = new Callable() {
+                            @Override
+                            public Object call() throws Exception {
+                                String path = (String) payload.get("path");
+                                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeqNumber, path, true);
+                                Map<String, Object> result = new HashMap<>();
+                                result.put("groupSeq", groupSeq);
+                                result.put("result", procedure.callSearchProcedure());
+                                return result;
+                            }
+                        };
+
+                        Future<Object> future = threadPool.submit(callable);
+                        threadsResults.add(future);
+                    }
+
+                    for (Object f : threadsResults) {
+                        Future<Object> future = (Future<Object>) f;
+                        Map<String, Object> execProdure = (Map<String, Object>) future.get();
+                        procedureMap.put((String) execProdure.get("groupSeq"), (Boolean) execProdure.get("result"));
+                        logger.info("{} execProdure: {}",(String) execProdure.get("groupSeq"), (Boolean) execProdure.get("result"));
+                    }
+
+                    threadPool.shutdown();
+                }
 
                 for(String groupSeq : groupSeqLists){
                     logger.info("groupSeq : {}", groupSeq);
                     Integer groupSeqNumber = Integer.parseInt(groupSeq);
                     //프로시져
-                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path, true);
+//                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path, true);
                     //RSNYC
                     RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
 
@@ -193,7 +231,8 @@ public class IndexJobRunner implements Runnable {
                     String dumpFileName = "linkExt_"+groupSeq;
                     //SKIP 여부에 따라 프로시저 호출
                     if(procedureSkip == false) {
-                        execProdure = procedure.callSearchProcedure();
+                        execProdure = procedureMap.get(groupSeq);
+//                        execProdure = procedure.callSearchProcedure();
                     }
 
                     logger.info("execProdure : {}",execProdure);
