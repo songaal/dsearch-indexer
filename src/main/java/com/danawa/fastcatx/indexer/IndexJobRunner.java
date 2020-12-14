@@ -238,9 +238,14 @@ public class IndexJobRunner implements Runnable {
                     //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
 //                        rsyncCopy.join();
-//                        Thread.sleep(3000);
                         rsyncCopy.start();
-                        while(rsyncCopy.isAlive()){ }
+                        int c = 0;
+                        Thread.sleep(3000);
+                        while(rsyncCopy.isAlive()){
+                            Thread.sleep(1000);
+                            c++;
+                            logger.info("{}",c);
+                        }
 //                        rsyncStarted = rsyncCopy.copyAsync();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
