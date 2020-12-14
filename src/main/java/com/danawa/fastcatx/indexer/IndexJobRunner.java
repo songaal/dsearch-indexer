@@ -246,6 +246,7 @@ public class IndexJobRunner implements Runnable {
                             c++;
                             logger.info("{}",c);
                         }
+                        rsyncCopy.interrupt();
 //                        rsyncStarted = rsyncCopy.copyAsync();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
