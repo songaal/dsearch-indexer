@@ -240,10 +240,10 @@ public class IndexJobRunner implements Runnable {
 //                        rsyncCopy.join();
                         rsyncCopy.start();
                         Thread.sleep(3000);
-//                        while(rsyncCopy.isAlive()){
-//                            Thread.sleep(1000);
-//                        }
-//                        rsyncCopy.interrupt();
+                        while(rsyncCopy.isAlive()){
+                            Thread.sleep(1000);
+                        }
+                        rsyncCopy.interrupt();
 //                        rsyncStarted = rsyncCopy.copyAsync();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
