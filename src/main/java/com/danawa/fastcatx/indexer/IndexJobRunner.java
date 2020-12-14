@@ -223,7 +223,7 @@ public class IndexJobRunner implements Runnable {
                     RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
 
                     boolean execProdure = false;
-                    boolean rsyncStarted = false;
+                    boolean rsyncStarted = true;
 
                     //덤프파일 이름
                     String dumpFileName = "linkExt_"+groupSeq;
@@ -257,7 +257,7 @@ public class IndexJobRunner implements Runnable {
                     }
                 }
 
-                if(sb.charAt(sb.length()-1) == ','){
+                if(sb.length() > 0 && sb.charAt(sb.length()-1) == ','){
                     sb.deleteCharAt(sb.length()-1);
                 }
 
