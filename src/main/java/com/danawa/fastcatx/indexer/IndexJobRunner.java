@@ -239,14 +239,11 @@ public class IndexJobRunner implements Runnable {
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
 //                        rsyncCopy.join();
                         rsyncCopy.start();
-                        int c = 0;
                         Thread.sleep(3000);
-                        while(rsyncCopy.isAlive()){
-                            Thread.sleep(1000);
-                            c++;
-                            logger.info("{}", c);
-                        }
-                        rsyncCopy.interrupt();
+//                        while(rsyncCopy.isAlive()){
+//                            Thread.sleep(1000);
+//                        }
+//                        rsyncCopy.interrupt();
 //                        rsyncStarted = rsyncCopy.copyAsync();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
@@ -293,7 +290,6 @@ public class IndexJobRunner implements Runnable {
             job.setStatus(STATUS.SUCCESS.name());
         } catch (StopSignalException e) {
             job.setStatus(STATUS.STOP.name());
-            Thread.interrupted();
         } catch (Exception e) {
             job.setStatus(STATUS.ERROR.name());
             job.setError(e.getMessage());
