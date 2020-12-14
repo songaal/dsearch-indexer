@@ -37,7 +37,7 @@ public class RsyncCopy extends Thread {
         this.path = path;
         this.groupSeq = groupSeq;
         this.bwlimit = bwlimit;
-        this.isLink = true;
+        this.isLink = isLink;
     }
 
     public boolean copyAsync() {

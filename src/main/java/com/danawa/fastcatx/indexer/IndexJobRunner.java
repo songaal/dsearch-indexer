@@ -239,7 +239,8 @@ public class IndexJobRunner implements Runnable {
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
                         rsyncCopy.start();
                         Thread.sleep(3000);
-                        rsyncStarted = rsyncCopy.copyAsync();
+                        rsyncCopy.run();
+//                        rsyncStarted = rsyncCopy.copyAsync();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
 
