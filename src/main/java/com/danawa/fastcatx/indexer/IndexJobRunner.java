@@ -2,6 +2,8 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
+import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
+import com.github.fracpete.rsync4j.RSync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,16 +237,28 @@ public class IndexJobRunner implements Runnable {
 
                     logger.info("execProdure : {}",execProdure);
 
+                    RSync rsync = new RSync()
+                            .source(rsyncIp+"::" + rsyncPath+"/linkExt_"+groupSeqNumber)
+                            .destination(path)
+                            .recursive(true)
+                            .archive(true)
+                            .compress(true)
+                            .bwlimit(bwlimit)
+                            .inplace(true);
                     //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
-//                        rsyncCopy.join();
-                        rsyncCopy.start();
-                        Thread.sleep(3000);
-                        while(rsyncCopy.isAlive()){
-                            Thread.sleep(1000);
+                        CollectingProcessOutput output = rsync.execute();
+                        if( output.getExitCode() > 0){
+                            logger.error("{}", output.getStdErr());
                         }
-                        rsyncCopy.interrupt();
-//                        rsyncStarted = rsyncCopy.copyAsync();
+
+                        // 기존
+//                        rsyncCopy.start();
+//                        Thread.sleep(3000);
+//                        while(rsyncCopy.isAlive()){
+//                            Thread.sleep(1000);
+//                        }
+//                        rsyncCopy.interrupt();
                     }
                     logger.info("rsyncStarted : {}" , rsyncStarted );
 
