@@ -7,6 +7,7 @@ import com.github.fracpete.rsync4j.RSync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -245,6 +246,12 @@ public class IndexJobRunner implements Runnable {
                             .compress(true)
                             .bwlimit(bwlimit)
                             .inplace(true);
+                    File file = new File(path +"/linkExt_"+groupSeqNumber);
+                    if (file.exists()) {
+                        logger.info("기존 파일 삭제 : {}", file);
+                        file.delete();
+                    }
+                    
                     //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
                         CollectingProcessOutput output = rsync.execute();
