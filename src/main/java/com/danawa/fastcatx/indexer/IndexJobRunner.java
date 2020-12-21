@@ -160,7 +160,8 @@ public class IndexJobRunner implements Runnable {
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
-            }else if (type.equals("procedure-link")) {
+            }
+            else if (type.equals("procedure-link")) {
 
                 //프로시저 호출에 필요한 정보
                 String driverClassName = (String) payload.get("driverClassName");
@@ -175,6 +176,7 @@ public class IndexJobRunner implements Runnable {
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+                String procedureThreads = (String) payload.getOrDefault("procedureThreads","4"); // rsync 스킵 여부
 
                 String[] groupSeqLists = groupSeqs.split(",");
 
@@ -186,7 +188,7 @@ public class IndexJobRunner implements Runnable {
 
                 if(procedureSkip == false) {
                     logger.info("Call Procedure");
-                    ExecutorService threadPool = Executors.newFixedThreadPool(4);
+                    ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
 
                     List threadsResults = new ArrayList<Future<Object>>();
                     for(String groupSeq : groupSeqLists){
@@ -211,11 +213,14 @@ public class IndexJobRunner implements Runnable {
                         Future<Object> future = (Future<Object>) f;
                         Map<String, Object> execProdure = (Map<String, Object>) future.get();
                         procedureMap.put((String) execProdure.get("groupSeq"), (Boolean) execProdure.get("result"));
-                        logger.info("{} execProdure: {}",(String) execProdure.get("groupSeq"), (Boolean) execProdure.get("result"));
+                        logger.info("{} execProdure: {}", (String) execProdure.get("groupSeq"), (Boolean) execProdure.get("result"));
                     }
 
                     threadPool.shutdown();
                 }
+
+//                프로시저 -> multiThread
+//                rsync ->  singleThread -> 1개 씩
 
                 for(String groupSeq : groupSeqLists){
                     logger.info("groupSeq : {}", groupSeq);
@@ -223,7 +228,7 @@ public class IndexJobRunner implements Runnable {
                     //프로시져
 //                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path, true);
                     //RSNYC
-                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
+//                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
 
                     boolean execProdure = false;
                     boolean rsyncStarted = true;
@@ -246,12 +251,13 @@ public class IndexJobRunner implements Runnable {
                             .compress(true)
                             .bwlimit(bwlimit)
                             .inplace(true);
+
                     File file = new File(path +"/linkExt_"+groupSeqNumber);
                     if (file.exists()) {
                         logger.info("기존 파일 삭제 : {}", file);
                         file.delete();
                     }
-                    
+
                     //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                     if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
                         CollectingProcessOutput output = rsync.execute();
