@@ -221,70 +221,75 @@ public class IndexJobRunner implements Runnable {
 
 //                프로시저 -> multiThread
 //                rsync ->  singleThread -> 1개 씩
+                if(rsyncSkip == false){
+                    ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
+                    List threadsResults2 = new ArrayList<Future<Object>>();
+                    for(String groupSeq : groupSeqLists){
+                        logger.info("groupSeq : {}", groupSeq);
+                        Integer groupSeqNumber = Integer.parseInt(groupSeq);
 
-                for(String groupSeq : groupSeqLists){
-                    logger.info("groupSeq : {}", groupSeq);
-                    Integer groupSeqNumber = Integer.parseInt(groupSeq);
-                    //프로시져
-//                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeqNumber,path, true);
-                    //RSNYC
-//                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeqNumber, true);
+                        Callable callable = new Callable() {
+                            @Override
+                            public Object call() throws Exception {
+                                //덤프파일 이름
+                                String path = (String) payload.get("path");
+                                String dumpFileName = "linkExt_"+groupSeq;
+                                boolean execProdure = false;
+                                boolean rsyncStarted = false;
+                                //SKIP 여부에 따라 프로시저 호출
+                                if(procedureSkip == false) {
+                                    execProdure = procedureMap.get(groupSeq);
+                                }
+                                logger.info("execProdure : {}",execProdure);
+                                RSync rsync = new RSync()
+                                        .source(rsyncIp+"::" + rsyncPath+"/linkExt_"+groupSeqNumber)
+                                        .destination(path)
+                                        .recursive(true)
+                                        .archive(true)
+                                        .compress(true)
+                                        .bwlimit(bwlimit)
+                                        .inplace(true);
+                                File file = new File(path +"/linkExt_"+groupSeqNumber);
+                                if (file.exists()) {
+                                    logger.info("기존 파일 삭제 : {}", file);
+                                    file.delete();
+                                }
 
-                    boolean execProdure = false;
-                    boolean rsyncStarted = true;
+                                //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                                if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                                    CollectingProcessOutput output = rsync.execute();
+                                    if( output.getExitCode() > 0){
+                                        logger.error("{}", output.getStdErr());
+                                    }
+                                }
+                                logger.info("rsyncStarted : {}" , rsyncStarted );
 
-                    //덤프파일 이름
-                    String dumpFileName = "linkExt_"+groupSeq;
-                    //SKIP 여부에 따라 프로시저 호출
-                    if(procedureSkip == false) {
-                        execProdure = procedureMap.get(groupSeq);
-//                        execProdure = procedure.callSearchProcedure();
+                                if(rsyncStarted || rsyncSkip) {
+                                    if(rsyncSkip) {
+                                        logger.info("rsyncSkip : {}" , rsyncSkip);
+                                    }
+                                }
+                                String filepath = path + "/" + dumpFileName;
+                                return filepath;
+                            }
+                        };
+                        Future<Object> future = threadPool.submit(callable);
+                        threadsResults2.add(future);
                     }
 
-                    logger.info("execProdure : {}",execProdure);
-
-                    RSync rsync = new RSync()
-                            .source(rsyncIp+"::" + rsyncPath+"/linkExt_"+groupSeqNumber)
-                            .destination(path)
-                            .recursive(true)
-                            .archive(true)
-                            .compress(true)
-                            .bwlimit(bwlimit)
-                            .inplace(true);
-
-                    File file = new File(path +"/linkExt_"+groupSeqNumber);
-                    if (file.exists()) {
-                        logger.info("기존 파일 삭제 : {}", file);
-                        file.delete();
-                    }
-
-                    //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
-                    if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
-                        CollectingProcessOutput output = rsync.execute();
-                        if( output.getExitCode() > 0){
-                            logger.error("{}", output.getStdErr());
-                        }
-
-                        // 기존
-//                        rsyncCopy.start();
-//                        Thread.sleep(3000);
-//                        while(rsyncCopy.isAlive()){
-//                            Thread.sleep(1000);
-//                        }
-//                        rsyncCopy.interrupt();
-                    }
-                    logger.info("rsyncStarted : {}" , rsyncStarted );
-
-                    if(rsyncStarted || rsyncSkip) {
-
-                        if(rsyncSkip) {
-                            logger.info("rsyncSkip : {}" , rsyncSkip);
-                        }
-                        //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
-                        String filepath = path + "/" + dumpFileName;
+                    for (Object f : threadsResults2) {
+                        Future<Object> future = (Future<Object>) f;
+                        String filepath = (String) future.get();
+                        logger.info("filepath: {}", filepath);
                         sb.append(filepath + ",");
-                        logger.info("file Path - Name  : {} - {}", filepath, dumpFileName);
-//                        ingester = new ProcedureIngester(filepath , dumpFormat, encoding, 1000, limitSize);
+                    }
+
+                    threadPool.shutdown();
+                }else{
+                    for(String groupSeq : groupSeqLists){
+                        String filepath = (String) payload.get("path");
+                        String dumpFileName = "linkExt_"+groupSeq;
+                        sb.append(filepath + "/" + dumpFileName + ",");
                     }
                 }
 
