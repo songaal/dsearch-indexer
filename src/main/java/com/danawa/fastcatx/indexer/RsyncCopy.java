@@ -21,6 +21,7 @@ public class RsyncCopy extends Thread {
     private Integer groupSeq;
     private String bwlimit;
     private boolean isCopy = true;
+    private boolean isLink = false;
 
     public RsyncCopy(String rsyncIp, String rsyncPath, String path, String bwlimit, Integer groupSeq) {
         this.rsyncIp = rsyncIp;
@@ -28,6 +29,15 @@ public class RsyncCopy extends Thread {
         this.path = path;
         this.groupSeq = groupSeq;
         this.bwlimit = bwlimit;
+    }
+
+    public RsyncCopy(String rsyncIp, String rsyncPath, String path, String bwlimit, Integer groupSeq, boolean isLink) {
+        this.rsyncIp = rsyncIp;
+        this.rsyncPath = rsyncPath;
+        this.path = path;
+        this.groupSeq = groupSeq;
+        this.bwlimit = bwlimit;
+        this.isLink = isLink;
     }
 
     public boolean copyAsync() {
@@ -39,7 +49,13 @@ public class RsyncCopy extends Thread {
         logger.info("rsyncPath : {}", rsyncPath);
         logger.info("path : {}", path);
         logger.info("bwlimit : {}", bwlimit);
-        String rsyncFileName = "prodExt_"+groupSeq;
+        String rsyncFileName = "";
+        if(isLink){
+             rsyncFileName = "linkExt_"+groupSeq;
+        }else{
+            rsyncFileName = "prodExt_"+groupSeq;
+        }
+
         File file = new File(path +"/"+rsyncFileName);
         //File file = new File(rsyncPath +"\\"+rsyncFileName);
 
