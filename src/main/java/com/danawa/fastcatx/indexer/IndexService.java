@@ -103,7 +103,12 @@ public class IndexService {
         index(ingester, index, bulkSize, filter, null, pipeLine);
     }
     public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+        try (
+                RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(30 * 1000)
+                                .setSocketTimeout(10 * 60 * 1000)))) {
+
+
             count = 0;
 
             String id = "";
