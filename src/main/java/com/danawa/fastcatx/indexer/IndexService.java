@@ -3,6 +3,7 @@ package com.danawa.fastcatx.indexer;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.apache.http.HttpHost;
 import org.apache.http.client.HttpClient;
+import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -23,7 +24,6 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.Index;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.metrics.MetricsProperties;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
@@ -59,6 +59,10 @@ public class IndexService {
     private Integer port;
     private String scheme;
 
+    private ConnectionKeepAliveStrategy getConnectionKeepAliveStrategy() {
+        return (response, context) -> 10 * 60 * 1000;
+    }
+
     public IndexService(String host, Integer port, String scheme) {
         this.host = host;
         this.port = port;
@@ -82,7 +86,11 @@ public class IndexService {
     }
 
     public boolean deleteIndex(String index) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(40 * 1000)
+                        .setSocketTimeout(10 * 60 * 1000))
+                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
             DeleteIndexRequest request = new DeleteIndexRequest(index);
             AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
             return deleteIndexResponse.isAcknowledged();
@@ -90,7 +98,11 @@ public class IndexService {
     }
 
     public boolean createIndex(String index, Map<String, ?> settings) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(40 * 1000)
+                        .setSocketTimeout(10 * 60 * 1000))
+                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
             CreateIndexRequest request = new CreateIndexRequest(index);
             request.settings(settings);
             AcknowledgedResponse deleteIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -105,8 +117,10 @@ public class IndexService {
     public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
         try (
                 RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(30 * 1000)
-                                .setSocketTimeout(10 * 60 * 1000)))) {
+                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(40 * 1000)
+                                .setSocketTimeout(10 * 60 * 1000))
+                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                                .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
 
 
             count = 0;
