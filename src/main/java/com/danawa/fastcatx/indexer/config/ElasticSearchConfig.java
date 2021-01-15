@@ -5,6 +5,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
@@ -22,6 +23,8 @@ public class ElasticSearchConfig {
     private int thread;
     private String username;
     private String password;
+    private int socketTimeout;
+    private int connectionTimeout;
     private List<ElasticsearchNode> nodes;
 
     @Bean(destroyMethod = "close")
@@ -31,7 +34,11 @@ public class ElasticSearchConfig {
             httpHostList[i] = new HttpHost(nodes.get(i).getHost(), nodes.get(i).getPort(), nodes.get(i).getScheme());
         }
 
-        RestClientBuilder builder = RestClient.builder(httpHostList);
+        RestClientBuilder builder = RestClient.builder(httpHostList)
+                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(connectionTimeout)
+                        .setSocketTimeout(socketTimeout))
+                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy()));
 //                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
 //                        .setDefaultIOReactorConfig(IOReactorConfig
 //                                .custom()
@@ -47,6 +54,10 @@ public class ElasticSearchConfig {
         }
 
         return new RestHighLevelClient(builder);
+    }
+
+    private ConnectionKeepAliveStrategy getConnectionKeepAliveStrategy() {
+        return (response, context) -> 60 * 60 * 1000;
     }
 
     public int getThread() {
@@ -80,4 +91,13 @@ public class ElasticSearchConfig {
     public void setNodes(List<ElasticsearchNode> nodes) {
         this.nodes = nodes;
     }
+
+    public int getConnectionTimeout() { return connectionTimeout; }
+
+    public void setConnectionTimeout(int connectionTimeout) { this.connectionTimeout = connectionTimeout;}
+
+    public int getSocketTimeout() { return socketTimeout;}
+
+    public void setSocketTimeout(int socketTimeout) { this.socketTimeout = socketTimeout; }
+
 }

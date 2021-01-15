@@ -13,10 +13,12 @@ elasticsearch:
   thread: 50
   username: fastcatx
   password: fastcatx
+  connectionTimeout: 30000
+  sockekTimeout: 300000
   nodes:
-    - host: 192.168.1.122
+    - host: 192.168.1.123
       port: 9200
       scheme: http
-    - host: 192.168.1.122
+    - host: 192.168.1.123
       port: 9200
       scheme: http

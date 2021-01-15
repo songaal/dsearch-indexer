@@ -12,10 +12,12 @@ elasticsearch:
   thread: 50
   username: fastcatx
   password: fastcatx
+  connectionTimeout: 30000
+  socketTimeout: 300000
   nodes:
-    - host: es1.danawa.io
-      port: 80
+    - host: es2.danawa.com
+      port: 9200
       scheme: http
-    - host: es1.danawa.io
-      port: 80
+    - host: es2.danawa.com
+      port: 9200
       scheme: http
