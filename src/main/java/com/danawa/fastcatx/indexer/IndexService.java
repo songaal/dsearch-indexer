@@ -399,18 +399,33 @@ public class IndexService {
         }
         @Override
         public Object call() throws Exception {
-            while(true) {
+            while(!Thread.interrupted()){
                 Object o = queue.take();
                 if (o instanceof String) {
                     //종료.
                     logger.info("Indexing Worker-{} got {}", Thread.currentThread().getId(), o);
                     break;
+                }else{
+                    BulkRequest request = (BulkRequest) o;
+                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                    checkResponse(bulkResponse);
                 }
-                BulkRequest request = (BulkRequest) o;
-                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                checkResponse(bulkResponse);
-//                logger.debug("bulk! {}", count);
             }
+
+            // 기존 소스
+//            while(true) {
+//                Object o = queue.take();
+//                if (o instanceof String) {
+//                    //종료.
+//                    logger.info("Indexing Worker-{} got {}", Thread.currentThread().getId(), o);
+//                    break;
+//                }
+//
+//                BulkRequest request = (BulkRequest) o;
+//                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+//                checkResponse(bulkResponse);
+////                logger.debug("bulk! {}", count);
+//            }
             return null;
         }
     }
@@ -420,7 +435,7 @@ public class IndexService {
     public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job, String pipeLine) throws IOException, StopSignalException {
         ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
 
-        BlockingQueue queue= new LinkedBlockingQueue(threadSize * 10);
+        BlockingQueue queue = new LinkedBlockingQueue(threadSize * 10);
         //여러 쓰레드가 작업큐를 공유한다.
         List<Future> list = new ArrayList<>();
         for (int i = 0; i < threadSize; i++) {
@@ -503,6 +518,7 @@ public class IndexService {
                     // 쓰레드 갯수만큼 종료시그널 전달.
                     queue.put("<END>");
                 }
+
             } catch (InterruptedException e) {
                 logger.error("", e);
                 //ignore
@@ -518,7 +534,17 @@ public class IndexService {
                 //ignore
             }
 
+            // 큐 안의 내용 제거
+            queue.clear();
+
+            // 쓰레드 종료
             executorService.shutdown();
+
+            // 만약, 쓰레드가 정상적으로 종료 되지 않는다면,
+            if(!executorService.isShutdown()){
+                // 강제 종료
+                executorService.shutdownNow();
+            }
         }
 
         long totalTime = System.currentTimeMillis() - start;
