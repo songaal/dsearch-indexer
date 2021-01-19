@@ -187,8 +187,6 @@ public class IndexService {
                 }
             }
 
-
-
             long totalTime = System.currentTimeMillis() - start;
             logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
         }
@@ -421,6 +419,7 @@ public class IndexService {
                     BulkRequest request = (BulkRequest) o;
                     BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
                     checkResponse(bulkResponse);
+
 //                logger.debug("bulk! {}", count);
                 }
             }catch (Throwable e) {
@@ -506,6 +505,7 @@ public class IndexService {
                     queue.put(request);
 //                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
 //                    logger.debug("bulk! {}", count);
+
                     request = new BulkRequest();
                 }
 
@@ -550,14 +550,17 @@ public class IndexService {
             }
 
             // 큐 안의 내용 제거
+            logger.info("queue clear");
             queue.clear();
 
             // 쓰레드 종료
+            logger.info("{} thread shutdown", index);
             executorService.shutdown();
 
             // 만약, 쓰레드가 정상적으로 종료 되지 않는다면,
             if(!executorService.isShutdown()){
-                // 강제 종료
+                // 쓰레드 강제 종료
+                logger.info("{} thread shutdown now!", index);
                 executorService.shutdownNow();
             }
         }
