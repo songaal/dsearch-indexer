@@ -59,11 +59,11 @@ public class ProcedureIngester extends FileIngester {
                     if(dumpFormat.equals("konan")){
                         startStr = "[%productCode%]";
                         //endStr = "[%promotionName%]";
-                        endStr= "[%orderDateYN%]";
+                        endStr= "[%modifyDate%]";
                     }else if(dumpFormat.equals("ndjson")){
                         startStr = "{\"productCode\":";
                         //endStr = "\"promotionName\":";
-                        endStr = "\"orderDateYN\":";
+                        endStr = "\"modifyDate\":";
                     }
 
 
