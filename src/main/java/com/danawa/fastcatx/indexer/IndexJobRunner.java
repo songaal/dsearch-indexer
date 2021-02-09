@@ -316,12 +316,14 @@ public class IndexJobRunner implements Runnable {
                     }
 
                     threadPool.shutdown();
-                }else{
-                    for(String groupSeq : groupSeqLists){
-                        String filepath = (String) payload.get("path");
-                        String dumpFileName = "linkExt_"+groupSeq;
-                        sb.append(filepath + "/" + dumpFileName + ",");
-                    }
+                }
+                else{
+                    sb.append(path);
+//                    for(String groupSeq : groupSeqLists){
+//                        String filepath = (String) payload.get("path");
+//                        String dumpFileName = "linkExt_"+groupSeq;
+//                        sb.append(filepath + "/" + dumpFileName + ",");
+//                    }
                 }
 
                 if(sb.length() > 0 && sb.charAt(sb.length()-1) == ','){
