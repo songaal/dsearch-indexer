@@ -36,16 +36,21 @@ public class IndexJobRunner implements Runnable {
         StringBuffer sb = new StringBuffer();
 
         try {
-
-            Files.walk(Paths.get(path))
-                    .filter(Files::isRegularFile)
-                    .forEach(item -> {
-                        if(sb.length() == 0){
-                            sb.append(item.toString());
-                        }else{
-                            sb.append("," + item.toString());
-                        }
-                    });
+            if(Files.isDirectory(Paths.get(path))){
+                logger.info("{} is directory !", path);
+                Files.walk(Paths.get(path))
+                        .filter(Files::isRegularFile)
+                        .forEach(item -> {
+                            if(sb.length() == 0){
+                                sb.append(item.toString());
+                            }else{
+                                sb.append("," + item.toString());
+                            }
+                        });
+            }else{
+                logger.info("{} is regularFile !", path);
+                sb.append(path);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
