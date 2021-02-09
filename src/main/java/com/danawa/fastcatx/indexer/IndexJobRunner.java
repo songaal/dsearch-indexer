@@ -113,8 +113,8 @@ public class IndexJobRunner implements Runnable {
                 String delimiter = (String) payload.get("delimiter");
                 ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText,delimiter);
             } else if(type.equals("konan")){
-                String paths = getDirectoryAllFiles(path);
-                ingester = new KonanIngester(paths, encoding, 1000, limitSize);
+//                String paths = getDirectoryAllFiles(path);
+                ingester = new KonanIngester(path, encoding, 1000, limitSize);
             }else if (type.equals("jdbc")) {
                 String dataSQL = (String) payload.get("dataSQL");
                 Integer fetchSize = (Integer) payload.get("fetchSize");
