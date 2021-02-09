@@ -113,7 +113,6 @@ public class IndexJobRunner implements Runnable {
                 String delimiter = (String) payload.get("delimiter");
                 ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText,delimiter);
             } else if(type.equals("konan")){
-//                String paths = getDirectoryAllFiles(path);
                 ingester = new KonanIngester(path, encoding, 1000, limitSize);
             }else if (type.equals("jdbc")) {
                 String dataSQL = (String) payload.get("dataSQL");
@@ -188,7 +187,7 @@ public class IndexJobRunner implements Runnable {
                         logger.info("rsyncSkip : {}" , rsyncSkip);
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
-                    path += "/"+dumpFileName;
+//                    path += "/"+dumpFileName;
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
