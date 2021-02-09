@@ -8,6 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +30,27 @@ public class IndexJobRunner implements Runnable {
         job.setStartTime(System.currentTimeMillis() / 1000);
         service = null;
         ingester = null;
+    }
+
+    public String getDirectoryAllFiles(String path) {
+        StringBuffer sb = new StringBuffer();
+
+        try {
+
+            Files.walk(Paths.get(path))
+                    .filter(Files::isRegularFile)
+                    .forEach(item -> {
+                        if(sb.length() == 0){
+                            sb.append(item.toString());
+                        }else{
+                            sb.append("," + item.toString());
+                        }
+                    });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return sb.toString();
     }
 
     @Override
@@ -83,7 +107,10 @@ public class IndexJobRunner implements Runnable {
                 String headerText = (String) payload.get("headerText");
                 String delimiter = (String) payload.get("delimiter");
                 ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText,delimiter);
-            } else if (type.equals("jdbc")) {
+            } else if(type.equals("konan")){
+                String paths = getDirectoryAllFiles(path);
+                ingester = new KonanIngester(paths, encoding, 1000, limitSize);
+            }else if (type.equals("jdbc")) {
                 String dataSQL = (String) payload.get("dataSQL");
                 Integer fetchSize = (Integer) payload.get("fetchSize");
                 Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
