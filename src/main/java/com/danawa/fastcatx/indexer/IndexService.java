@@ -281,7 +281,7 @@ public class IndexService {
                 if (bulkResponse.hasFailures()) {
                     // bulkResponse에 에러가 있다면
                     // retry 1회 시도
-                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
+//                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
                     doRetry = true;
                     BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
                     List<DocWriteRequest<?>> requests = bulkRequest.requests();
@@ -294,7 +294,7 @@ public class IndexService {
 
                             // write queue reject 이슈 코드 = ( 429 )
                             if (failure.getStatus() == RestStatus.fromCode(429)) {
-                                logger.error("write queue rejected!! >> {}", failure);
+//                                logger.error("write queue rejected!! >> {}", failure);
 
                                 // retry bulk request에 추가
                                 // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
