@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="debug" monitorInterval="30">
+    <Properties>
+        <Property name="LOG_FORMAT">%d{yyyy-MM-dd HH:mm:ss.SSS} [%p] %m%n</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT" follow="true">
+            <PatternLayout pattern="${LOG_FORMAT}"/>
+        </Console>
+        <RollingFile name="File"
+                     fileName="/data/indexerLog/indexer.log"
+                     filePattern="/data/indexerLog/indexer.%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_FORMAT}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+            </Policies>
+        </RollingFile>
+
+        <RollingFile name="File-Error"
+                     fileName="/data/indexerLog/indexer-error.log"
+                     filePattern="/data/indexerLog/indexer-error.%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_FORMAT}"/>
+            <LevelRangeFilter minLevel="ERROR" maxLevel="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+            </Policies>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="File-Error" />
+        </Root>
+
+        <Logger name="org.apache.http" level="ERROR" additivity="false" />
+        <Logger name="org.elasticsearch.client" level="ERROR" additivity="false" />
+        <Logger name="org.springframework" level="ERROR" additivity="false">
+            <AppenderRef ref="File-Error" />
+        </Logger>
+
+        <Logger name="com.danawa.fastcatx" level="INFO"  additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+            <AppenderRef ref="File-Error" />
+        </Logger>
+    </Loggers>
+</Configuration>

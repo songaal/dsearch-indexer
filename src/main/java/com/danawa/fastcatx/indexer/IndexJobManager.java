@@ -54,8 +54,6 @@ public class IndexJobManager {
         logger.info("job ID: {}", id.toString());
         if ("FULL_INDEX".equalsIgnoreCase(action)) {
             new Thread(new IndexJobRunner(job)).start();
-        } else if ("DYNAMIC_INDEX".equalsIgnoreCase(action)) {
-            new Thread(new DynamicIndexJobRunner(job)).start();
         }
         return job;
     }

@@ -2,12 +2,7 @@ server:
   port: 9350
 
 logging:
-  level:
-    root: INFO
-    org.springframework: ERROR
-    com.danawa.fastcatx: INFO
-  file:
-    name: output.log
+  config: classpath:log4j2-dev.xml
 
 elasticsearch:
   thread: 50
