@@ -12,6 +12,7 @@
                      fileName="/data/indexerLog/indexer.log"
                      filePattern="/data/indexerLog/indexer.%d{yyyy-MM-dd}.log">
             <PatternLayout pattern="${LOG_FORMAT}"/>
+            <LevelRangeFilter minLevel="INFO" maxLevel="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1"/>
             </Policies>
