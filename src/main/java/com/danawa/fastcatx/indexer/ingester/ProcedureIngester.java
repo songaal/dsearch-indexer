@@ -76,6 +76,9 @@ public class ProcedureIngester extends FileIngester {
                             record = gson.fromJson(line, entryType);
                         }
 
+                        // 비정상 상품 ROW 이후 정상 상품ROW가 읽혔을 때, sb 초기화
+                        if(sb.length() > 0) sb.setLength(0);
+
                     }else{
                         //정상적인 상품 ROW가 아니면 StringBuilder에 append
                         logger.debug("append line : {}", line);
@@ -114,7 +117,8 @@ public class ProcedureIngester extends FileIngester {
             }catch(Exception e) {
                 logger.error("parsing error : line = {}, \nconvert = {}, \nsb = {}", line, Utils.convertKonanToNdJson(line), sb.toString());
                 logger.error("{}", e);
-
+                // 에러 발생 시 sb 에 쌓인 데이터 제거
+                if(sb.length() > 0) sb.setLength(0);
 //                logger.error("parsing error : line= " + line, e);
             }
         }
