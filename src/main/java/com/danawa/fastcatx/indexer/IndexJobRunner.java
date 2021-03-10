@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -194,6 +195,10 @@ public class IndexJobRunner implements Runnable {
                             fileCount++;
                             logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
                         }
+
+                        if(fileCount == 10){
+                            throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: "+path + "/" + dumpFileName + ")");
+                        }
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
 //                    path += "/"+dumpFileName;
@@ -320,6 +325,10 @@ public class IndexJobRunner implements Runnable {
                                         fileCount++;
                                         logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
                                     }
+
+                                    if(fileCount == 10){
+                                        throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: "+path + "/" + dumpFileName + ")");
+                                    }
                                 }
                                 return filepath;
                             }
@@ -375,6 +384,10 @@ public class IndexJobRunner implements Runnable {
             job.setStatus(STATUS.SUCCESS.name());
         } catch (StopSignalException e) {
             job.setStatus(STATUS.STOP.name());
+        }catch (FileNotFoundException e){
+            job.setStatus(STATUS.STOP.name());
+            job.setError(e.getMessage());
+            logger.error("error .... ", e);
         } catch (Exception e) {
             job.setStatus(STATUS.ERROR.name());
             job.setError(e.getMessage());
