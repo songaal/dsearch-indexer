@@ -187,8 +187,11 @@ public class IndexJobRunner implements Runnable {
                         logger.info("rsyncSkip : {}" , rsyncSkip);
                     }else{
                         //파일이 있는지 1초마다 확인
+                        int fileCount = 0;
                         while(!Utils.checkFile(path, dumpFileName)){
+                            if(fileCount == 10) break;
                             Thread.sleep(1000);
+                            fileCount++;
                         }
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
@@ -308,8 +311,12 @@ public class IndexJobRunner implements Runnable {
                                 String filepath = path + "/" + dumpFileName;
 
                                 if(!rsyncSkip) {
+                                    //파일이 있는지 1초마다 확인
+                                    int fileCount = 0;
                                     while(!Utils.checkFile(path, dumpFileName)){
+                                        if(fileCount == 10) break; // 무한루프 회피
                                         Thread.sleep(1000);
+                                        fileCount++;
                                     }
                                 }
                                 return filepath;
