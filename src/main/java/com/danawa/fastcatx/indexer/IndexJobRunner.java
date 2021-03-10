@@ -194,8 +194,8 @@ public class IndexJobRunner implements Runnable {
                             count = 1;
                         }
 
-                        if(payload.get("groupSeq") != null || count == 0){
-                            throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + path + "/" + dumpFileName + ")");
+                        if(count == 0){
+                            throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + path + "/)");
                         }
                     } else {
                         //파일이 있는지 1초마다 확인
