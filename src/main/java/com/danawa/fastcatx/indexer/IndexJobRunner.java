@@ -192,6 +192,7 @@ public class IndexJobRunner implements Runnable {
                             if(fileCount == 10) break;
                             Thread.sleep(1000);
                             fileCount++;
+                            logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
                         }
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
@@ -317,6 +318,7 @@ public class IndexJobRunner implements Runnable {
                                         if(fileCount == 10) break; // 무한루프 회피
                                         Thread.sleep(1000);
                                         fileCount++;
+                                        logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
                                     }
                                 }
                                 return filepath;
