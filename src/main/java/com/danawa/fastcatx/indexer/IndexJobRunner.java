@@ -181,23 +181,33 @@ public class IndexJobRunner implements Runnable {
                     rsyncStarted = rsyncCopy.copyAsync();
                 }
                 logger.info("rsyncStarted : {}" , rsyncStarted );
-
+                int fileCount = 0;
                 if(rsyncStarted || rsyncSkip) {
 
                     if(rsyncSkip) {
                         logger.info("rsyncSkip : {}" , rsyncSkip);
-                    }else{
+
+                        long count = 0;
+                        if(Files.isDirectory(Paths.get(path))){
+                            count = Files.walk(Paths.get(path)).filter(Files::isRegularFile).count();
+                        }else if(Files.isRegularFile(Paths.get(path))){
+                            count = 1;
+                        }
+
+                        if(payload.get("groupSeq") != null || count == 0){
+                            throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + path + "/" + dumpFileName + ")");
+                        }
+                    } else {
                         //파일이 있는지 1초마다 확인
-                        int fileCount = 0;
-                        while(!Utils.checkFile(path, dumpFileName)){
-                            if(fileCount == 10) break;
+                        while (!Utils.checkFile(path, dumpFileName)) {
+                            if (fileCount == 10) break;
                             Thread.sleep(1000);
                             fileCount++;
                             logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
                         }
 
-                        if(fileCount == 10){
-                            throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: "+path + "/" + dumpFileName + ")");
+                        if (fileCount == 10) {
+                            throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + path + "/" + dumpFileName + ")");
                         }
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성

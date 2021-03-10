@@ -29,7 +29,6 @@ public class ProcedureIngester extends FileIngester {
         sb = new StringBuilder();
 
         this.dumpFormat = dumpFormat;
-
     }
 
 
