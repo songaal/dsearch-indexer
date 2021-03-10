@@ -189,6 +189,11 @@ public class IndexJobRunner implements Runnable {
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
 //                    path += "/"+dumpFileName;
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
+
+                    //파일이 있는지 1초마다 확인
+                    while(!Utils.checkFile(path, dumpFileName)){
+                        Thread.sleep(1000);
+                    }
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
             }
@@ -301,6 +306,11 @@ public class IndexJobRunner implements Runnable {
                                     }
                                 }
                                 String filepath = path + "/" + dumpFileName;
+
+                                while(!Utils.checkFile(path, dumpFileName)){
+                                    Thread.sleep(1000);
+                                }
+
                                 return filepath;
                             }
                         };

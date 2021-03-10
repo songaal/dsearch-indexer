@@ -7,9 +7,11 @@ import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -116,5 +118,10 @@ public class Utils {
 
         return ndjsonString;
 
+    }
+
+    public static boolean checkFile(String path, String filename){
+        File f = new File(path + "/" + filename);
+        return f.exists();
     }
 }
