@@ -252,6 +252,7 @@ public class IndexJobRunner implements Runnable {
                             @Override
                             public Object call() throws Exception {
                                 String path = (String) payload.get("path");
+                                logger.info("driverClassName: {}, url: {}, user: {}, password: {}, procedureName: {}, groupSeqNumber: {}, path: {}", driverClassName, url, user, password, procedureName, groupSeqNumber, path);
                                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeqNumber, path, true);
                                 Map<String, Object> result = new HashMap<>();
                                 result.put("groupSeq", groupSeq);
@@ -304,6 +305,7 @@ public class IndexJobRunner implements Runnable {
                                         .compress(true)
                                         .bwlimit(bwlimit)
                                         .inplace(true);
+
                                 File file = new File(path +"/linkExt_"+groupSeqNumber);
                                 if (file.exists()) {
                                     logger.info("기존 파일 삭제 : {}", file);
