@@ -2,7 +2,11 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.conn.ConnectionKeepAliveStrategy;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -13,10 +17,7 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.client.HttpAsyncResponseConsumerFactory;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.*;
 import org.elasticsearch.client.enrich.StatsRequest;
 import org.elasticsearch.client.enrich.StatsResponse;
 import org.elasticsearch.client.indices.CreateIndexRequest;
@@ -49,16 +50,38 @@ public class IndexService {
     private String host;
     private Integer port;
     private String scheme;
+    private RestClientBuilder restClientBuilder;
 
     private ConnectionKeepAliveStrategy getConnectionKeepAliveStrategy() {
         return (response, context) -> 10 * 60 * 1000;
     }
 
     public IndexService(String host, Integer port, String scheme) {
+       this(host, port, scheme, null, null);
+    }
+
+    public IndexService(String host, Integer port, String scheme, String esUsername, String esPassword) {
         this.host = host;
         this.port = port;
         this.scheme = scheme;
-        logger.info("host : {} , port : {}, scheme : {} ", host, port, scheme);
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        if (esUsername != null && !"".equals(esUsername) && esPassword != null && !"".equals(esPassword)) {
+            credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esUsername, esPassword));
+            this.restClientBuilder = RestClient.builder(new HttpHost[]{new HttpHost(host, port, scheme)}).setHttpClientConfigCallback((httpClientBuilder) -> {
+                return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider).setKeepAliveStrategy(this.getConnectionKeepAliveStrategy());
+            });
+        } else {
+            this.restClientBuilder = RestClient.builder(new HttpHost[]{new HttpHost(host, port, scheme)})
+                    .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
+                            .setSocketTimeout(SOCKET_TIMEOUT)).setHttpClientConfigCallback((httpClientBuilder) -> {
+                return httpClientBuilder.setKeepAliveStrategy(this.getConnectionKeepAliveStrategy());
+            });
+        }
+
+        this.restClientBuilder.setRequestConfigCallback((requestConfigBuilder) -> {
+            return requestConfigBuilder.setConnectTimeout(40000).setSocketTimeout(600000);
+        });
+        logger.info("host : {} , port : {}, scheme : {}, username: {}, password: {} ", new Object[]{host, port, scheme, esUsername, esPassword});
     }
 
     public int getCount() {
@@ -66,7 +89,7 @@ public class IndexService {
     }
 
     public boolean existsIndex(String index) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             GetIndexRequest request = new GetIndexRequest(index);
             return client.indices().exists(request, RequestOptions.DEFAULT);
 
@@ -77,23 +100,25 @@ public class IndexService {
     }
 
     public boolean deleteIndex(String index) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-                        .setSocketTimeout(SOCKET_TIMEOUT))
-                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
+        boolean flag = false;
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             DeleteIndexRequest request = new DeleteIndexRequest(index);
             AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-            return deleteIndexResponse.isAcknowledged();
+            flag = deleteIndexResponse.isAcknowledged();
+        }catch (Exception e){
+            logger.error("", e);
         }
+
+        return flag;
     }
 
     public boolean createIndex(String index, Map<String, ?> settings) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-                        .setSocketTimeout(SOCKET_TIMEOUT))
-                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
+//        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+//                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
+//                        .setSocketTimeout(SOCKET_TIMEOUT))
+//                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+//                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
             CreateIndexRequest request = new CreateIndexRequest(index);
             request.settings(settings);
             AcknowledgedResponse deleteIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -107,12 +132,13 @@ public class IndexService {
     }
 
     public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
-        try (
-                RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-                                .setSocketTimeout(SOCKET_TIMEOUT))
-                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-                                .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
+//        try (
+//                RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+//                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
+//                                .setSocketTimeout(SOCKET_TIMEOUT))
+//                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+//                                .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
 
 
             count = 0;
@@ -264,11 +290,12 @@ public class IndexService {
         public Worker(BlockingQueue queue, String index) {
             this.queue = queue;
             this.index = index;
-            this.client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-                    .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-                            .setSocketTimeout(SOCKET_TIMEOUT))
-                    .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-                            .setKeepAliveStrategy(getConnectionKeepAliveStrategy())));
+            this.client = new RestHighLevelClient(restClientBuilder);
+//            this.client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
+//                    .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
+//                            .setSocketTimeout(SOCKET_TIMEOUT))
+//                    .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
+//                            .setKeepAliveStrategy(getConnectionKeepAliveStrategy())));
         }
 
         private void retry(BulkRequest bulkRequest) {
@@ -285,7 +312,6 @@ public class IndexService {
                     doRetry = true;
                     BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
                     List<DocWriteRequest<?>> requests = bulkRequest.requests();
-                    logger.info("requests : {}", requests.size());
                     for (int i = 0; i < bulkItemResponses.length; i++) {
                         BulkItemResponse bulkItemResponse = bulkItemResponses[i];
 

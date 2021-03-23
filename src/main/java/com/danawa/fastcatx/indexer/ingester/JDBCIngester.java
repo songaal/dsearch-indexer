@@ -11,7 +11,9 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Date;
 
 public class JDBCIngester implements Ingester {
 
@@ -27,6 +29,7 @@ public class JDBCIngester implements Ingester {
 
     private int columnCount;
     private String[] columnName;
+    private String[] columnType;
     private Map<String, Object>[] dataSet;
     private List<File> tmpFile;
     private  ArrayList<String> sqlList;
@@ -110,10 +113,12 @@ public class JDBCIngester implements Ingester {
             ResultSetMetaData rsMetadata = r.getMetaData();
             columnCount = rsMetadata.getColumnCount();
             columnName = new String[columnCount];
+            columnType = new String[columnCount];
 
             for (int i = 0; i < columnCount; i++) {
                 columnName[i] = rsMetadata.getColumnLabel(i + 1);
                 String typeName = rsMetadata.getColumnTypeName(i + 1);
+                columnType[i] = typeName;
                 logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
             }
 
@@ -242,14 +247,19 @@ public class JDBCIngester implements Ingester {
                     int columnIdx = i + 1;
                     int type = rsMeta.getColumnType(columnIdx);
 
+                    if(columnType[i].equals("TIME")){
+                        logger.info("columnType = TIME");
+                    }
                     String str = "";
 
                     String lobType = null;
                     if (type == Types.BLOB || type == Types.BINARY || type == Types.LONGVARBINARY || type == Types.VARBINARY
                             || type == Types.JAVA_OBJECT) {
                         lobType = LOB_BINARY;
+                        logger.info("lob_binary" );
                     } else if (type == Types.CLOB || type == Types.NCLOB || type == Types.SQLXML || type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR) {
                         lobType = LOB_STRING;
+                        logger.info("lob_string" );
                     }
 
                     if(lobType == null) {
@@ -261,6 +271,8 @@ public class JDBCIngester implements Ingester {
                             String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
                             byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
                             String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
+
+                            logger.info("lobType=null, columnType=Time : {} ", decodedFromUtf8);
                             keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
 //                            keyValueMap.put(columnName[i], str);
                         } else {
@@ -307,7 +319,12 @@ public class JDBCIngester implements Ingester {
                                 String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
 
 //                                keyValueMap.put(columnName[i], sb.toString());
-                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
+                                if(columnType[i].equals("TIME")){
+                                    logger.info("columnType=Time : {} ", decodedFromUtf8);
+                                    keyValueMap.put(columnName[i], decodedFromUtf8);
+                                }else{
+                                    keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
+                                }
                             }
                         }
 

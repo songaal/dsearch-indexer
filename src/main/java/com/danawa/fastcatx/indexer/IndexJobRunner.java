@@ -70,6 +70,13 @@ public class IndexJobRunner implements Runnable {
             String host = (String) payload.get("host");
             // ES 포트
             Integer port = (Integer) payload.get("port");
+            String esUsername = null; // ES 유저
+            String esPassword = null; // ES 패스워드
+            if (payload.get("esUsername") != null && payload.get("esPassword") != null) {
+                esUsername = (String)payload.get("esUsername");
+                esPassword = (String)payload.get("esPassword");
+            }
+
             // http, https
             String scheme = (String) payload.get("scheme");
             // 색인이름.
@@ -376,8 +383,9 @@ public class IndexJobRunner implements Runnable {
 
             Ingester finalIngester = ingester;
             Filter filter = (Filter) Utils.newInstance(filterClassName);
-            service = new IndexService(host, port, scheme);
 
+//            service = new IndexService(host, port, scheme);
+            service = new IndexService(host, port, scheme, esUsername, esPassword);
             // 인덱스를 초기화하고 0건부터 색인이라면.
             if (reset) {
                 if (service.existsIndex(index)) {

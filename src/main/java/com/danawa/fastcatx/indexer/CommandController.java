@@ -102,6 +102,12 @@ public class CommandController {
         Integer port = (Integer) payload.get("port");
         // http, https
         String scheme = (String) payload.get("scheme");
+
+        // ES 유저
+        String esUsername = (String) payload.get("esUsername");
+        // ES 패스워드
+        String esPassword = (String) payload.get("esPassword");
+
         // 색인이름.
         String index = (String) payload.get("index");
         // 소스타입: ndjson, csv, jdbc 등..
@@ -234,7 +240,7 @@ public class CommandController {
             try {
 
                 //프로시저 ingester의 경우...
-                service = new IndexService(host, port, scheme);
+                service = new IndexService(host, port, scheme,esUsername,esPassword);
                 // 인덱스를 초기화하고 0건부터 색인이라면.
                 if (reset) {
                     if (service.existsIndex(index)) {
