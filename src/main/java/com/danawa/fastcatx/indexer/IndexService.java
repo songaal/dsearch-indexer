@@ -149,7 +149,7 @@ public class IndexService {
             long time = System.nanoTime();
             try {
 
-                logger.info("index 시작");
+                logger.info("index start!");
 
                 while (ingester.hasNext()) {
                     if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
@@ -159,9 +159,11 @@ public class IndexService {
 
 
                     Map<String, Object> record = ingester.next();
+                    logger.info("{}", record);
                     if (filter != null && record != null && record.size() > 0) {
                         record = filter.filter(record);
                     }
+
                     //logger.info("{}", record);
                     if (record != null && record.size() > 0) {
                         count++;
