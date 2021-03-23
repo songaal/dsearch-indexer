@@ -247,19 +247,14 @@ public class JDBCIngester implements Ingester {
                     int columnIdx = i + 1;
                     int type = rsMeta.getColumnType(columnIdx);
 
-                    if(columnType[i].equals("TIME")){
-                        logger.info("columnType = TIME");
-                    }
                     String str = "";
 
                     String lobType = null;
                     if (type == Types.BLOB || type == Types.BINARY || type == Types.LONGVARBINARY || type == Types.VARBINARY
                             || type == Types.JAVA_OBJECT) {
                         lobType = LOB_BINARY;
-                        logger.info("lob_binary" );
                     } else if (type == Types.CLOB || type == Types.NCLOB || type == Types.SQLXML || type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR) {
                         lobType = LOB_STRING;
-                        logger.info("lob_string" );
                     }
 
                     if(lobType == null) {
@@ -272,7 +267,6 @@ public class JDBCIngester implements Ingester {
                             byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
                             String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
 
-                            logger.info("lobType=null, columnType=Time : {} ", decodedFromUtf8);
                             keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
 //                            keyValueMap.put(columnName[i], str);
                         } else {
@@ -319,12 +313,7 @@ public class JDBCIngester implements Ingester {
                                 String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
 
 //                                keyValueMap.put(columnName[i], sb.toString());
-                                if(columnType[i].equals("TIME")){
-                                    logger.info("columnType=Time : {} ", decodedFromUtf8);
-                                    keyValueMap.put(columnName[i], decodedFromUtf8);
-                                }else{
                                     keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
-                                }
                             }
                         }
 

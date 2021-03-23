@@ -159,7 +159,6 @@ public class IndexService {
 
 
                     Map<String, Object> record = ingester.next();
-                    logger.info("{}", record);
                     if (filter != null && record != null && record.size() > 0) {
                         record = filter.filter(record);
                     }
