@@ -289,10 +289,16 @@ public class IndexJobRunner implements Runnable {
                     List threadsResults2 = new ArrayList<Future<Object>>();
 
                     // 폴더 생성
+                    logger.info("rsyncPath={}", rsyncPath);
                     File file = new File(rsyncPath);
 
                     if(!file.exists()){
-                        file.mkdir();
+                        boolean result = file.mkdir();
+                        if(result){
+                            logger.info("{} mkdir!!", rsyncPath);
+                        }else{
+                            logger.info("{} mkdir failed..", rsyncPath);
+                        }
                     }
 
                     for(String groupSeq : groupSeqLists){
