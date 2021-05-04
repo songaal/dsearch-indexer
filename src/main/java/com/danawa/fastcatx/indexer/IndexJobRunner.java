@@ -291,7 +291,6 @@ public class IndexJobRunner implements Runnable {
                     // 폴더 생성
                     logger.info("rsyncPath={}", rsyncPath);
                     File file = new File(rsyncPath);
-
                     if(!file.exists()){
                         boolean result = file.mkdir();
                         if(result){
@@ -308,9 +307,16 @@ public class IndexJobRunner implements Runnable {
                         Callable callable = new Callable() {
                             @Override
                             public Object call() throws Exception {
-                                //덤프파일 이름
                                 String path = (String) payload.get("path");
-                                String dumpFileName = "linkExt_"+groupSeq;
+                                String dumpFileName = "linkExt_" + groupSeq;
+
+                                //덤프파일 이름
+                                File file = new File(path + "/" + dumpFileName);
+                                if (file.exists()) {
+                                    logger.info("기존 파일 삭제 : {}", file);
+                                    file.delete();
+                                }
+
                                 boolean execProdure = false;
                                 boolean rsyncStarted = false;
                                 //SKIP 여부에 따라 프로시저 호출
@@ -326,12 +332,6 @@ public class IndexJobRunner implements Runnable {
                                         .compress(true)
                                         .bwlimit(bwlimit)
                                         .inplace(true);
-
-                                File file = new File(path +"/linkExt_"+groupSeqNumber);
-                                if (file.exists()) {
-                                    logger.info("기존 파일 삭제 : {}", file);
-                                    file.delete();
-                                }
 
                                 //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                                 if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
