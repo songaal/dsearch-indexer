@@ -289,14 +289,14 @@ public class IndexJobRunner implements Runnable {
                     List threadsResults2 = new ArrayList<Future<Object>>();
 
                     // 폴더 생성
-                    logger.info("rsyncPath={}", rsyncPath);
-                    File file = new File(rsyncPath);
+                    logger.info("path={}", path);
+                    File file = new File(path);
                     if(!file.exists()){
                         boolean result = file.mkdir();
                         if(result){
-                            logger.info("{} mkdir!!", rsyncPath);
+                            logger.info("{} mkdir!!", path);
                         }else{
-                            logger.info("{} mkdir failed..", rsyncPath);
+                            logger.info("{} mkdir failed..", path);
                         }
                     }
 
