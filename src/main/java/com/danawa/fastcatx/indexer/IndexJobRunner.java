@@ -312,9 +312,13 @@ public class IndexJobRunner implements Runnable {
 
                                 //덤프파일 이름
                                 File file = new File(path + "/" + dumpFileName);
+                                logger.info("fila path: {}", path + "/" + dumpFileName);
+
                                 if (file.exists()) {
                                     logger.info("기존 파일 삭제 : {}", file);
                                     file.delete();
+                                }else{
+                                    logger.info("기존 파일을 찾을수 없음: {}", file);
                                 }
 
                                 boolean execProdure = false;
