@@ -287,6 +287,14 @@ public class IndexJobRunner implements Runnable {
                 if(rsyncSkip == false){
                     ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
                     List threadsResults2 = new ArrayList<Future<Object>>();
+
+                    // 폴더 생성
+                    File file = new File(rsyncPath);
+
+                    if(!file.exists()){
+                        file.mkdir();
+                    }
+
                     for(String groupSeq : groupSeqLists){
                         logger.info("groupSeq : {}", groupSeq);
                         Integer groupSeqNumber = Integer.parseInt(groupSeq);
