@@ -241,3 +241,72 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
     "threadSize":4
 }
 ```
+
+
+### 다중 파일 스트리밍 색인
+DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 파일을 즉시 읽어 색인과 동일하며, 그룹시퀀스 번호를 여러개 사용할 수 있다.
+
+- `type : multipleDumpFile` 로 지정하여 호출
+
+파라미터
+- `scheme: string`: http, https
+- `host: string` : 검색엔진 호스트 주소
+- `port: int` : 검색엔진 포트
+- `index: string` : 인덱스명
+- `bulkSize: int` : ES bulk API 사이즈
+- `driverClassName: string` : 드라이버이름(패키지 포함). 예) com.mysql.jdbc.Driver
+- `url: string` : JDBC URL
+- `user: string` : 유저 아이디
+- `password: string` : 유저 패스워드
+- `procedureName: string` : 프로시저명 (default : PRSEARCHPRODUCT)
+- `dumpFormat : string` : 덤프파일 타입 (konan , ndjson)
+- `groupSeq: int` : groupSeq 번호
+- `encoding: string` : 파일인코딩
+- `rsnycIp: string` : 전송받을 파일이 있는 서버 IP
+- `path: string` : 전송 받을 파일경로
+- (옵션) `bwlimit : string` : rsync 대여폭 (defualt : 0, 1024 = 1mb/s)
+- (옵션) `procedureSkip : boolean` : 프로시저 스킵 (default : false)
+- (옵션) `rsyncSkip : boolean` : rsync 스킵 (default : false)
+- (옵션) `filterClass: string` : 소스를 변환할 필터. 패키지명 포함. 생성자는 기본 생성자를 호출하게 됨. 예)com.danawa.fastcatx.indexer.filter.MockFilter
+- (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
+- (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
+
+
+```json
+{
+    "type": "procedure",
+    "scheme": "http",
+    "host": "es1.danawa.com",
+    "port": 9200,
+    "index": "search-prod-v0",
+    "bulkSize": 1000,
+    "filterClass":"com.danawa.fastcatx.indexer.filter.DanawaProductFilter",
+    "driverClassName": "Altibase.jdbc.driver.AltibaseDriver",
+    "url": "jdbc:Altibase://192.168.0.87",
+    "user": "user1",
+    "password": "user-password",
+    "procedureName" :"procedure-a",
+    "dumpFormat":"konan",
+    "groupSeq": "0,2-10",
+    "bwlimit":"10240",
+    "path":"/home/danawa/apps/indexer/file/V0",
+    "rsyncIp":"192.168.0.87",
+    "encoding":"CP949",
+    "procedureSkip":true,
+    "rsyncSkip":false,
+    "threadSize":4
+}
+```
+
+그룹시퀀스 예시
+```text
+ex 1) 0, 5, 10번 파일만 색인
+"groupSeq": "0,5,10"
+
+ex 2) 0, 5번 부터 10번까지 파일만 색인
+"groupSeq": "0,5-10"
+
+ex 2) 1부터 10번까지 파일만 색인
+"groupSeq": "1-10"
+
+```
