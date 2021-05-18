@@ -12,10 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class IndexJobRunner implements Runnable {
@@ -149,7 +146,11 @@ public class IndexJobRunner implements Runnable {
                 } else {
                     throw new IllegalArgumentException("jdbc argument");
                 }
-            } else if (type.equals("procedure")) {
+            } else if (type.equals("multipleDumpFile")) {
+                // 다중 색인
+                multipleDumpFile(host, port, esUsername, esPassword, scheme, index, reset, filterClassName, bulkSize, threadSize, pipeLine, indexSettings, payload);
+                return;
+            }else if (type.equals("procedure")) {
 
                 //프로시저 호출에 필요한 정보
                 String driverClassName = (String) payload.get("driverClassName");
@@ -433,5 +434,193 @@ public class IndexJobRunner implements Runnable {
         } finally {
             job.setEndTime(System.currentTimeMillis() / 1000);
         }
+    }
+
+    protected void multipleDumpFile(String host, Integer port, String esUsername, String esPassword, String scheme, String index,
+                                    Boolean reset, String filterClassName,
+                                    Integer bulkSize, Integer threadSize, String pipeLine, Map<String, Object> indexSettings,
+                                    Map<String, Object> payload) {
+        try {
+            /**
+             * file기반 인제스터 설정
+             */
+            //파일 경로.
+            String path = (String) payload.get("path");
+            // 파일 인코딩. utf-8, cp949 등..
+            String encoding = (String) payload.get("encoding");
+            // 테스트용도로 데이터 갯수를 제한하고 싶을때 수치.
+            Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
+
+            //프로시저 호출에 필요한 정보
+            String driverClassName = (String) payload.get("driverClassName");
+            String url = (String) payload.get("url");
+            String user = (String) payload.get("user");
+            String password = (String) payload.get("password");
+            String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
+            String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
+            String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
+            String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
+            String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
+            boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
+            boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+
+            Set<Integer> groupSeqList = parseGroupSeq(String.valueOf(payload.get("groupSeq")));
+            if (groupSeqList.size() == 0) {
+                logger.warn("Not Found GroupSeq.. example: `1,2,3,4-10`");
+                return;
+            }
+            CountDownLatch latch = new CountDownLatch(groupSeqList.size());
+            Iterator<Integer> iterator = groupSeqList.iterator();
+            List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
+
+            service = new IndexService(host, port, scheme, esUsername, esPassword);
+            // 인덱스를 초기화하고 0건부터 색인이라면.
+            if (reset) {
+                if (service.existsIndex(index)) {
+                    if(service.deleteIndex(index)) {
+                        service.createIndex(index, indexSettings);
+                    }
+                }
+            }
+
+            while (iterator.hasNext()) {
+                Integer groupSeq = iterator.next();
+                new Thread(() -> {
+                    try {
+                        String dumpFileDirPath = String.format("%sV%d", path, groupSeq);
+                        File dumpFileDir = new File(dumpFileDirPath);
+                        Ingester finalIngester = null;
+
+                        if (!dumpFileDir.exists()) {
+                            dumpFileDir.mkdirs();
+                        }
+
+                        logger.info("dumpFileDirPath: {}", dumpFileDirPath);
+
+                        //프로시져
+                        CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeq, dumpFileDirPath);
+                        //RSNYC
+                        RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp, rsyncPath, dumpFileDirPath, bwlimit, groupSeq);
+
+                        boolean execProdure = false;
+                        boolean rsyncStarted = false;
+                        //덤프파일 이름
+                        String dumpFileName = "prodExt_" + groupSeq;
+
+                        //SKIP 여부에 따라 프로시저 호출
+                        if(procedureSkip == false) {
+                            execProdure = procedure.callSearchProcedure();
+                        }
+                        logger.info("execProdure : {}",execProdure);
+
+                        //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                        if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                            rsyncCopy.start();
+                            Thread.sleep(3000);
+                            rsyncStarted = rsyncCopy.copyAsync();
+                        }
+                        logger.info("rsyncStarted : {}" , rsyncStarted );
+                        int fileCount = 0;
+                        if(rsyncStarted || rsyncSkip) {
+
+                            if(rsyncSkip) {
+                                logger.info("rsyncSkip : {}" , rsyncSkip);
+
+                                long count = 0;
+                                if(Files.isDirectory(Paths.get(dumpFileDirPath))){
+                                    count = Files.walk(Paths.get(dumpFileDirPath)).filter(Files::isRegularFile).count();
+                                }else if(Files.isRegularFile(Paths.get(dumpFileDirPath))){
+                                    count = 1;
+                                }
+
+                                if(count == 0){
+                                    throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/)");
+                                }
+                            } else {
+                                //파일이 있는지 1초마다 확인
+                                while (!Utils.checkFile(dumpFileDirPath, dumpFileName)) {
+                                    if (fileCount == 10) break;
+                                    Thread.sleep(1000);
+                                    fileCount++;
+                                    logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
+                                }
+
+                                if (fileCount == 10) {
+                                    throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/" + dumpFileName + ")");
+                                }
+                            }
+                            //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+//                    path += "/"+dumpFileName;
+                            logger.info("file Path - Name  : {} - {}", dumpFileDirPath, dumpFileName);
+                            finalIngester = new ProcedureIngester(dumpFileDirPath, dumpFormat, encoding, 1000, limitSize);
+
+                        }
+
+                        Filter filter = (Filter) Utils.newInstance(filterClassName);
+
+                        IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword);
+
+                        if (threadSize > 1) {
+                            indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+                        } else {
+                            indexService.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+                        }
+
+                    } catch (InterruptedException | FileNotFoundException e) {
+                        logger.error("", e);
+                        Thread.currentThread().interrupt();
+                        exceptions.add(e);
+                    } catch (StopSignalException e) {
+                        logger.error("", e);
+                        exceptions.add(e);
+                    } catch (Exception e) {
+                        logger.error("", e);
+                        exceptions.add(e);
+                    } finally {
+                        latch.countDown();
+                    }
+                }).start();
+            }
+
+            // 최대 3일동안 기다려본다.
+            latch.await(3, TimeUnit.DAYS);
+
+            if (exceptions.size() == 0) {
+                job.setStatus(STATUS.SUCCESS.name());
+            } else {
+                job.setStatus(STATUS.STOP.name());
+                job.setError(exceptions.toString());
+            }
+        } catch (Exception e) {
+            logger.error("", e);
+            job.setStatus(STATUS.STOP.name());
+            job.setError(e.getMessage());
+        }
+    }
+
+
+    public Set<Integer> parseGroupSeq(String groupSeq) {
+        Set<Integer> list = new LinkedHashSet<>();
+
+        if (groupSeq == null || "".equals(groupSeq)) {
+            return list;
+        }
+        String[] arr1 = groupSeq.split(",");
+        for (int i = 0; i < arr1.length; i++) {
+            String[] r = arr1[i].split("-");
+            if (r.length > 1) {
+                list.addAll(getRange(Integer.parseInt(r[0]), Integer.parseInt(r[1])));
+            } else {
+                list.add(Integer.parseInt(r[0]));
+            }
+        }
+        return list;
+    }
+    public Set<Integer> getRange(int from, int to) {
+        Set<Integer> range = new LinkedHashSet<>();
+        for (int i = from; i <= to; i++) {
+            range.add(i);
+        }
+        return range;
     }
 }
