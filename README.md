@@ -274,7 +274,7 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
 
 ```json
 {
-    "type": "procedure",
+    "type": "multipleDumpFile",
     "scheme": "http",
     "host": "es1.danawa.com",
     "port": 9200,
