@@ -51,6 +51,14 @@ public class AsyncController {
         return new ResponseEntity<>(indexJobManager.remove(id), HttpStatus.OK);
     }
 
+    @PutMapping(value = "/{id}/sub_start")
+    public ResponseEntity<?> subStart(@PathVariable UUID id,
+                                      @RequestParam String groupSeq) {
+        Job job = indexJobManager.status(id);
+        job.getGroupSeq().add(Integer.parseInt(groupSeq));
+        return new ResponseEntity<>(job, HttpStatus.OK);
+    }
+
     @GetMapping
     public ResponseEntity<?> ids() {
         return new ResponseEntity<>(indexJobManager.getIds(), HttpStatus.OK);

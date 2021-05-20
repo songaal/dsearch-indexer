@@ -21,6 +21,7 @@ public class IndexJobRunner implements Runnable {
     private Job job;
     private IndexService service;
     private Ingester ingester;
+    private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -469,122 +470,156 @@ public class IndexJobRunner implements Runnable {
                 logger.warn("Not Found GroupSeq.. example: `1,2,3,4-10`");
                 return;
             }
+
             CountDownLatch latch = new CountDownLatch(groupSeqList.size());
-            Iterator<Integer> iterator = groupSeqList.iterator();
             List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
 
-            service = new IndexService(host, port, scheme, esUsername, esPassword);
-            // 인덱스를 초기화하고 0건부터 색인이라면.
-            if (reset) {
-                if (service.existsIndex(index)) {
-                    if(service.deleteIndex(index)) {
-                        service.createIndex(index, indexSettings);
-                    }
-                }
-            }
+            long n = 0;
 
-            while (iterator.hasNext()) {
-                Integer groupSeq = iterator.next();
-                new Thread(() -> {
-                    try {
-                        String dumpFileDirPath = String.format("%sV%d", path, groupSeq);
-                        File dumpFileDir = new File(dumpFileDirPath);
-                        Ingester finalIngester = null;
+            while (groupSeqList.size() != job.getGroupSeq().size()) {
+                Iterator<Integer> iterator = job.getGroupSeq().iterator();
 
-                        if (!dumpFileDir.exists()) {
-                            dumpFileDir.mkdirs();
-                        }
-
-                        logger.info("dumpFileDirPath: {}", dumpFileDirPath);
-
-                        //프로시져
-                        CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeq, dumpFileDirPath);
-                        //RSNYC
-                        RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp, rsyncPath, dumpFileDirPath, bwlimit, groupSeq);
-
-                        boolean execProdure = false;
-                        boolean rsyncStarted = false;
-                        //덤프파일 이름
-                        String dumpFileName = "prodExt_" + groupSeq;
-
-                        //SKIP 여부에 따라 프로시저 호출
-                        if(procedureSkip == false) {
-                            execProdure = procedure.callSearchProcedure();
-                        }
-                        logger.info("execProdure : {}",execProdure);
-
-                        //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
-                        if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
-                            rsyncCopy.start();
-                            Thread.sleep(3000);
-                            rsyncStarted = rsyncCopy.copyAsync();
-                        }
-                        logger.info("rsyncStarted : {}" , rsyncStarted );
-                        int fileCount = 0;
-                        if(rsyncStarted || rsyncSkip) {
-
-                            if(rsyncSkip) {
-                                logger.info("rsyncSkip : {}" , rsyncSkip);
-
-                                long count = 0;
-                                if(Files.isDirectory(Paths.get(dumpFileDirPath))){
-                                    count = Files.walk(Paths.get(dumpFileDirPath)).filter(Files::isRegularFile).count();
-                                }else if(Files.isRegularFile(Paths.get(dumpFileDirPath))){
-                                    count = 1;
-                                }
-
-                                if(count == 0){
-                                    throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/)");
-                                }
-                            } else {
-                                //파일이 있는지 1초마다 확인
-                                while (!Utils.checkFile(dumpFileDirPath, dumpFileName)) {
-                                    if (fileCount == 10) break;
-                                    Thread.sleep(1000);
-                                    fileCount++;
-                                    logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
-                                }
-
-                                if (fileCount == 10) {
-                                    throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/" + dumpFileName + ")");
+                if("STOP".equalsIgnoreCase(job.getStatus())) {
+//                    1. 기존 인덱싱하던 쓰래드를 기다린다.
+//                    2. 남은 그룹 시퀀스가 있으면 실행완료추가한다.
+                    subStarted.addAll(groupSeqList);
+                    logger.info("Stop Signal. Started GroupSeq: {}", job.getGroupSeq());
+                    break;
+                } else {
+                    while (iterator.hasNext()) {
+                        Integer groupSeq = iterator.next();
+                        if (!subStarted.contains(groupSeq)) {
+                            if (subStarted.size() == 0) {
+//                            처음일때만 리셋가능.
+                                service = new IndexService(host, port, scheme, esUsername, esPassword);
+                                // 인덱스를 초기화하고 0건부터 색인이라면.
+                                if (reset) {
+                                    if (service.existsIndex(index)) {
+                                        if(service.deleteIndex(index)) {
+                                            service.createIndex(index, indexSettings);
+                                        }
+                                    }
                                 }
                             }
-                            //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+                            subStarted.add(groupSeq);
+                            logger.info("Started GroupSeq Indexing : {}", groupSeq);
+//                        groupSeq 색인진행.
+                            new Thread(() -> {
+                                try {
+                                    String dumpFileDirPath = String.format("%sV%d", path, groupSeq);
+                                    File dumpFileDir = new File(dumpFileDirPath);
+                                    Ingester finalIngester = null;
+
+                                    if (!dumpFileDir.exists()) {
+                                        dumpFileDir.mkdirs();
+                                    }
+
+                                    logger.info("dumpFileDirPath: {}", dumpFileDirPath);
+
+                                    //프로시져
+                                    CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeq, dumpFileDirPath);
+                                    //RSNYC
+                                    RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp, rsyncPath, dumpFileDirPath, bwlimit, groupSeq);
+
+                                    boolean execProdure = false;
+                                    boolean rsyncStarted = false;
+                                    //덤프파일 이름
+                                    String dumpFileName = "prodExt_" + groupSeq;
+
+                                    //SKIP 여부에 따라 프로시저 호출
+                                    if(procedureSkip == false) {
+                                        execProdure = procedure.callSearchProcedure();
+                                    }
+                                    logger.info("execProdure : {}",execProdure);
+
+                                    //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                                    if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                                        rsyncCopy.start();
+                                        Thread.sleep(3000);
+                                        rsyncStarted = rsyncCopy.copyAsync();
+                                    }
+                                    logger.info("rsyncStarted : {}" , rsyncStarted );
+                                    int fileCount = 0;
+                                    if(rsyncStarted || rsyncSkip) {
+
+                                        if(rsyncSkip) {
+                                            logger.info("rsyncSkip : {}" , rsyncSkip);
+
+                                            long count = 0;
+                                            if(Files.isDirectory(Paths.get(dumpFileDirPath))){
+                                                count = Files.walk(Paths.get(dumpFileDirPath)).filter(Files::isRegularFile).count();
+                                            }else if(Files.isRegularFile(Paths.get(dumpFileDirPath))){
+                                                count = 1;
+                                            }
+
+                                            if(count == 0){
+                                                throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/)");
+                                            }
+                                        } else {
+                                            //파일이 있는지 1초마다 확인
+                                            while (!Utils.checkFile(dumpFileDirPath, dumpFileName)) {
+                                                if (fileCount == 10) break;
+                                                Thread.sleep(1000);
+                                                fileCount++;
+                                                logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
+                                            }
+
+                                            if (fileCount == 10) {
+                                                throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/" + dumpFileName + ")");
+                                            }
+                                        }
+                                        //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
 //                    path += "/"+dumpFileName;
-                            logger.info("file Path - Name  : {} - {}", dumpFileDirPath, dumpFileName);
-                            finalIngester = new ProcedureIngester(dumpFileDirPath, dumpFormat, encoding, 1000, limitSize);
+                                        logger.info("file Path - Name  : {} - {}", dumpFileDirPath, dumpFileName);
+                                        finalIngester = new ProcedureIngester(dumpFileDirPath, dumpFormat, encoding, 1000, limitSize);
+
+                                    }
+
+                                    Filter filter = (Filter) Utils.newInstance(filterClassName);
+
+                                    IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword);
+
+                                    if (threadSize > 1) {
+                                        indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+                                    } else {
+                                        indexService.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+                                    }
+
+                                } catch (InterruptedException | FileNotFoundException e) {
+                                    logger.error("", e);
+                                    Thread.currentThread().interrupt();
+                                    exceptions.add(e);
+                                } catch (StopSignalException e) {
+                                    logger.info("Stop Signal GroupSeq Wait: {}", groupSeq);
+                                    logger.error("", e);
+                                    exceptions.add(e);
+                                } catch (Exception e) {
+                                    logger.error("", e);
+                                    exceptions.add(e);
+                                } finally {
+                                    latch.countDown();
+                                }
+                            }).start();
 
                         }
-
-                        Filter filter = (Filter) Utils.newInstance(filterClassName);
-
-                        IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword);
-
-                        if (threadSize > 1) {
-                            indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
-                        } else {
-                            indexService.index(finalIngester, index, bulkSize, filter, job, pipeLine);
-                        }
-
-                    } catch (InterruptedException | FileNotFoundException e) {
-                        logger.error("", e);
-                        Thread.currentThread().interrupt();
-                        exceptions.add(e);
-                    } catch (StopSignalException e) {
-                        logger.error("", e);
-                        exceptions.add(e);
-                    } catch (Exception e) {
-                        logger.error("", e);
-                        exceptions.add(e);
-                    } finally {
-                        latch.countDown();
                     }
-                }).start();
+                }
+
+                try {
+                    // 1초 대기
+                    Thread.sleep(1000);
+                    n++;
+                    if (n % 30 == 0) {
+                        logger.info("Wait Indexing.. jobId: {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
+                        n = 0;
+                    }
+                } catch (InterruptedException ignore){}
             }
+
 
             // 최대 3일동안 기다려본다.
             latch.await(3, TimeUnit.DAYS);
-
+            logger.info("finished. jobId: {}", job.getId());
             if (exceptions.size() == 0) {
                 job.setStatus(STATUS.SUCCESS.name());
             } else {

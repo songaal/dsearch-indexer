@@ -3,8 +3,8 @@ package com.danawa.fastcatx.indexer.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Job implements Serializable {
     private UUID id;
@@ -14,6 +14,8 @@ public class Job implements Serializable {
     private long startTime;
     private long endTime;
     private String action;
+
+    private Set<Integer> groupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
 
     @JsonIgnore
     private Boolean stopSignal;
@@ -80,5 +82,13 @@ public class Job implements Serializable {
 
     public void setAction(String action) {
         this.action = action;
+    }
+
+    public Set<Integer> getGroupSeq() {
+        return groupSeq;
+    }
+
+    public void setGroupSeq(Set<Integer> groupSeq) {
+        this.groupSeq = groupSeq;
     }
 }

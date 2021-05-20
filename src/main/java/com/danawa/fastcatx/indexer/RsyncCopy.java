@@ -63,10 +63,19 @@ public class RsyncCopy extends Thread {
             logger.info("기존 파일 삭제 : {}", file);
             file.delete();
         }
+
+        String sourceFile = rsyncIp+"::" + rsyncPath + "/" + rsyncFileName;
+        if (System.getProperty("os.name") != null && System.getProperty("os.name").toLowerCase().contains("win")) {
+            sourceFile = rsyncPath + "/" + rsyncFileName;
+            logger.info("OS: Windows, sourcePath: {}, targetPath: {}", sourceFile, path);
+        } else {
+            logger.info("OS: Linux, sourcePath: {}, targetPath: {}", sourceFile, path);
+        }
+
         logger.info("Rsync Command : {} ", "rsync -av --inplace --bwlimit="+bwlimit +" "+rsyncIp+"::" + rsyncPath+"/"+rsyncFileName + " " +path);
         RSync rsync = new RSync()
                 //.source("C:\\Users\\admin\\Desktop\\indexFile\\sample\\prodExt_5")
-                .source(rsyncIp+"::" + rsyncPath+"/"+rsyncFileName)
+                .source(sourceFile)
                 .destination(path)
                 .recursive(true)
                 //.progress(true)
