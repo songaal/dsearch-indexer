@@ -260,7 +260,7 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
 - `password: string` : 유저 패스워드
 - `procedureName: string` : 프로시저명 (default : PRSEARCHPRODUCT)
 - `dumpFormat : string` : 덤프파일 타입 (konan , ndjson)
-- `groupSeq: int` : groupSeq 번호
+- `groupSeq: string` : groupSeq 번호 (ex: 0,2-10)
 - `encoding: string` : 파일인코딩
 - `rsnycIp: string` : 전송받을 파일이 있는 서버 IP
 - `path: string` : 전송 받을 파일경로
