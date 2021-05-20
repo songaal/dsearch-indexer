@@ -476,7 +476,7 @@ public class IndexJobRunner implements Runnable {
 
             long n = 0;
 
-            while (groupSeqList.size() != job.getGroupSeq().size()) {
+            while (groupSeqList.size() != job.getGroupSeq().size() || subStarted.size() != job.getGroupSeq().size()) {
                 Iterator<Integer> iterator = job.getGroupSeq().iterator();
 
                 if("STOP".equalsIgnoreCase(job.getStatus())) {
@@ -484,6 +484,7 @@ public class IndexJobRunner implements Runnable {
 //                    2. 남은 그룹 시퀀스가 있으면 실행완료추가한다.
                     subStarted.addAll(groupSeqList);
                     logger.info("Stop Signal. Started GroupSeq: {}", job.getGroupSeq());
+                    job.getGroupSeq().addAll(groupSeqList);
                     break;
                 } else {
                     while (iterator.hasNext()) {
@@ -616,6 +617,7 @@ public class IndexJobRunner implements Runnable {
                 } catch (InterruptedException ignore){}
             }
 
+            logger.info("SubStart Finished. jobId: {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
 
             // 최대 3일동안 기다려본다.
             latch.await(3, TimeUnit.DAYS);

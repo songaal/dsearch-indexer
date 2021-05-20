@@ -54,6 +54,7 @@ public class AsyncController {
     @PutMapping(value = "/{id}/sub_start")
     public ResponseEntity<?> subStart(@PathVariable UUID id,
                                       @RequestParam String groupSeq) {
+        logger.info("call sub_start: id: {}, groupSeq: {}", id, groupSeq);
         Job job = indexJobManager.status(id);
         job.getGroupSeq().add(Integer.parseInt(groupSeq));
         return new ResponseEntity<>(job, HttpStatus.OK);
