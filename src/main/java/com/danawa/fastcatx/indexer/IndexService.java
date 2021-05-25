@@ -237,6 +237,10 @@ public class IndexService {
                                 request = retryBulkRequest;
                                 logger.info("Retry Bulk Size {}", retryBulkRequest.requests().size());
                             }
+
+                            if (job.getStopSignal()) {
+                                throw new StopSignalException();
+                            }
                         }
 
 
@@ -289,11 +293,13 @@ public class IndexService {
         private int sleepTime = 1000;
         private boolean isStop = false;
         private String index;
+        private Job job;
 
-        public Worker(BlockingQueue queue, String index) {
+        public Worker(BlockingQueue queue, String index, Job job) {
             this.queue = queue;
             this.index = index;
             this.client = new RestHighLevelClient(restClientBuilder);
+            this.job = job;
 //            this.client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
 //                    .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
 //                            .setSocketTimeout(SOCKET_TIMEOUT))
@@ -343,6 +349,10 @@ public class IndexService {
                     } else {
                         logger.info("Retry Bulk Size {}", bulkRequest.requests().size());
                         bulkRequest = retryBulkRequest;
+                    }
+
+                    if (job.getStopSignal()) {
+                        throw new StopSignalException();
                     }
 
                 }
@@ -406,7 +416,7 @@ public class IndexService {
         //여러 쓰레드가 작업큐를 공유한다.
         List<Future> list = new ArrayList<>();
         for (int i = 0; i < threadSize; i++) {
-            Worker w = new Worker(queue, index);
+            Worker w = new Worker(queue, index, job);
             list.add(executorService.submit(w));
         }
 
