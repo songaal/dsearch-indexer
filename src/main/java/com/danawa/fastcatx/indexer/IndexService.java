@@ -534,7 +534,11 @@ public class IndexService {
         }
 
         long totalTime = System.currentTimeMillis() - start;
-        logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
+        if (groupSeq != null) {
+            logger.info("GroupSeq: [{}],index:[{}] Flush Finished! doc[{}] elapsed[{}m]",groupSeq, index, count, totalTime / 1000 / 60);
+        } else {
+            logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
+        }
     }
 
     private void checkResponse(BulkResponse bulkResponse) {
