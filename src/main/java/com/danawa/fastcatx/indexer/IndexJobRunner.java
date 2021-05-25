@@ -578,7 +578,7 @@ public class IndexJobRunner implements Runnable {
 
                                     Filter filter = (Filter) Utils.newInstance(filterClassName);
 
-                                    IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword);
+                                    IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword, groupSeq);
 
                                     if (threadSize > 1) {
                                         indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
