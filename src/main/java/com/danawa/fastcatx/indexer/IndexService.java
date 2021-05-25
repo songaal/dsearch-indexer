@@ -51,6 +51,7 @@ public class IndexService {
     private Integer port;
     private String scheme;
     private RestClientBuilder restClientBuilder;
+    private Integer groupSeq;
 
     private ConnectionKeepAliveStrategy getConnectionKeepAliveStrategy() {
         return (response, context) -> 10 * 60 * 1000;
@@ -82,6 +83,10 @@ public class IndexService {
             return requestConfigBuilder.setConnectTimeout(40000).setSocketTimeout(600000);
         });
         logger.info("host : {} , port : {}, scheme : {}, username: {}, password: {} ", new Object[]{host, port, scheme, esUsername, esPassword});
+    }
+    public IndexService(String host, Integer port, String scheme, String esUsername, String esPassword, int groupSeq) {
+        this(host, port, scheme, esUsername, esPassword);
+        this.groupSeq = groupSeq;
     }
 
     public int getCount() {
@@ -192,67 +197,60 @@ public class IndexService {
 //                        checkResponse(bulkResponse);
 
                         // 동기 방식
-                        boolean doRetry = false;
-                        BulkRequest retryBulkRequest = new BulkRequest();
-                        BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                        if (bulkResponse.hasFailures()) {
-                            // bulkResponse에 에러가 있다면
-                            // retry 1회 시도
-                            doRetry = true;
-                            BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
-                            List<DocWriteRequest<?>> requestList = request.requests();
-                            for (int i = 0; i < bulkItemResponses.length; i++) {
-                                BulkItemResponse bulkItemResponse = bulkItemResponses[i];
+//                        boolean doRetry = false;
 
-                                if (bulkItemResponse.isFailed()) {
-                                    BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-
-                                    // write queue reject 이슈 코드 = ( 429 )
-                                    if (failure.getStatus() == RestStatus.fromCode(429)) {
-                                        logger.error("write queue rejected!! >> {}", failure);
-
-                                        // retry bulk request에 추가
-                                        // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
-                                        // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
-
-                                        retryBulkRequest.add(requestList.get(i));
-//                                        logger.debug("retryBulkRequest add : {}", requestList.get(i));
-                                    } else {
-                                        logger.error("Doc index error >> {}", failure);
-                                    }
-                                }
-                            }
-                        }
-
-                        // 재시도 로직 - 1회만 재시도.
-                        // 그러나, retryBulkRequest에 추가된 request가 없다면 에러 발생.
-                        if (doRetry && retryBulkRequest.requests().size() > 0) {
-//                            logger.debug("retry bulk requests size : {}", retryBulkRequest.requests().size());
-                            bulkResponse = client.bulk(retryBulkRequest, RequestOptions.DEFAULT);
-                            if (bulkResponse.hasFailures() ) {
-                                BulkItemResponse[] responses = bulkResponse.getItems();
-                                for (int i = 0; i < responses.length; i++) {
-                                    BulkItemResponse bulkItemResponse = responses[i];
+                        // 문서 손실 방지. es rejected 에러시 무한 색인 요청
+                        while (true) {
+                            BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
+                            BulkRequest retryBulkRequest = new BulkRequest();
+                            if (bulkResponse.hasFailures()) {
+                                // bulkResponse에 에러가 있다면
+                                // retry 1회 시도
+//                                doRetry = true;
+                                BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
+                                List<DocWriteRequest<?>> requestList = request.requests();
+                                for (int i = 0; i < bulkItemResponses.length; i++) {
+                                    BulkItemResponse bulkItemResponse = bulkItemResponses[i];
 
                                     if (bulkItemResponse.isFailed()) {
                                         BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
 
+                                        // write queue reject 이슈 코드 = ( 429 )
                                         if (failure.getStatus() == RestStatus.fromCode(429)) {
-                                            logger.error("retryed, but write queue rejected!! >> {}", failure);
+                                            logger.error("write queue rejected!! >> {}", failure);
+
+                                            // retry bulk request에 추가
+                                            // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
+                                            // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
+                                            retryBulkRequest.add(requestList.get(i));
+//                                        logger.debug("retryBulkRequest add : {}", requestList.get(i));
                                         } else {
-                                            logger.error("retryed, but Doc index error >> {}", failure);
+                                            logger.error("Doc index error >> {}", failure);
                                         }
                                     }
                                 }
                             }
+
+                            if (retryBulkRequest.requests().size() == 0) {
+                                break;
+                            } else {
+                                request = retryBulkRequest;
+                                logger.info("Retry Bulk Size {}", retryBulkRequest.requests().size());
+                            }
                         }
+
+
 
 //                        logger.debug("bulk! {}", count);
                         request = new BulkRequest();
                     }
 
                     if (count != 0 && count % 10000 == 0) {
-                        logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                        if (groupSeq != null) {
+                            logger.info("GroupSeq: [{}], index: [{}] {} ROWS FLUSHED! in {}ms", groupSeq, index, count, (System.nanoTime() - time) / 1000000);
+                        } else {
+                            logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                        }
                     }
                     //logger.info("{}",count);
                 }
@@ -277,7 +275,11 @@ public class IndexService {
             }
 
             long totalTime = System.currentTimeMillis() - start;
-            logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
+            if (groupSeq != null) {
+                logger.info("GroupSeq: [{}], index:[{}] Flush Finished! doc[{}] elapsed[{}m]", groupSeq, index, count, totalTime / 1000 / 60);
+            } else {
+                logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
+            }
         }
     }
 
@@ -301,65 +303,54 @@ public class IndexService {
 
         private void retry(BulkRequest bulkRequest) {
             // 동기 방식
-            boolean doRetry = false;
             try {
-                BulkRequest retryBulkRequest = new BulkRequest();
 
-                BulkResponse bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
-                if (bulkResponse.hasFailures()) {
-                    // bulkResponse에 에러가 있다면
-                    // retry 1회 시도
-//                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
-                    doRetry = true;
-                    BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
-                    List<DocWriteRequest<?>> requests = bulkRequest.requests();
-                    for (int i = 0; i < bulkItemResponses.length; i++) {
-                        BulkItemResponse bulkItemResponse = bulkItemResponses[i];
-
-                        if (bulkItemResponse.isFailed()) {
-                            BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-
-                            // write queue reject 이슈 코드 = ( 429 )
-                            if (failure.getStatus() == RestStatus.fromCode(429)) {
-//                                logger.error("write queue rejected!! >> {}", failure);
-
-                                // retry bulk request에 추가
-                                // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
-                                // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
-
-                                retryBulkRequest.add(requests.get(i));
-                            } else {
-                                logger.error("Doc index error >> {}", failure);
-                            }
-                        }
-                    }
-                }
-
-                // 재시도 로직 - 1회만 재시도.
-                if (doRetry && retryBulkRequest.requests().size() > 0) {
-                    bulkResponse = client.bulk(retryBulkRequest, RequestOptions.DEFAULT);
+                BulkResponse bulkResponse;
+                // 문서 손실 방지. es rejected 에러시 무한 색인 요청
+                while (true) {
+                    bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    BulkRequest retryBulkRequest = new BulkRequest();
                     if (bulkResponse.hasFailures()) {
-                        BulkItemResponse[] responses = bulkResponse.getItems();
-                        for (int i = 0; i < responses.length; i++) {
-                            BulkItemResponse bulkItemResponse = responses[i];
+                        // bulkResponse에 에러가 있다면
+                        // retry 1회 시도
+//                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
+                        BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
+                        List<DocWriteRequest<?>> requests = bulkRequest.requests();
+                        for (int i = 0; i < bulkItemResponses.length; i++) {
+                            BulkItemResponse bulkItemResponse = bulkItemResponses[i];
 
                             if (bulkItemResponse.isFailed()) {
                                 BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
 
+                                // write queue reject 이슈 코드 = ( 429 )
                                 if (failure.getStatus() == RestStatus.fromCode(429)) {
-                                    logger.error("retryed, but write queue rejected!! >> {}", failure);
+//                                logger.error("write queue rejected!! >> {}", failure);
+
+                                    // retry bulk request에 추가
+                                    // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
+                                    // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
+                                    retryBulkRequest.add(requests.get(i));
                                 } else {
-                                    logger.error("retryed, but Doc index error >> {}", failure);
+                                    logger.error("Doc index error >> {}", failure);
                                 }
                             }
                         }
+
                     }
+
+                    if (retryBulkRequest.requests().size() == 0) {
+                        break;
+                    } else {
+                        logger.info("Retry Bulk Size {}", bulkRequest.requests().size());
+                        bulkRequest = retryBulkRequest;
+                    }
+
                 }
 
                 logger.debug("Bulk Success : index:{} - count:{}, - elapsed:{}", index, count, bulkResponse.getTook());
 
             } catch (Exception e) {
-                logger.error("retry : {}", e);
+                logger.error("retry", e);
             }
         }
 
@@ -473,7 +464,11 @@ public class IndexService {
                 }
 
                 if (count % 100000 == 0) {
-                    logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                    if (groupSeq != null) {
+                        logger.info("groupSeq: [{}], index: [{}] {} ROWS FLUSHED! in {}ms", groupSeq, index, count, (System.nanoTime() - time) / 1000000);
+                    } else {
+                        logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+                    }
                 }
             }
 

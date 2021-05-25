@@ -617,10 +617,13 @@ public class IndexJobRunner implements Runnable {
                 } catch (InterruptedException ignore){}
             }
 
-            logger.info("SubStart Finished. jobId: {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
+            logger.info("GroupSeq All SubStart Started. jo {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
 
             // 최대 3일동안 기다려본다.
-            latch.await(3, TimeUnit.DAYS);
+            if (!latch.await(3, TimeUnit.DAYS)) {
+                job.setStopSignal(true);
+            }
+
             logger.info("finished. jobId: {}", job.getId());
             if (exceptions.size() == 0) {
                 job.setStatus(STATUS.SUCCESS.name());
