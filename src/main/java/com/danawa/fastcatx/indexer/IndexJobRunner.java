@@ -819,6 +819,7 @@ public class IndexJobRunner implements Runnable {
                                     break;
                                 } else {
                                     logger.info("[DRY_RUN] >> Search << queue indexer request skip");
+                                    break;
                                 }
                             } else {
                                 logger.info("Search Full Index Running..");

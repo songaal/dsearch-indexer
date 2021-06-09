@@ -35,7 +35,7 @@ public class ProcedureTrigger implements Runnable {
 
     boolean loop = true;
 
-    int checkIgnoreCount = 3;
+    int checkIgnoreCount = 5;
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
