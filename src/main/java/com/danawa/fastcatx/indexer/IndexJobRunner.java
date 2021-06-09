@@ -4,12 +4,20 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
+import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -21,7 +29,11 @@ public class IndexJobRunner implements Runnable {
     private Job job;
     private IndexService service;
     private Ingester ingester;
+
+    private final RestTemplate restTemplate = new RestTemplateBuilder().build();
+    private final Gson gson = new Gson();
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
+    private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -151,7 +163,7 @@ public class IndexJobRunner implements Runnable {
                 // 다중 색인
                 multipleDumpFile(host, port, esUsername, esPassword, scheme, index, reset, filterClassName, bulkSize, threadSize, pipeLine, indexSettings, payload);
                 return;
-            }else if (type.equals("procedure")) {
+            } else if (type.equals("procedure")) {
 
                 //프로시저 호출에 필요한 정보
                 String driverClassName = (String) payload.get("driverClassName");
@@ -159,13 +171,31 @@ public class IndexJobRunner implements Runnable {
                 String user = (String) payload.get("user");
                 String password = (String) payload.get("password");
                 String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
-                Integer groupSeq = (Integer) payload.get("groupSeq");
+                Integer groupSeq = null;
+                if (payload.get("groupSeq") != null) {
+                    try {
+                        groupSeq = (Integer) payload.get("groupSeq");
+                    } catch (Exception e) {
+                        groupSeq = Integer.parseInt((String) payload.get("groupSeq"));
+                    }
+                }
                 String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
                 String rsyncPath = (String) payload.get("rsyncPath"); //rsync - Full Path
                 String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+
+                boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
+
+                if (dryRun) {
+                    int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
+//                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Random Sleep {}s", type, groupSeq, r / 1000);
+                    Thread.sleep(r);
+                    job.setStatus(STATUS.SUCCESS.name());
+                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Full Index Success", type, groupSeq);
+                    return;
+                }
 
                 //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
@@ -181,7 +211,7 @@ public class IndexJobRunner implements Runnable {
                 if(procedureSkip == false) {
                     execProdure = procedure.callSearchProcedure();
                 }
-                logger.info("execProdure : {}",execProdure);
+//                logger.info("execProdure : {}",execProdure);
 
                 //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                 if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
@@ -329,7 +359,7 @@ public class IndexJobRunner implements Runnable {
                                 if(procedureSkip == false) {
                                     execProdure = procedureMap.get(groupSeq);
                                 }
-                                logger.info("execProdure : {}",execProdure);
+//                                logger.info("execProdure : {}",execProdure);
                                 RSync rsync = new RSync()
                                         .source(rsyncIp+"::" + rsyncPath+"/linkExt_"+groupSeqNumber)
                                         .destination(path)
@@ -465,17 +495,82 @@ public class IndexJobRunner implements Runnable {
             boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
             boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
 
+//            self schedule, multi full indexing..
+            boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false);
+            boolean enableSelfStartSubStart = (Boolean) payload.getOrDefault("enableSelfStartSubStart",false); // enableSelfStartSubStart
+            boolean enableOfficeTrigger = (Boolean) payload.getOrDefault("enableOfficeTrigger",false); //   office full index
+            boolean enableAutoDynamic = (Boolean) payload.getOrDefault("enableAutoDynamic",false);
+            int queueIndexConsumeCount = (int) payload.getOrDefault("queueIndexConsumeCount",1);
+
+            String searchQueueName = (String) payload.getOrDefault("searchQueueName","");
+            String officeQueueName = (String) payload.getOrDefault("officeQueueName","");
+
+            String searchCheckUrl = (String) payload.getOrDefault("searchCheckUrl","");
+            String searchQueueIndexUrl = (String) payload.getOrDefault("searchQueueIndexUrl","");
+
+            String officeFullIndexUrlPrefix = (String) payload.getOrDefault("officeFullIndexUrlPrefix","");
+            String officeQueueIndexUrl = (String) payload.getOrDefault("officeQueueIndexUrl","");
+            String officeCheckUrlPrefix = (String) payload.getOrDefault("officeCheckUrlPrefix","");
+
+//            Job job = indexJobManager.status(id);
+//            job.getGroupSeq().add(Integer.parseInt(groupSeq));
+
             Set<Integer> groupSeqList = parseGroupSeq(String.valueOf(payload.get("groupSeq")));
             if (groupSeqList.size() == 0) {
                 logger.warn("Not Found GroupSeq.. example: `1,2,3,4-10`");
                 return;
+            }
+            // self sub start
+            if (enableSelfStartSubStart) {
+                job.getGroupSeq().addAll(groupSeqList);
+                logger.info("enable self Sub Start GroupSeq >>> {} ", job.getGroupSeq());
+            }
+
+            if (dryRun) {
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+                logger.info("================== >>> DRY_RUN <<< ==============");
+            }
+
+            // procedure after trigger
+            if (enableSelfStartSubStart && enableOfficeTrigger && !procedureSkip) {
+                logger.info("start office thread");
+                logger.info("dryRun: {}", dryRun);
+                logger.info("enableAutoDynamic: {}", enableAutoDynamic);
+                logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
+                logger.info("officeFullIndexUrlPrefix: {}", officeFullIndexUrlPrefix);
+                logger.info("groupSeqList: {}", groupSeqList);
+                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+                logger.info("officeCheckUrlPrefix: {}", officeCheckUrlPrefix);
+                logger.info("queueIndexConsumeCount: {}", queueIndexConsumeCount);
+                logger.info("officeQueueName: {}", officeQueueName);
+
+                new Thread(new ProcedureTrigger(
+                        dryRun,
+                        job,
+                        enableAutoDynamic,
+                        startedProcedureGroupSeq,
+                        officeFullIndexUrlPrefix,
+                        groupSeqList,
+                        officeQueueIndexUrl,
+                        officeCheckUrlPrefix,
+                        queueIndexConsumeCount,
+                        officeQueueName
+                )).start();
+            } else {
+                logger.info("not start office trigger, enableSelfStartSubStart: {}, enableOfficeTrigger: {}, procedureSkip: {}", enableSelfStartSubStart, enableOfficeTrigger, !procedureSkip);
             }
 
             CountDownLatch latch = new CountDownLatch(groupSeqList.size());
             List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
 
             long n = 0;
-
             while (groupSeqList.size() != job.getGroupSeq().size() || subStarted.size() != job.getGroupSeq().size()) {
                 Iterator<Integer> iterator = job.getGroupSeq().iterator();
 
@@ -494,7 +589,7 @@ public class IndexJobRunner implements Runnable {
 //                            처음일때만 리셋가능.
                                 service = new IndexService(host, port, scheme, esUsername, esPassword);
                                 // 인덱스를 초기화하고 0건부터 색인이라면.
-                                if (reset) {
+                                if (reset && !dryRun) {
                                     if (service.existsIndex(index)) {
                                         if(service.deleteIndex(index)) {
                                             service.createIndex(index, indexSettings);
@@ -507,6 +602,7 @@ public class IndexJobRunner implements Runnable {
 //                        groupSeq 색인진행.
                             new Thread(() -> {
                                 try {
+                                    long tst = System.currentTimeMillis();
                                     String dumpFileDirPath = String.format("%sV%d", path, groupSeq);
                                     File dumpFileDir = new File(dumpFileDirPath);
                                     Ingester finalIngester = null;
@@ -529,63 +625,117 @@ public class IndexJobRunner implements Runnable {
 
                                     //SKIP 여부에 따라 프로시저 호출
                                     if(procedureSkip == false) {
-                                        execProdure = procedure.callSearchProcedure();
-                                    }
-                                    logger.info("execProdure : {}",execProdure);
-
-                                    //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
-                                    if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
-                                        rsyncCopy.start();
-                                        Thread.sleep(3000);
-                                        rsyncStarted = rsyncCopy.copyAsync();
-                                    }
-                                    logger.info("rsyncStarted : {}" , rsyncStarted );
-                                    int fileCount = 0;
-                                    if(rsyncStarted || rsyncSkip) {
-
-                                        if(rsyncSkip) {
-                                            logger.info("rsyncSkip : {}" , rsyncSkip);
-
-                                            long count = 0;
-                                            if(Files.isDirectory(Paths.get(dumpFileDirPath))){
-                                                count = Files.walk(Paths.get(dumpFileDirPath)).filter(Files::isRegularFile).count();
-                                            }else if(Files.isRegularFile(Paths.get(dumpFileDirPath))){
-                                                count = 1;
-                                            }
-
-                                            if(count == 0){
-                                                throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/)");
-                                            }
+                                        logger.info("procedure started. groupSeq: {}", groupSeq);
+                                        long st = System.currentTimeMillis();
+                                        if (!dryRun) {
+                                            logger.info("[DRY_RUN] groupSeq: {} procedure skip. random sleep max 5 min", groupSeq);
+                                            execProdure = procedure.callSearchProcedure();
                                         } else {
-                                            //파일이 있는지 1초마다 확인
-                                            while (!Utils.checkFile(dumpFileDirPath, dumpFileName)) {
-                                                if (fileCount == 10) break;
-                                                Thread.sleep(1000);
-                                                fileCount++;
-                                                logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
+                                            // random max 2 min
+                                            Thread.sleep((int) Math.abs( ((Math.random() * 99999) % 120) * 1000));
+                                        }
+                                        long nt = System.currentTimeMillis();
+                                        logger.info("procedure finished. groupSeq: {}, elapsed time: {} s", groupSeq, (nt - st) / 1000);
+
+                                        if (startedProcedureGroupSeq.size() == 0 && enableAutoDynamic) {
+                                            // search queue-indexer close
+                                            Map<String, Object> body = new HashMap<>();
+                                            body.put("queue", searchQueueName);
+                                            body.put("size", 0);
+                                            if (!dryRun) {
+                                                ResponseEntity<String> searchCloseResponse = restTemplate.exchange(searchQueueIndexUrl,
+                                                        HttpMethod.PUT,
+                                                        new HttpEntity(body),
+                                                        String.class
+                                                );
+                                                logger.info("search >>> CLOSE <<< URL : {}, response: {}", searchQueueIndexUrl, searchCloseResponse);
+                                            } else {
+                                                logger.info("[DRY_RUN] search >>> CLOSE <<< URL : {}", searchQueueIndexUrl);
                                             }
 
-                                            if (fileCount == 10) {
-                                                throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/" + dumpFileName + ")");
+                                            body.put("queue", officeQueueName);
+                                            if (!dryRun) {
+                                                ResponseEntity<String> officeCloseResponse = restTemplate.exchange(officeQueueIndexUrl,
+                                                        HttpMethod.PUT,
+                                                        new HttpEntity(body),
+                                                        String.class
+                                                );
+                                                logger.info("office >>> CLOSE <<< URL : {}, response: {}", officeQueueIndexUrl, officeCloseResponse);
+                                            } else {
+                                                logger.info("[DRY_RUN] office >>> CLOSE <<< URL : {}", officeQueueIndexUrl);
                                             }
                                         }
-                                        //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
-//                    path += "/"+dumpFileName;
-                                        logger.info("file Path - Name  : {} - {}", dumpFileDirPath, dumpFileName);
-                                        finalIngester = new ProcedureIngester(dumpFileDirPath, dumpFormat, encoding, 1000, limitSize);
 
-                                    }
-
-                                    Filter filter = (Filter) Utils.newInstance(filterClassName);
-
-                                    IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword, groupSeq);
-
-                                    if (threadSize > 1) {
-                                        indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+//                                        logger.info("Procedure finished. start GroupSeq: {}", groupSeq);
+                                        startedProcedureGroupSeq.add(groupSeq);
                                     } else {
-                                        indexService.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+                                        logger.info("disable procedure. groupSeq: {} ", groupSeq);
                                     }
 
+                                    logger.info("execProdure : {}",execProdure);
+
+
+                                    if (!dryRun) {
+                                        // Not DryRun !!!!!!!!!!!!!!!!!!
+                                        //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
+                                        if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                                            rsyncCopy.start();
+                                            Thread.sleep(3000);
+                                            rsyncStarted = rsyncCopy.copyAsync();
+                                        }
+                                        logger.info("rsyncStarted : {}" , rsyncStarted );
+                                        int fileCount = 0;
+                                        if(rsyncStarted || rsyncSkip) {
+                                            logger.info("rsyncSkip : {}" , rsyncSkip);
+                                            if(rsyncSkip) {
+                                                long count = 0;
+                                                if(Files.isDirectory(Paths.get(dumpFileDirPath))){
+                                                    count = Files.walk(Paths.get(dumpFileDirPath)).filter(Files::isRegularFile).count();
+                                                }else if(Files.isRegularFile(Paths.get(dumpFileDirPath))){
+                                                    count = 1;
+                                                }
+
+                                                if(count == 0){
+                                                    throw new FileNotFoundException("파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/)");
+                                                }
+                                            } else {
+                                                //파일이 있는지 1초마다 확인
+                                                while (!Utils.checkFile(dumpFileDirPath, dumpFileName)) {
+                                                    if (fileCount == 10) break;
+                                                    Thread.sleep(1000);
+                                                    fileCount++;
+                                                    logger.info("{} 파일 확인 count: {} / 10", dumpFileName, fileCount);
+                                                }
+
+                                                if (fileCount == 10) {
+                                                    throw new FileNotFoundException("rsync 된 파일을 찾을 수 없습니다. (filepath: " + dumpFileDirPath + "/" + dumpFileName + ")");
+                                                }
+                                            }
+                                            //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
+//                    path += "/"+dumpFileName;
+                                            logger.info("file Path - Name  : {} - {}", dumpFileDirPath, dumpFileName);
+                                            finalIngester = new ProcedureIngester(dumpFileDirPath, dumpFormat, encoding, 1000, limitSize);
+                                        }
+
+                                        Filter filter = (Filter) Utils.newInstance(filterClassName);
+
+                                        IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword, groupSeq);
+
+                                        if (threadSize > 1) {
+                                            indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+                                        } else {
+                                            indexService.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+                                        }
+                                    } else {
+                                        // DryRun !!!!!!!!!!!!!!!!!!
+                                        // random max 2 min
+                                        int s = (int) Math.abs( ((Math.random() * 99999999) % 120) * 1000);
+                                        logger.info("[DRY_RUN] Full Index Skip. groupSeq: {} sleep {} s", groupSeq, s / 1000);
+                                        Thread.sleep(s);
+                                    }
+
+                                    long tnt = System.currentTimeMillis();
+                                    logger.info("Full Index Success. GroupSeq: {} elapsed: {}s thread Buy~!", groupSeq, (tnt - tst) / 1000);
                                 } catch (InterruptedException | FileNotFoundException e) {
                                     logger.error("", e);
                                     Thread.currentThread().interrupt();
@@ -617,7 +767,7 @@ public class IndexJobRunner implements Runnable {
                 } catch (InterruptedException ignore){}
             }
 
-            logger.info("GroupSeq All SubStart Started. jo {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
+            logger.info("GroupSeq All SubStart Started. jobId: {}, started GroupSeq Count: {}, groupseq numbers: {}", job.getId(), subStarted.size(), subStarted);
 
             // 최대 3일동안 기다려본다.
             if (!latch.await(3, TimeUnit.DAYS)) {
@@ -627,6 +777,63 @@ public class IndexJobRunner implements Runnable {
             logger.info("finished. jobId: {}", job.getId());
             if (exceptions.size() == 0) {
                 job.setStatus(STATUS.SUCCESS.name());
+                new Thread(() -> {
+                    int r = 20;
+                    logger.info("create Search success check thread");
+                    while (true) {
+                        try {
+                            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                                logger.info("manual cancel");
+                                break;
+                            }
+                            logger.info("searchCheckUrl: {}", searchCheckUrl);
+                            ResponseEntity<String> searchCheckResponse = restTemplate.exchange(searchCheckUrl,
+                                    HttpMethod.GET,
+                                    new HttpEntity(new HashMap<String, Object>()),
+                                    String.class
+                            );
+                            String status = null;
+                            try {
+                                Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
+                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+                                status = String.valueOf(info.get("status"));
+                            }catch (Exception ignore) {}
+
+                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+                                Map<String, Object> body = new HashMap<>();
+                                body.put("queue", searchQueueName);
+                                body.put("size", queueIndexConsumeCount);
+                                logger.info("searchQueueIndexUrl: {}, queue: {}, count: {}", searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
+                                if (!dryRun) {
+                                    ResponseEntity<String> searchOpenResponse = restTemplate.exchange(searchQueueIndexUrl,
+                                            HttpMethod.PUT,
+                                            new HttpEntity(body),
+                                            String.class
+                                    );
+                                    logger.info("Queue Indexer Request Call !!  Response : {}", searchOpenResponse);
+                                } else {
+                                    logger.info("[DRY_RUN] >> Search << queue indexer request skip");
+                                }
+                            } else {
+                                logger.info("Search Full Index Running..");
+                            }
+                            Thread.sleep(60 * 1000);
+                        } catch (Exception e) {
+                            logger.error("", e);
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            } else {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException ignore) {}
+                            }
+                        }
+                    }
+                    logger.info("Search Check Thread terminate");
+                }).start();
+
             } else {
                 job.setStatus(STATUS.STOP.name());
                 job.setError(exceptions.toString());

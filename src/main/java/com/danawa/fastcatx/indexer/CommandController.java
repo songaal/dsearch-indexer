@@ -204,7 +204,7 @@ public class CommandController {
                 if(procedureSkip == false) {
                     execProdure = procedure.callSearchProcedure();
                 }
-                logger.info("execProdure : {}",execProdure);
+//                logger.info("execProdure : {}",execProdure);
 
                 //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
                 if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
