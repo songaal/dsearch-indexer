@@ -811,6 +811,7 @@ public class IndexJobRunner implements Runnable {
                                             String.class
                                     );
                                     logger.info("Queue Indexer Request Call !!  Response : {}", searchOpenResponse);
+                                    break;
                                 } else {
                                     logger.info("[DRY_RUN] >> Search << queue indexer request skip");
                                 }
