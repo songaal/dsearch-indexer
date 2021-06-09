@@ -634,10 +634,10 @@ public class IndexJobRunner implements Runnable {
                                         logger.info("procedure started. groupSeq: {}", groupSeq);
                                         long st = System.currentTimeMillis();
                                         if (!dryRun) {
-                                            logger.info("[DRY_RUN] groupSeq: {} procedure skip. random sleep max 5 min", groupSeq);
                                             execProdure = procedure.callSearchProcedure();
                                         } else {
                                             // random max 2 min
+                                            logger.info("[DRY_RUN] groupSeq: {} procedure skip. random sleep max 2 min", groupSeq);
                                             Thread.sleep((int) Math.abs( ((Math.random() * 99999) % 120) * 1000));
                                         }
                                         long nt = System.currentTimeMillis();

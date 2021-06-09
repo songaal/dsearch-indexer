@@ -144,7 +144,7 @@ public class ProcedureTrigger implements Runnable {
 
 
                 // all check finish!!!!
-                if (groupSeqList.size() == endGroupSeq.size()) {
+                if (groupSeqList.size() == endGroupSeq.size() && groupSeqList.size() == startedProcedureGroupSeq.size()) {
                     if (enableAutoDynamic) {
                         for (;maxOpenRetry >= 0; maxOpenRetry--) {
                             try {
