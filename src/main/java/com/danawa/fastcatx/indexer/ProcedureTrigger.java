@@ -35,7 +35,7 @@ public class ProcedureTrigger implements Runnable {
 
     boolean loop = true;
 
-    int checkIgnoreCount = 2;
+    int checkIgnoreCount = 3;
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
@@ -100,9 +100,9 @@ public class ProcedureTrigger implements Runnable {
                     checkIgnoreCount --;
                 } else {
                     for (int groupSeq : groupSeqList) {
-                        if (endGroupSeq.contains(groupSeq)) {
-                            continue;
-                        }
+//                        if (endGroupSeq.contains(groupSeq)) {
+//                            continue;
+//                        }
                         String officeCheckUrl = officeCheckUrlPrefix.contains("?") ? officeCheckUrlPrefix : officeCheckUrlPrefix + "?";
                         officeCheckUrl += "&collectionName=s-prod-v" + groupSeq;
                         officeCheckUrl += "&groupSeq=" + groupSeq;
@@ -129,7 +129,7 @@ public class ProcedureTrigger implements Runnable {
                                     job.setStopSignal(true);
                                     logger.info("State Check STOP!!!!!");
                                 } else if ("RUNNING".equalsIgnoreCase(status)) {
-                                    logger.debug("running Url: {} body: {}", officeCheckUrl, tmpResponse);
+//                                    logger.debug("running Url: {} body: {}", officeCheckUrl, tmpResponse);
                                 }
                                 break;
                             } catch (Exception e) {

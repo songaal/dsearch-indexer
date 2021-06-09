@@ -736,7 +736,6 @@ public class IndexJobRunner implements Runnable {
                                         // DryRun !!!!!!!!!!!!!!!!!!
                                         // random max 2 min
                                         int s = (int) Math.abs( ((Math.random() * 99999999) % 120) * 1000);
-                                        logger.info("[DRY_RUN] Full Index Skip. groupSeq: {} sleep {} s", groupSeq, s / 1000);
                                         Thread.sleep(s);
                                     }
 
