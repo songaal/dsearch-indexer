@@ -186,15 +186,10 @@ public class ProcedureTrigger implements Runnable {
                             if (!stopUrl.contains("?")) {
                                 stopUrl += "?";
                             }
-                            String stopIndexUrl = String.format("%s&collectionName=s-prod-v%d&groupSeq=%d&action=stop_propagation", stopUrl, groupSeq, groupSeq);
-                            String stopPropagationUrl = String.format("%s&collectionName=s-prod-v%d&groupSeq=%d&action=stop_indexing", stopUrl, groupSeq, groupSeq);
+                            String stopIndexUrl = String.format("%s&collectionName=s-prod-v%d&groupSeq=%d&action=stop_indexing", stopUrl, groupSeq, groupSeq);
                             logger.info("STOP INDEX URL: {}", stopIndexUrl);
-                            logger.info("STOP PROPAGATE URL: {}", stopPropagationUrl);
                             try {
                                 restTemplate.exchange(stopIndexUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
-                            } catch (Exception ignore) {}
-                            try {
-                                restTemplate.exchange(stopPropagationUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
                             } catch (Exception ignore) {}
                         }
                     }catch (Exception e) {
