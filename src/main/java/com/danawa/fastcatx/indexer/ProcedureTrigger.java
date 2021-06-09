@@ -100,9 +100,9 @@ public class ProcedureTrigger implements Runnable {
                     checkIgnoreCount --;
                 } else {
                     for (int groupSeq : groupSeqList) {
-//                        if (endGroupSeq.contains(groupSeq)) {
-//                            continue;
-//                        }
+                        if (!startedFullIndexGroupSeq.contains(groupSeq)) {
+                            continue;
+                        }
                         String officeCheckUrl = officeCheckUrlPrefix.contains("?") ? officeCheckUrlPrefix : officeCheckUrlPrefix + "?";
                         officeCheckUrl += "&collectionName=s-prod-v" + groupSeq;
                         officeCheckUrl += "&groupSeq=" + groupSeq;
