@@ -4,14 +4,22 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.google.gson.Gson;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContexts;
+import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 
+import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.nio.file.Files;
+import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -124,4 +132,26 @@ public class Utils {
         File f = new File(path + "/" + filename);
         return f.exists();
     }
+
+
+    public static HttpComponentsClientHttpRequestFactory getRequestFactory() {
+        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+        try {
+            TrustStrategy trustStrategy = (X509Certificate[] chain, String authType) -> true;
+            SSLContext sslContext = SSLContexts
+                    .custom()
+                    .loadTrustMaterial(null, trustStrategy)
+                    .build();
+            SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext);
+            CloseableHttpClient client = HttpClients
+                    .custom()
+                    .setSSLSocketFactory(csf)
+                    .build();
+            requestFactory.setHttpClient(client);
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+        return requestFactory;
+    }
+
 }

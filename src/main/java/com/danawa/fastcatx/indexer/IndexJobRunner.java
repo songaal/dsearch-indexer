@@ -5,21 +5,27 @@ import com.danawa.fastcatx.indexer.ingester.*;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContexts;
+import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -30,7 +36,7 @@ public class IndexJobRunner implements Runnable {
     private IndexService service;
     private Ingester ingester;
 
-    private final RestTemplate restTemplate = new RestTemplateBuilder().build();
+    private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
     private final Gson gson = new Gson();
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
@@ -871,4 +877,8 @@ public class IndexJobRunner implements Runnable {
         }
         return range;
     }
+
+
+
+
 }

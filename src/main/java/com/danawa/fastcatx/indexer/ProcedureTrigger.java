@@ -28,7 +28,7 @@ public class ProcedureTrigger implements Runnable {
 
     private Set<Integer> startedFullIndexGroupSeq = new HashSet<>();
     private final Gson gson = new Gson();
-    private final RestTemplate restTemplate = new RestTemplateBuilder().build();
+    private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
 
     int maxRetry = 10;
     private long wait = 0;
