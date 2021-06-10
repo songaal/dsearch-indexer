@@ -127,13 +127,17 @@ public class IndexJobRunner implements Runnable {
             // 테스트용도로 데이터 갯수를 제한하고 싶을때 수치.
             Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
 
-
+            // 자동으로 동적색인 on/off
             autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
             if (autoDynamic) {
-                autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
                 autoDynamicIndex = index;
+                autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
                 autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
-                autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+                try {
+                    autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+                } catch (Exception ignore) {
+                    autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+                }
                 try {
                     updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
                 } catch (Exception e){
