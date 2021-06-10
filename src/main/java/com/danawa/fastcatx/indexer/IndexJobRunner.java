@@ -2,6 +2,7 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
+import com.danawa.fastcatx.indexer.preProcess.NTourPreProcess;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
@@ -79,6 +80,21 @@ public class IndexJobRunner implements Runnable {
         try {
             job.setStatus(STATUS.RUNNING.name());
             Map<String, Object> payload = job.getRequest();
+
+            Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
+            if (preProcess) {
+                String type = (String) payload.getOrDefault("type", "");
+                logger.info("[{}] Start PreProcess. TYPE: {}", job.getId(), type);
+                if ("ntour".equalsIgnoreCase(type)) {
+                    new NTourPreProcess(job).start();
+                } else {
+                    logger.warn("PreProcess Not Match TYPE !!!!");
+                }
+
+                logger.info("[{}] End PreProcess. TYPE: {}", job.getId(), type);
+                return;
+            }
+
             logger.info("Started Indexing Job Runner");
             // 공통
             // ES 호스트
@@ -142,6 +158,7 @@ public class IndexJobRunner implements Runnable {
                     for (String autoDynamicQueueName : autoDynamicQueueNames) {
                         try {
                             updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                            Thread.sleep(1000);
                         } catch (Exception e){
                             logger.error("", e);
                         }
@@ -500,7 +517,8 @@ public class IndexJobRunner implements Runnable {
             if (autoDynamic) {
                 for (String autoDynamicQueueName : autoDynamicQueueNames) {
                     try {
-                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                        Thread.sleep(1000);
                     } catch (Exception e){
                         logger.error("", e);
                     }
@@ -898,11 +916,12 @@ public class IndexJobRunner implements Runnable {
         body.put("size", consumeCount);
         logger.info("QueueIndexUrl: {}, queue: {}, count: {}", queueIndexerUrl, queueName, consumeCount);
         if (!dryRun) {
-            restTemplate.exchange(queueIndexerUrl,
+            ResponseEntity<String> response = restTemplate.exchange(queueIndexerUrl,
                     HttpMethod.PUT,
                     new HttpEntity(body),
                     String.class
             );
+            logger.info("edit Consume Response: {}", response);
         } else {
             logger.info("[DRY_RUN] >> Search << queue indexer request skip");
         }
