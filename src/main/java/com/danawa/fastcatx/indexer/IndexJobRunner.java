@@ -130,10 +130,10 @@ public class IndexJobRunner implements Runnable {
 
             autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
             if (autoDynamic) {
-                autoDynamicQueueName = (String) payload.getOrDefault("QueueName","");
+                autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
                 autoDynamicIndex = index;
-                autoDynamicQueueIndexUrl = (String) payload.getOrDefault("QueueIndexUrl","");
-                autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("queueIndexConsumeCount",1);
+                autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+                autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
                 try {
                     updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
                 } catch (Exception e){
