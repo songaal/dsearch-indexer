@@ -500,7 +500,7 @@ public class IndexJobRunner implements Runnable {
             if (autoDynamic) {
                 for (String autoDynamicQueueName : autoDynamicQueueNames) {
                     try {
-                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
                     } catch (Exception e){
                         logger.error("", e);
                     }
