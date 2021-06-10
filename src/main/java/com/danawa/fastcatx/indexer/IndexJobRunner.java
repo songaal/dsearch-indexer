@@ -128,23 +128,37 @@ public class IndexJobRunner implements Runnable {
             Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
 
             // 자동으로 동적색인 on/off
-            autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
-            if (autoDynamic) {
-                autoDynamicIndex = index;
-                autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
-                autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
-                try {
-                    autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
-                } catch (Exception ignore) {
-                    autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+            if (!type.equals("multipleDumpFile")) {
+                autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+                if (autoDynamic) {
+                    autoDynamicIndex = index;
+                    autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
+                    autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+                    try {
+                        autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+                    } catch (Exception ignore) {
+                        autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+                    }
+                    try {
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                    } catch (Exception e){
+                        logger.error("", e);
+                    }
+                    logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
                 }
-                try {
-                    updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
-                } catch (Exception e){
-                    logger.error("", e);
+
+                boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
+                if (dryRun) {
+                    int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
+//                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Random Sleep {}s", type, groupSeq, r / 1000);
+                    logger.info("[DRY_RUN] parmas: {}", gson.toJson(payload));
+                    Thread.sleep(r);
+                    job.setStatus(STATUS.SUCCESS.name());
+                    logger.info("[DRY_RUN] index: {} procedure Type {}. Index Success", index, type);
+                    return;
                 }
-                logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
             }
+
 
             if (type.equals("ndjson")) {
                 ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
@@ -209,17 +223,6 @@ public class IndexJobRunner implements Runnable {
                 String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
-
-                boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
-
-                if (dryRun) {
-                    int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
-//                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Random Sleep {}s", type, groupSeq, r / 1000);
-                    Thread.sleep(r);
-                    job.setStatus(STATUS.SUCCESS.name());
-                    logger.info("[DRY_RUN] index: {} procedure Type FullIndex GroupSeq: {} Full Index Success", index, groupSeq);
-                    return;
-                }
 
                 //프로시져
                 CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
