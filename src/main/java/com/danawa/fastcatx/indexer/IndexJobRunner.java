@@ -140,7 +140,13 @@ public class IndexJobRunner implements Runnable {
                         autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
                     }
                     try {
-                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        if(autoDynamicQueueName.contains(",")) {
+                            for (String queueName : autoDynamicQueueName.split(",")) {
+                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, queueName, 0);
+                            }
+                        } else {
+                            updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        }
                     } catch (Exception e){
                         logger.error("", e);
                     }
@@ -497,7 +503,13 @@ public class IndexJobRunner implements Runnable {
             job.setEndTime(System.currentTimeMillis() / 1000);
             if (autoDynamic) {
                 try {
-                    updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                    if(autoDynamicQueueName.contains(",")) {
+                        for (String queueName : autoDynamicQueueName.split(",")) {
+                            updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                        }
+                    } else {
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                    }
                 } catch (Exception e){
                     logger.error("", e);
                 }
