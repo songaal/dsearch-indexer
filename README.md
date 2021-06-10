@@ -53,7 +53,7 @@
 - (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
 
 - (옵션) `autoDynamic: boolean`: Q인덱서 동적색인 컨슘 on/off 여부
-- (옵션) `autoDynamicQueueName: string`: 동적색인 큐 이름
+- (옵션) `autoDynamicQueueNames: string`: 동적색인 큐 이름을 나열
 - (옵션) `autoDynamicQueueIndexUrl: string`: 큐인덱서의 컨슘 수정 URL
 - (옵션) `autoDynamicQueueIndexConsumeCount: string`: 큐인덱서의 컨슘 갯수
 
