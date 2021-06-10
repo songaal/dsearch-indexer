@@ -40,6 +40,7 @@ public class IndexJobRunner implements Runnable {
     private final Gson gson = new Gson();
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
+    private Set<Integer> finishedGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -645,41 +646,26 @@ public class IndexJobRunner implements Runnable {
 
                                         if (startedProcedureGroupSeq.size() == 0 && enableAutoDynamic) {
                                             // search queue-indexer close
-                                            Map<String, Object> body = new HashMap<>();
-                                            body.put("queue", searchQueueName);
-                                            body.put("size", 0);
                                             if (!dryRun) {
-                                                ResponseEntity<String> searchCloseResponse = restTemplate.exchange(searchQueueIndexUrl,
-                                                        HttpMethod.PUT,
-                                                        new HttpEntity(body),
-                                                        String.class
-                                                );
-                                                logger.info("search >>> CLOSE <<< URL : {}, response: {}", searchQueueIndexUrl, searchCloseResponse);
+                                                updateQueueIndexerConsume(false, searchQueueIndexUrl, searchQueueName, 0);
+                                                logger.info("SEARCH Dynamic >>> Off <<<");
                                             } else {
-                                                logger.info("[DRY_RUN] search >>> CLOSE <<< URL : {}", searchQueueIndexUrl);
+                                                logger.info("[DRY_RUN] SEARCH Dynamic >>> Close <<<");
                                             }
 
-                                            body.put("queue", officeQueueName);
                                             if (!dryRun) {
-                                                ResponseEntity<String> officeCloseResponse = restTemplate.exchange(officeQueueIndexUrl,
-                                                        HttpMethod.PUT,
-                                                        new HttpEntity(body),
-                                                        String.class
-                                                );
-                                                logger.info("office >>> CLOSE <<< URL : {}, response: {}", officeQueueIndexUrl, officeCloseResponse);
+                                                updateQueueIndexerConsume(false, officeQueueIndexUrl, officeQueueName, 0);
+                                                logger.info("OFFICE Dynamic >>> OFF <<<");
                                             } else {
-                                                logger.info("[DRY_RUN] office >>> CLOSE <<< URL : {}", officeQueueIndexUrl);
+                                                logger.info("[DRY_RUN]OFFICE Dynamic >>> Close <<<");
                                             }
                                         }
-
-//                                        logger.info("Procedure finished. start GroupSeq: {}", groupSeq);
                                         startedProcedureGroupSeq.add(groupSeq);
                                     } else {
-                                        logger.info("disable procedure. groupSeq: {} ", groupSeq);
+                                        logger.info("not start procedure. groupSeq: {}", groupSeq);
                                     }
 
-                                    logger.info("execProdure : {}",execProdure);
-
+//                                    logger.info("execProdure : {}",execProdure);
 
                                     if (!dryRun) {
                                         // Not DryRun !!!!!!!!!!!!!!!!!!
@@ -740,7 +726,8 @@ public class IndexJobRunner implements Runnable {
                                     }
 
                                     long tnt = System.currentTimeMillis();
-                                    logger.info("Full Index Success. GroupSeq: {} elapsed: {}s thread Buy~!", groupSeq, (tnt - tst) / 1000);
+                                    finishedGroupSeq.add(groupSeq);
+                                    logger.info("Full Index Success. GroupSeq: {} elapsed: {}s thread Buy~!   finish groupSeq: {}", groupSeq, (tnt - tst) / 1000, finishedGroupSeq);
                                 } catch (InterruptedException | FileNotFoundException e) {
                                     logger.error("", e);
                                     Thread.currentThread().interrupt();
@@ -788,7 +775,8 @@ public class IndexJobRunner implements Runnable {
                     while (true) {
                         try {
                             if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                                logger.info("manual cancel");
+                                logger.info("STOP SIGNAL");
+                                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
                                 break;
                             }
                             logger.info("searchCheckUrl: {}", searchCheckUrl);
@@ -805,22 +793,8 @@ public class IndexJobRunner implements Runnable {
                             }catch (Exception ignore) {}
 
                             if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-                                Map<String, Object> body = new HashMap<>();
-                                body.put("queue", searchQueueName);
-                                body.put("size", queueIndexConsumeCount);
-                                logger.info("searchQueueIndexUrl: {}, queue: {}, count: {}", searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
-                                if (!dryRun) {
-                                    ResponseEntity<String> searchOpenResponse = restTemplate.exchange(searchQueueIndexUrl,
-                                            HttpMethod.PUT,
-                                            new HttpEntity(body),
-                                            String.class
-                                    );
-                                    logger.info("Queue Indexer Request Call !!  Response : {}", searchOpenResponse);
-                                    break;
-                                } else {
-                                    logger.info("[DRY_RUN] >> Search << queue indexer request skip");
-                                    break;
-                                }
+                                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
+                                logger.info("SEARCH Dynamic >>> ON <<<");
                             } else {
                                 logger.info("Search Full Index Running..");
                             }
@@ -840,7 +814,8 @@ public class IndexJobRunner implements Runnable {
                     }
                     logger.info("Search Check Thread terminate");
                 }).start();
-
+            } else if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
             } else {
                 job.setStatus(STATUS.STOP.name());
                 job.setError(exceptions.toString());
@@ -880,5 +855,20 @@ public class IndexJobRunner implements Runnable {
 
 
 
+    public void updateQueueIndexerConsume(boolean dryRun, String queueIndexerUrl, String queueName, int consumeCount) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("queue", queueName);
+        body.put("size", consumeCount);
+        logger.info("QueueIndexUrl: {}, queue: {}, count: {}", queueIndexerUrl, queueName, consumeCount);
+        if (!dryRun) {
+            restTemplate.exchange(queueIndexerUrl,
+                    HttpMethod.PUT,
+                    new HttpEntity(body),
+                    String.class
+            );
+        } else {
+            logger.info("[DRY_RUN] >> Search << queue indexer request skip");
+        }
+    }
 
 }

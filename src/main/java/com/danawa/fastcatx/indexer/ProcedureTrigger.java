@@ -54,16 +54,15 @@ public class ProcedureTrigger implements Runnable {
 
     @Override
     public void run() {
+        int maxStartRetry = 10;
+        int maxCheckRetry = 10;
+        int maxOpenRetry = 10;
         while (loop) {
             try {
                 if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                     logger.error("STOP SIGNAL !!!!!");
                     throw new StopSignalException();
                 }
-                int maxStartRetry = 10;
-                int maxCheckRetry = 10;
-                int maxOpenRetry = 10;
-
                 // office collection full index start!!
                 for (int groupSeq : groupSeqList) {
                     if (!startedFullIndexGroupSeq.contains(groupSeq) && startedProcedureGroupSeq.contains(groupSeq)) {
@@ -138,40 +137,12 @@ public class ProcedureTrigger implements Runnable {
                             }
                         }
                     }
-
-
                 }
-
 
                 // all check finish!!!!
                 if (groupSeqList.size() == endGroupSeq.size() && groupSeqList.size() == startedFullIndexGroupSeq.size()) {
-                    if (enableAutoDynamic) {
-                        for (;maxOpenRetry >= 0; maxOpenRetry--) {
-                            try {
-                                Map<String, Object> body = new HashMap<>();
-                                body.put("queue", officeQueueName);
-                                body.put("size", queueIndexConsumeCount);
-                                ResponseEntity<String> officeOpenResponse = null;
-                                if (!dryRun) {
-                                    officeOpenResponse = restTemplate.exchange(officeQueueIndexUrl,
-                                            HttpMethod.PUT,
-                                            new HttpEntity(body),
-                                            String.class
-                                    );
-                                } else {
-                                    logger.info("[DRY_RUN] >> Office << queue indexer request skip");
-                                }
-                                logger.info("office >>> OPEN <<< URL : {}", officeQueueIndexUrl);
-                                logger.info("office dynamic Response : {}", officeOpenResponse);
-                                break;
-                            } catch (Exception e) {
-                                logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
-                                logger.error("", e);
-                                Thread.sleep(1000);
-                            }
-                        }
-                    }
                     loop = false;
+                    updateQueueIndexerConsume(maxOpenRetry);
                 }
                 logger.info("Office Collections FULL_INDEX Waiting... startedProcedureGroupSeq: {} full index finish groupSeq: {}", startedProcedureGroupSeq, endGroupSeq);
                 Thread.sleep(30 * 1000);
@@ -195,6 +166,7 @@ public class ProcedureTrigger implements Runnable {
                     }catch (Exception e) {
                         logger.error("", e);
                     }
+                    updateQueueIndexerConsume(maxOpenRetry);
                 }
                 break;
             } catch (Exception e) {
@@ -210,4 +182,34 @@ public class ProcedureTrigger implements Runnable {
         }
         logger.info("office thread terminate");
     }
+
+    public void updateQueueIndexerConsume(int maxOpenRetry) {
+        if (enableAutoDynamic) {
+            for (;maxOpenRetry >= 0; maxOpenRetry--) {
+                try {
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("queue", officeQueueName);
+                    body.put("size", queueIndexConsumeCount);
+                    if (!dryRun) {
+                        restTemplate.exchange(officeQueueIndexUrl,
+                                HttpMethod.PUT,
+                                new HttpEntity(body),
+                                String.class
+                        );
+                        logger.info("OFFICE Dynamic >>> ON <<< URL: {}", officeQueueIndexUrl);
+                    } else {
+                        logger.info("[DRY_RUN] Dynamic >>> ON <<<");
+                    }
+                    break;
+                } catch (Exception e) {
+                    logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+                    logger.error("", e);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignore) {}
+                }
+            }
+        }
+    }
+
 }
