@@ -35,7 +35,7 @@ public class IndexJobRunner implements Runnable {
 
     private boolean autoDynamic;
     private String autoDynamicIndex;
-    private String autoDynamicQueueName;
+    private List<String> autoDynamicQueueNames;
     private String autoDynamicQueueIndexUrl;
     private int autoDynamicQueueIndexConsumeCount = 1;
 
@@ -132,23 +132,19 @@ public class IndexJobRunner implements Runnable {
                 autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
                 if (autoDynamic) {
                     autoDynamicIndex = index;
-                    autoDynamicQueueName = (String) payload.getOrDefault("autoDynamicQueueName","");
+                    autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
                     autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
                     try {
                         autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
                     } catch (Exception ignore) {
                         autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
                     }
-                    try {
-                        if(autoDynamicQueueName.contains(",")) {
-                            for (String queueName : autoDynamicQueueName.split(",")) {
-                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, queueName, 0);
-                            }
-                        } else {
+                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                        try {
                             updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        } catch (Exception e){
+                            logger.error("", e);
                         }
-                    } catch (Exception e){
-                        logger.error("", e);
                     }
                     logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
                 }
@@ -502,16 +498,12 @@ public class IndexJobRunner implements Runnable {
         } finally {
             job.setEndTime(System.currentTimeMillis() / 1000);
             if (autoDynamic) {
-                try {
-                    if(autoDynamicQueueName.contains(",")) {
-                        for (String queueName : autoDynamicQueueName.split(",")) {
-                            updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-                        }
-                    } else {
-                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                    try {
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                    } catch (Exception e){
+                        logger.error("", e);
                     }
-                } catch (Exception e){
-                    logger.error("", e);
                 }
                 logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
             }
