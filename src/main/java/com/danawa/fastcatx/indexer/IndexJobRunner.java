@@ -5,27 +5,18 @@ import com.danawa.fastcatx.indexer.ingester.*;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContexts;
-import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
-import javax.net.ssl.SSLContext;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -41,6 +32,13 @@ public class IndexJobRunner implements Runnable {
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> finishedGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
+
+    private boolean autoDynamic;
+    private String autoDynamicIndex;
+    private String autoDynamicQueueName;
+    private String autoDynamicQueueIndexUrl;
+    private int autoDynamicQueueIndexConsumeCount = 1;
+
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -128,6 +126,21 @@ public class IndexJobRunner implements Runnable {
             String encoding = (String) payload.get("encoding");
             // 테스트용도로 데이터 갯수를 제한하고 싶을때 수치.
             Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
+
+
+            autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+            if (autoDynamic) {
+                autoDynamicQueueName = (String) payload.getOrDefault("QueueName","");
+                autoDynamicIndex = index;
+                autoDynamicQueueIndexUrl = (String) payload.getOrDefault("QueueIndexUrl","");
+                autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("queueIndexConsumeCount",1);
+                try {
+                    updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                } catch (Exception e){
+                    logger.error("", e);
+                }
+                logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
+            }
 
             if (type.equals("ndjson")) {
                 ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
@@ -475,6 +488,14 @@ public class IndexJobRunner implements Runnable {
             logger.error("error .... ", e);
         } finally {
             job.setEndTime(System.currentTimeMillis() / 1000);
+            if (autoDynamic) {
+                try {
+                    updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                } catch (Exception e){
+                    logger.error("", e);
+                }
+                logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+            }
         }
     }
 

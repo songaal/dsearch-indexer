@@ -52,6 +52,11 @@
 - (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
 - (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
 
+- (옵션) `autoDynamic: boolean`: Q인덱서 동적색인 컨슘 on/off 여부
+- (옵션) `autoDynamicQueueName: string`: 동적색인 큐 이름
+- (옵션) `autoDynamicQueueIndexUrl: string`: 큐인덱서의 컨슘 수정 URL
+- (옵션) `autoDynamicQueueIndexConsumeCount: string`: 큐인덱서의 컨슘 갯수
+
 ndjson, cvs 파라미터
 - `path: string` : 파일경로
 - `encoding: string` : 파일인코딩
@@ -246,6 +251,8 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
 ### 다중 파일 스트리밍 색인
 DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 파일을 즉시 읽어 색인과 동일하며, 그룹시퀀스 번호를 여러개 사용할 수 있다.
 
+특수한 경우로 외부 컬렉션 파라미터를 추가하여 색인 중에 다른 컬렉션을 색인 호출 할 수있다.
+
 - `type : multipleDumpFile` 로 지정하여 호출
 
 파라미터
@@ -271,7 +278,19 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
 - (옵션) `threadSize: int` : 색인 쓰레드 갯수. 수치가 높을수록 색인이 빨라지고 CPU사용률이 높다.
 - (옵션) `pipeLine: string` : Ingest PipeLine. 사용할 파이프라인 네임을 입력
 
-
+#### 외부 컬렉션 색인 
+- `dryRun: boolean`: 모의 실행 여부
+- `enableSelfStartSubStart: boolean`: subStart API 호출 신호를 무시하고, 즉시 실행
+- `enableOfficeTrigger: boolean`: 외부 컬렉션 전체색인 시작/체크/완료하는 쓰래드 생성여뷰
+- `enableAutoDynamic: boolean`: 동적색인 자동으로 on/off 여부
+- `queueIndexConsumeCount: int`: 동적색인 컨슘 갯수
+- `searchQueueName: string`: 동적색인 큐 이름
+- `officeQueueName: string`: 외부 동적색인 큐 이름
+- `searchCheckUrl: string`: 서버에서 완료여부 확인 URL 
+- `searchQueueIndexUrl: string`: 현재 색인 동적색인 URL
+- `officeFullIndexUrlPrefix: string`: 색인 호출 URL (groupSeq, collectionName 자동 추가)
+- `officeQueueIndexUrl: string`: 외부 색인 동적색인 URL
+- `officeCheckUrlPrefix: string`: 외부 전체색인 완료 여부 체크 URL
 ```json
 {
     "type": "multipleDumpFile",
@@ -292,10 +311,26 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
     "path":"/home/danawa/apps/indexer/file/V0",
     "rsyncIp":"192.168.0.87",
     "encoding":"CP949",
-    "procedureSkip":true,
     "rsyncSkip":false,
     "threadSize":4
 }
+```
+
+다중 컬렉션 전체색인일대 필요한 정보
+```text
+  "procedureSkip": false,
+  "dryRun": false,
+  "enableSelfStartSubStart": true,
+  "enableOfficeTrigger": true,
+  "enableAutoDynamic": true,
+  "queueIndexConsumeCount": 1,
+  "searchQueueName": "ALLIED_CONTROL",
+  "searchQueueIndexUrl": "http://<queueIndexer.com>/managements/consume",
+  "searchCheckUrl": "https://dsearch-server.danawa.io/collections/idxp/status?host=<elasticsearch host>&port=<elasticsearch port>&collectionName=<collection id>",
+  "officeQueueName": "OFFICE_CONTROL",
+  "officeQueueIndexUrl": "http://<queueIndexer.com>/managements/consume",
+  "officeFullIndexUrlPrefix": "https://dsearch-server.danawa.io/collections/idxp?host=<elasticsearch host>&port=<elasticsearch port>",
+  "officeCheckUrlPrefix": "https://dsearch-server.danawa.io/collections/idxp/status?host=<elasticsearch host>&port=<elasticsearch port>"
 ```
 
 그룹시퀀스 예시
@@ -308,5 +343,6 @@ ex 2) 0, 5번 부터 10번까지 파일만 색인
 
 ex 2) 1부터 10번까지 파일만 색인
 "groupSeq": "1-10"
-
 ```
+
+
