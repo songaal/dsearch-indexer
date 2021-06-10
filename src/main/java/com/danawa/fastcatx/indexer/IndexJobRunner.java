@@ -441,6 +441,10 @@ public class IndexJobRunner implements Runnable {
             Ingester finalIngester = ingester;
             Filter filter = (Filter) Utils.newInstance(filterClassName);
 
+            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                logger.info("[STOP SIGNAL] type: procedure");
+                throw new StopSignalException();
+            }
 //            service = new IndexService(host, port, scheme);
             service = new IndexService(host, port, scheme, esUsername, esPassword);
             // 인덱스를 초기화하고 0건부터 색인이라면.
