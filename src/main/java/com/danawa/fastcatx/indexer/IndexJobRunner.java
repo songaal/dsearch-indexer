@@ -213,7 +213,7 @@ public class IndexJobRunner implements Runnable {
 //                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Random Sleep {}s", type, groupSeq, r / 1000);
                     Thread.sleep(r);
                     job.setStatus(STATUS.SUCCESS.name());
-                    logger.info("[DRY_RUN] >>>> OFFICE <<<<  TYPE: {}, GroupSeq: {} Full Index Success", type, groupSeq);
+                    logger.info("[DRY_RUN] index: {} procedure Type FullIndex GroupSeq: {} Full Index Success", index, groupSeq);
                     return;
                 }
 
