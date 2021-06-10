@@ -795,6 +795,7 @@ public class IndexJobRunner implements Runnable {
                             if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
                                 updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
                                 logger.info("SEARCH Dynamic >>> ON <<<");
+                                break;
                             } else {
                                 logger.info("Search Full Index Running..");
                             }
