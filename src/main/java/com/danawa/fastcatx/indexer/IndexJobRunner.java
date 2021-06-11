@@ -150,31 +150,32 @@ public class IndexJobRunner implements Runnable {
             Integer limitSize = (Integer) payload.getOrDefault("limitSize", 0);
 
             // 자동으로 동적색인 on/off
-            if (!type.equals("multipleDumpFile")) {
-                autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
-                if (autoDynamic) {
+            autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+            if (autoDynamic) {
 //                    자동으로 동적색인 필수 파라미터
-                    autoDynamicIndex = index;
-                    autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
-                    autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
-                    autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
-                    try {
-                        autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
-                    } catch (Exception ignore) {
-                        autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
-                    }
-                    // 큐 이름이 여러개 일 경우.
-                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                        try {
-                            // 동적색인 off
-                            updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
-                            Thread.sleep(1000);
-                        } catch (Exception e){
-                            logger.error("", e);
-                        }
-                    }
-                    logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
+                autoDynamicIndex = index;
+                autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+                autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
+                autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+                try {
+                    autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+                } catch (Exception ignore) {
+                    autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
                 }
+                // 큐 이름이 여러개 일 경우.
+                for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                    try {
+                        // 동적색인 off
+                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                        Thread.sleep(1000);
+                    } catch (Exception e){
+                        logger.error("", e);
+                    }
+                }
+                logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
+            }
+
+            if (!type.equals("multipleDumpFile")) {
                 boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
                 if (dryRun) {
                     int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
@@ -599,7 +600,7 @@ public class IndexJobRunner implements Runnable {
             );
             logger.info("edit Consume Response: {}", response);
         } else {
-            logger.info("[DRY_RUN] >> Search << queue indexer request skip");
+            logger.info("[DRY_RUN] queue indexer request skip");
         }
     }
 
