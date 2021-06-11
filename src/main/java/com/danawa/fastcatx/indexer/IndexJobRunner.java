@@ -29,10 +29,12 @@ public class IndexJobRunner implements Runnable {
     private Ingester ingester;
 
     private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
+    private final Gson gson = new Gson();
 
     private boolean autoDynamic;
     private String autoDynamicIndex;
     private List<String> autoDynamicQueueNames;
+    private String autoDynamicCheckUrl;
     private String autoDynamicQueueIndexUrl;
     private int autoDynamicQueueIndexConsumeCount = 1;
 
@@ -151,16 +153,20 @@ public class IndexJobRunner implements Runnable {
             if (!type.equals("multipleDumpFile")) {
                 autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
                 if (autoDynamic) {
+//                    자동으로 동적색인 필수 파라미터
                     autoDynamicIndex = index;
                     autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+                    autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
                     autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
                     try {
                         autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
                     } catch (Exception ignore) {
                         autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
                     }
+                    // 큐 이름이 여러개 일 경우.
                     for (String autoDynamicQueueName : autoDynamicQueueNames) {
                         try {
+                            // 동적색인 off
                             updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
                             Thread.sleep(1000);
                         } catch (Exception e){
@@ -516,15 +522,66 @@ public class IndexJobRunner implements Runnable {
         } finally {
             job.setEndTime(System.currentTimeMillis() / 1000);
             if (autoDynamic) {
-                for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                    try {
-                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-                        Thread.sleep(1000);
-                    } catch (Exception e){
-                        logger.error("", e);
+                new Thread(() -> {
+                    int r = 20;
+                    logger.info("create success check thread");
+                    while (true) {
+                        try {
+//                            색인 취소 체크. 동적색인 on
+                            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                                logger.info("STOP SIGNAL");
+                                for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                    try {
+                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    } catch (Exception e){
+                                        logger.error("", e);
+                                    }
+                                }
+                                break;
+                            }
+//                            색인 완료 여부 체크
+                            logger.info("searchCheckUrl: {}", autoDynamicCheckUrl);
+                            ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
+                                    HttpMethod.GET,
+                                    new HttpEntity(new HashMap<String, Object>()),
+                                    String.class
+                            );
+                            String status = null;
+                            try {
+                                Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
+                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+                                status = String.valueOf(info.get("status"));
+                            }catch (Exception ignore) {}
+//                            색인이 완료라면 동적색인 ON
+                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+                                for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                    try {
+                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    } catch (Exception e){
+                                        logger.error("", e);
+                                    }
+                                }
+                                logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+                                break;
+                            }
+                            Thread.sleep(60 * 1000);
+                        } catch (Exception e) {
+                            logger.error("", e);
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            } else {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException ignore) {}
+                            }
+                        }
                     }
-                }
-                logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+                    logger.info("success check Thread terminate");
+                }).start();
             }
         }
     }
