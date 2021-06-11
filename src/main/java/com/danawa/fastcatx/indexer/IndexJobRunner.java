@@ -87,6 +87,14 @@ public class IndexJobRunner implements Runnable {
                 logger.info("[{}] Start PreProcess. TYPE: {}", job.getId(), type);
                 if ("ntour".equalsIgnoreCase(type)) {
                     new NTourPreProcess(job).start();
+                } else if ("category-keyword".equalsIgnoreCase(type)) {
+
+                } else if ("vm-keyword".equalsIgnoreCase(type)) {
+
+                } else if ("vm-firstmake-date".equalsIgnoreCase(type)) {
+                    String dataSQL = (String) payload.get("dataSQL");
+
+
                 } else {
                     logger.warn("PreProcess Not Match TYPE !!!!");
                 }
