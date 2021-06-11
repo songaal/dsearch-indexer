@@ -18,10 +18,10 @@ public class OfficeIndexingJob implements Runnable {
     private Set<Integer> groupSeqList;
 
     private boolean enableAutoDynamic;
-    private Set<Integer> startedProcedureGroupSeq;
+    private Set<Integer> finishedProcedureGroupSeq;
     private String officeQueueIndexUrl;
-    private String startOfficeFullIndexPrefixUrl;
-    private String officeCheckUrlPrefix;
+    private String startOfficeFullIndexUrl;
+    private String officeCheckUrl;
     private int queueIndexConsumeCount;
     private String officeQueueName;
 
@@ -34,28 +34,43 @@ public class OfficeIndexingJob implements Runnable {
 
     boolean loop = true;
 
-    int checkIgnoreCount = 5;
-
     private Set<Integer> endGroupSeq = new HashSet<>();
 
-    public OfficeIndexingJob(boolean dryRun, Job job, boolean enableAutoDynamic, Set<Integer> startedProcedureGroupSeq, String startOfficeFullIndexPrefixUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrlPrefix, int queueIndexConsumeCount, String officeQueueName) {
+    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String startOfficeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
         this.dryRun = dryRun;
         this.job = job;
-        this.startedProcedureGroupSeq = startedProcedureGroupSeq;
+        this.finishedProcedureGroupSeq = finishedProcedureGroupSeq;
         this.enableAutoDynamic = enableAutoDynamic;
         this.groupSeqList = groupSeqList;
-        this.startOfficeFullIndexPrefixUrl = startOfficeFullIndexPrefixUrl;
+        this.startOfficeFullIndexUrl = startOfficeFullIndexUrl;
         this.officeQueueIndexUrl = officeQueueIndexUrl;
-        this.officeCheckUrlPrefix = officeCheckUrlPrefix;
+        this.officeCheckUrl = officeCheckUrl;
         this.queueIndexConsumeCount = queueIndexConsumeCount;
         this.officeQueueName = officeQueueName;
 
+        // 오피스 동적색인 처리
         if (enableAutoDynamic) {
             if (!dryRun) {
                 updateQueueIndexerConsume(10, 0);
                 logger.info("OFFICE Dynamic >>> OFF <<<");
             } else {
                 logger.info("[DRY_RUN] OFFICE Dynamic >>> Close <<<");
+            }
+        }
+
+        // 오피스 색인 호출
+        String startUrl = startOfficeFullIndexUrl;
+        if (startUrl != null && !"".equals(startUrl)) {
+            startUrl += "&action=all";
+            startUrl += "&groupSeq=" + groupSeqStr;
+            logger.info("오피스 전체 색인");
+            for (int i = 0; i < 10; i++) {
+                try {
+                    restTemplate.exchange(startUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
+                    break;
+                } catch (Exception e) {
+                    logger.error("", e);
+                }
             }
         }
     }
@@ -67,31 +82,28 @@ public class OfficeIndexingJob implements Runnable {
         int maxOpenRetry = 10;
         while (loop) {
             try {
+                // 색인 취소
                 if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                     logger.error("STOP SIGNAL !!!!!");
                     throw new StopSignalException();
                 }
-                // office collection full index start!!
+                // 그룹시퀀스 반복하며, 시작 호출
                 for (int groupSeq : groupSeqList) {
-                    if (!startedFullIndexGroupSeq.contains(groupSeq) && startedProcedureGroupSeq.contains(groupSeq)) {
-                        String startUrl = startOfficeFullIndexPrefixUrl;
+                    if (!startedFullIndexGroupSeq.contains(groupSeq) && finishedProcedureGroupSeq.contains(groupSeq)) {
+                        String startUrl = startOfficeFullIndexUrl;
+                        // 호출
                         if (startUrl != null && !"".equals(startUrl)) {
-                            if (!startUrl.contains("?")) {
-                                startUrl += "?";
-                            }
-                            startUrl += "&action=all";
+                            startUrl += "&action=sub_start";
                             startUrl += "&groupSeq=" + groupSeq;
-                            startUrl += "&collectionName=s-prod-v" + groupSeq;
-                            logger.info("Office Start FullIndex >> groupSeq: {}, startUrl: {}",groupSeq, startUrl);
+                            logger.info("서브 시작 호출 >> groupSeq: {}, startUrl: {}",groupSeq, startUrl);
                             for (;maxStartRetry >= 0; maxStartRetry--) {
                                 try {
-                                    ResponseEntity<String> startFullIndexResponse = restTemplate.exchange(startUrl,
+                                    restTemplate.exchange(startUrl,
                                             HttpMethod.GET,
                                             new HttpEntity(new HashMap<>()),
                                             String.class
                                     );
                                     startedFullIndexGroupSeq.add(groupSeq);
-//                                    logger.info("Started Office FullIndex. GroupSeq: {}, URL: {},  Response: {}", groupSeq, startUrl, startFullIndexResponse);
                                     break;
                                 } catch (Exception e) {
                                     logger.error("", e);
@@ -103,86 +115,67 @@ public class OfficeIndexingJob implements Runnable {
                 }
 
                 // office check url
-                if (checkIgnoreCount > 0) {
-                    checkIgnoreCount --;
-                } else {
-                    for (int groupSeq : groupSeqList) {
-                        if (!startedFullIndexGroupSeq.contains(groupSeq)) {
-                            continue;
-                        }
-                        String officeCheckUrl = officeCheckUrlPrefix.contains("?") ? officeCheckUrlPrefix : officeCheckUrlPrefix + "?";
-                        officeCheckUrl += "&collectionName=s-prod-v" + groupSeq;
-                        officeCheckUrl += "&groupSeq=" + groupSeq;
-                        for (; maxCheckRetry >= 0; maxCheckRetry--) {
+                boolean isEnd = false;
+                if (startedFullIndexGroupSeq.size() == groupSeqList.size()) {
+                    for (; maxCheckRetry >= 0; maxCheckRetry--) {
+                        try {
+                            String status = "";
+                            ResponseEntity<String> officeCheckResponse = restTemplate.exchange(officeCheckUrl,
+                                    HttpMethod.GET,
+                                    new HttpEntity(new HashMap<>()),
+                                    String.class
+                            );
                             try {
-                                String status = "";
-                                String tmpResponse = "";
-                                ResponseEntity<String> officeCheckResponse = restTemplate.exchange(officeCheckUrl,
-                                        HttpMethod.GET,
-                                        new HttpEntity(new HashMap<>()),
-                                        String.class
-                                );
-                                try {
-                                    tmpResponse = officeCheckResponse.getBody();
-                                    Map<String, Object> body = gson.fromJson(tmpResponse, Map.class);
-                                    Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
-                                    status = String.valueOf(info.get("status"));
-                                }catch (Exception ignore) {}
-                                logger.info("Checking... status: {}, CheckUrl: {}", status, officeCheckUrl);
-                                if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-                                    endGroupSeq.add(groupSeq);
-                                    logger.info("State Check Success");
-                                } else if ("STOP".equalsIgnoreCase(status)) {
-                                    job.setStopSignal(true);
-                                    logger.info("State Check STOP!!!!!");
-                                } else if ("RUNNING".equalsIgnoreCase(status)) {
-//                                    logger.debug("running Url: {} body: {}", officeCheckUrl, tmpResponse);
-                                }
-                                break;
-                            } catch (Exception e) {
-                                logger.error("", e);
-                                Thread.sleep(1000);
+                                String tmpResponse = officeCheckResponse.getBody();
+                                Map<String, Object> body = gson.fromJson(tmpResponse, Map.class);
+                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+                                status = String.valueOf(info.get("status"));
+                            }catch (Exception ignore) {}
+                            logger.info("Checking... status: {}, CheckUrl: {}", status, officeCheckUrl);
+                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+                                isEnd = true;
+                            } else if ("STOP".equalsIgnoreCase(status)) {
+                                job.setStopSignal(true);
                             }
+                            break;
+                        } catch (Exception e) {
+                            logger.error("", e);
+                            Thread.sleep(1000);
                         }
                     }
                 }
 
-                // all check finish!!!!
-                if (groupSeqList.size() == endGroupSeq.size() && groupSeqList.size() == startedFullIndexGroupSeq.size()) {
+                // 색인 완료 처리
+                if (isEnd && groupSeqList.size() == startedFullIndexGroupSeq.size()) {
                     loop = false;
                     updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
+                    logger.info("오피스 색인 완료");
                 }
-                logger.info("Office Collections FULL_INDEX Waiting... FinishedProcedureGroupSeq: {} full index finish groupSeq: {}", startedProcedureGroupSeq, endGroupSeq);
+                logger.info("Office Collections FULL_INDEX Waiting... FinishedProcedureGroupSeq: {} full index finish groupSeq: {}", finishedProcedureGroupSeq, endGroupSeq);
                 Thread.sleep(30 * 1000);
             } catch (StopSignalException se) {
                 logger.warn("[[Manual Cancel]] procedure trigger");
                 logger.error("cancel", se);
                 loop = false;
-                for (int groupSeq : groupSeqList) {
-                    try {
-                        String stopUrl = startOfficeFullIndexPrefixUrl;
-                        if (stopUrl != null && !"".equals(stopUrl)) {
-                            if (!stopUrl.contains("?")) {
-                                stopUrl += "?";
-                            }
-                            String stopIndexUrl = String.format("%s&collectionName=s-prod-v%d&groupSeq=%d&action=stop_indexing", stopUrl, groupSeq, groupSeq);
-                            logger.info("STOP INDEX URL: {}", stopIndexUrl);
-                            try {
-                                restTemplate.exchange(stopIndexUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
-                            } catch (Exception ignore) {}
-                        }
-                    }catch (Exception e) {
-                        logger.error("", e);
+                try {
+                    String stopUrl = startOfficeFullIndexUrl;
+                    if (stopUrl != null && !"".equals(stopUrl)) {
+                        String stopIndexUrl = startOfficeFullIndexUrl + "&action=stop_indexing";
+                        logger.info("오피스 취소 요청 URL: {}", stopIndexUrl);
+                        try {
+                            restTemplate.exchange(stopIndexUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
+                        } catch (Exception ignore) {}
                     }
-                    updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
+                }catch (Exception e) {
+                    logger.error("", e);
                 }
+                updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                 break;
             } catch (Exception e) {
                 logger.error("", e);
                 logger.error("retry Count: {}", maxRetry);
                 maxRetry --;
                 if (maxRetry <= 0) {
-                    // error request
                     loop = false;
                     break;
                 }
@@ -198,15 +191,15 @@ public class OfficeIndexingJob implements Runnable {
                     Map<String, Object> body = new HashMap<>();
                     body.put("queue", officeQueueName);
                     body.put("size", consumeCount);
+                    logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
                     if (!dryRun) {
                         restTemplate.exchange(officeQueueIndexUrl,
                                 HttpMethod.PUT,
                                 new HttpEntity(body),
                                 String.class
                         );
-                        logger.info("OFFICE Dynamic >>> ON <<< URL: {}", officeQueueIndexUrl);
                     } else {
-                        logger.info("[DRY_RUN] Dynamic >>> ON <<<");
+                        logger.info("[DRY_RUN] >> Office << queue indexer request skip");
                     }
                     break;
                 } catch (Exception e) {

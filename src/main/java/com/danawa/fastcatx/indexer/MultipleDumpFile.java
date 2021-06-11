@@ -2,12 +2,10 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
-import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -22,7 +20,6 @@ public class MultipleDumpFile {
     private static final Logger logger = LoggerFactory.getLogger(MultipleDumpFile.class);
 
     private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
-    private final Gson gson = new Gson();
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> finishedGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
@@ -66,21 +63,16 @@ public class MultipleDumpFile {
 //            Q인덱서 컨슘 on/off 처리 여부
             boolean enableAutoDynamic = (Boolean) payload.getOrDefault("enableAutoDynamic",false);
 //            Q인덱서 컨슘 갯수
-            int queueIndexConsumeCount = (int) payload.getOrDefault("queueIndexConsumeCount",1);
-//            검색ES Q 이름
-            String searchQueueName = (String) payload.getOrDefault("searchQueueName","");
+            int officeIndexConsumeCount = (int) payload.getOrDefault("officeIndexConsumeCount",1);
+
 //            오피스 Q 이름
             String officeQueueName = (String) payload.getOrDefault("officeQueueName","");
-//            검색 색인 체크 URL
-            String searchCheckUrl = (String) payload.getOrDefault("searchCheckUrl","");
-//            검색 Q 인덱서 URL
-            String searchQueueIndexUrl = (String) payload.getOrDefault("searchQueueIndexUrl","");
 //            오피스 전체색인 URL
-            String officeFullIndexUrlPrefix = (String) payload.getOrDefault("officeFullIndexUrlPrefix","");
+            String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
 //            오피스 Q 인덱서 URL
             String officeQueueIndexUrl = (String) payload.getOrDefault("officeQueueIndexUrl","");
 //            오피스 색인 체크 URL
-            String officeCheckUrlPrefix = (String) payload.getOrDefault("officeCheckUrlPrefix","");
+            String officeCheckUrl = (String) payload.getOrDefault("officeCheckUrl","");
 //            문자열로 나열된 그룹시퀀스 분리
             Set<Integer> groupSeqList = parseGroupSeq(String.valueOf(payload.get("groupSeq")));
             // --------- 파라미터 변수 변환 마지막 ---------
@@ -109,39 +101,30 @@ public class MultipleDumpFile {
                 logger.info("================== >>> DRY_RUN <<< ==============");
             }
 
-            if (enableAutoDynamic) {
-                if (!dryRun) {
-                    // 검색 동적색인 끄기 (0은 메시지 수집안함)
-                    updateQueueIndexerConsume(false, searchQueueIndexUrl, searchQueueName, 0);
-                    logger.info("SEARCH Dynamic >>> Off <<<");
-                } else {
-                    logger.info("[DRY_RUN] SEARCH Dynamic >>> Close <<<");
-                }
-            }
-
             // IDXP를 사용안할때, 오피스 전채색인, 프로시저 시작 할때만 새로운 스래드 시작
             if (enableSelfStartSubStart && enableOfficeIndexingJob && !procedureSkip) {
                 logger.info("start office thread");
                 logger.info("dryRun: {}", dryRun);
                 logger.info("enableAutoDynamic: {}", enableAutoDynamic);
                 logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
-                logger.info("officeFullIndexUrlPrefix: {}", officeFullIndexUrlPrefix);
+                logger.info("officeFullIndexUrl: {}", officeFullIndexUrl);
                 logger.info("groupSeqList: {}", groupSeqList);
                 logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
-                logger.info("officeCheckUrlPrefix: {}", officeCheckUrlPrefix);
-                logger.info("queueIndexConsumeCount: {}", queueIndexConsumeCount);
+                logger.info("officeCheckUrl: {}", officeCheckUrl);
+                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
                 logger.info("officeQueueName: {}", officeQueueName);
                 // 오피스 색인 스래드 실행
                 new Thread(new OfficeIndexingJob(
                         dryRun,
                         job,
+                        String.valueOf(payload.get("groupSeq")),
                         enableAutoDynamic,
                         startedProcedureGroupSeq,
-                        officeFullIndexUrlPrefix,
+                        officeFullIndexUrl,
                         groupSeqList,
                         officeQueueIndexUrl,
-                        officeCheckUrlPrefix,
-                        queueIndexConsumeCount,
+                        officeCheckUrl,
+                        officeIndexConsumeCount,
                         officeQueueName
                 )).start();
             } else {
@@ -268,7 +251,7 @@ public class MultipleDumpFile {
                                         Filter filter = (Filter) Utils.newInstance(filterClassName);
 
                                         IndexService indexService = new IndexService(host, port, scheme, esUsername, esPassword, groupSeq);
-
+//                                        색인
                                         if (threadSize > 1) {
                                             indexService.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
                                         } else {
@@ -321,62 +304,10 @@ public class MultipleDumpFile {
             if (!latch.await(3, TimeUnit.DAYS)) {
                 job.setStopSignal(true);
             }
-
             logger.info("finished. jobId: {}", job.getId());
             if (exceptions.size() == 0) {
                 job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
 //                모든 스래드가 종료되고, 서버로 색인 완료를 체크
-                new Thread(() -> {
-                    int r = 20;
-                    logger.info("create Search success check thread");
-                    while (true) {
-                        try {
-//                            색인 취소 체크. 동적색인 on
-                            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                                logger.info("STOP SIGNAL");
-                                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
-                                break;
-                            }
-//                            색인 완료 여부 체크
-                            logger.info("searchCheckUrl: {}", searchCheckUrl);
-                            ResponseEntity<String> searchCheckResponse = restTemplate.exchange(searchCheckUrl,
-                                    HttpMethod.GET,
-                                    new HttpEntity(new HashMap<String, Object>()),
-                                    String.class
-                            );
-                            String status = null;
-                            try {
-                                Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
-                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
-                                status = String.valueOf(info.get("status"));
-                            }catch (Exception ignore) {}
-
-//                            색인이 완료라면 동적색인 ON
-                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-                                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
-                                logger.info("SEARCH Dynamic >>> ON <<<");
-                                break;
-                            } else {
-                                logger.info("Search Full Index Running..");
-                            }
-                            Thread.sleep(60 * 1000);
-                        } catch (Exception e) {
-                            logger.error("", e);
-                            r --;
-                            if (r == 0) {
-                                logger.warn("max retry!!!!");
-                                break;
-                            } else {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException ignore) {}
-                            }
-                        }
-                    }
-                    logger.info("Search Check Thread terminate");
-                }).start();
-            } else if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                updateQueueIndexerConsume(dryRun, searchQueueIndexUrl, searchQueueName, queueIndexConsumeCount);
             } else {
                 job.setStatus(IndexJobRunner.STATUS.STOP.name());
                 job.setError(exceptions.toString());
@@ -414,21 +345,4 @@ public class MultipleDumpFile {
         return range;
     }
 
-//    동적색인 컨슘 호출 (0: off, 1~n:on)
-    public void updateQueueIndexerConsume(boolean dryRun, String queueIndexerUrl, String queueName, int consumeCount) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("queue", queueName);
-        body.put("size", consumeCount);
-        logger.info("QueueIndexUrl: {}, queue: {}, count: {}", queueIndexerUrl, queueName, consumeCount);
-        if (!dryRun) {
-            ResponseEntity<String> response = restTemplate.exchange(queueIndexerUrl,
-                    HttpMethod.PUT,
-                    new HttpEntity(body),
-                    String.class
-            );
-            logger.info("edit Consume Response: {}", response);
-        } else {
-            logger.info("[DRY_RUN] >> Search << queue indexer request skip");
-        }
-    }
 }
