@@ -63,7 +63,7 @@ public class OfficeIndexingJob implements Runnable {
         if (startUrl != null && !"".equals(startUrl)) {
             startUrl += "&action=all";
             startUrl += "&groupSeq=" + groupSeqStr;
-            logger.info("오피스 전체 색인");
+            logger.info("오피스 전체 색인. {}", startUrl);
             for (int i = 0; i < 10; i++) {
                 try {
                     restTemplate.exchange(startUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);

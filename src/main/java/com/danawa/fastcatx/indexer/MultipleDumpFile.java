@@ -104,15 +104,15 @@ public class MultipleDumpFile {
             // IDXP를 사용안할때, 오피스 전채색인, 프로시저 시작 할때만 새로운 스래드 시작
             if (enableSelfStartSubStart && enableOfficeIndexingJob && !procedureSkip) {
                 logger.info("start office thread");
-                logger.info("dryRun: {}", dryRun);
-                logger.info("enableAutoDynamic: {}", enableAutoDynamic);
-                logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
-                logger.info("officeFullIndexUrl: {}", officeFullIndexUrl);
-                logger.info("groupSeqList: {}", groupSeqList);
-                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
-                logger.info("officeCheckUrl: {}", officeCheckUrl);
-                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
-                logger.info("officeQueueName: {}", officeQueueName);
+//                logger.info("dryRun: {}", dryRun);
+//                logger.info("enableAutoDynamic: {}", enableAutoDynamic);
+//                logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
+//                logger.info("officeFullIndexUrl: {}", officeFullIndexUrl);
+//                logger.info("groupSeqList: {}", groupSeqList);
+//                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+//                logger.info("officeCheckUrl: {}", officeCheckUrl);
+//                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
+//                logger.info("officeQueueName: {}", officeQueueName);
                 // 오피스 색인 스래드 실행
                 new Thread(new OfficeIndexingJob(
                         dryRun,
