@@ -321,7 +321,7 @@ DB 프로시저로 생성된 덤프파일을 RSYNC하고 RSYNC로 받아오는 �
   "procedureSkip": false,
   "dryRun": false,
   "enableSelfStartSubStart": true,
-  "enableOfficeTrigger": true,
+  "enableOfficeIndexingJob": true,
   "enableAutoDynamic": true,
   "queueIndexConsumeCount": 1,
   "searchQueueName": "ALLIED_CONTROL",

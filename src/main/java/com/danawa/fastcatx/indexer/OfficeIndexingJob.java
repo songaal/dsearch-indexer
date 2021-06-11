@@ -4,7 +4,6 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -12,8 +11,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
-public class ProcedureTrigger implements Runnable {
-    private static final Logger logger = LoggerFactory.getLogger(ProcedureTrigger.class);
+public class OfficeIndexingJob implements Runnable {
+    private static final Logger logger = LoggerFactory.getLogger(OfficeIndexingJob.class);
     private boolean dryRun;
     private Job job;
     private Set<Integer> groupSeqList;
@@ -39,7 +38,7 @@ public class ProcedureTrigger implements Runnable {
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
-    public ProcedureTrigger(boolean dryRun, Job job, boolean enableAutoDynamic, Set<Integer> startedProcedureGroupSeq, String startOfficeFullIndexPrefixUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrlPrefix, int queueIndexConsumeCount, String officeQueueName) {
+    public OfficeIndexingJob(boolean dryRun, Job job, boolean enableAutoDynamic, Set<Integer> startedProcedureGroupSeq, String startOfficeFullIndexPrefixUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrlPrefix, int queueIndexConsumeCount, String officeQueueName) {
         this.dryRun = dryRun;
         this.job = job;
         this.startedProcedureGroupSeq = startedProcedureGroupSeq;
@@ -50,6 +49,15 @@ public class ProcedureTrigger implements Runnable {
         this.officeCheckUrlPrefix = officeCheckUrlPrefix;
         this.queueIndexConsumeCount = queueIndexConsumeCount;
         this.officeQueueName = officeQueueName;
+
+        if (enableAutoDynamic) {
+            if (!dryRun) {
+                updateQueueIndexerConsume(10, 0);
+                logger.info("OFFICE Dynamic >>> OFF <<<");
+            } else {
+                logger.info("[DRY_RUN] OFFICE Dynamic >>> Close <<<");
+            }
+        }
     }
 
     @Override
@@ -142,9 +150,9 @@ public class ProcedureTrigger implements Runnable {
                 // all check finish!!!!
                 if (groupSeqList.size() == endGroupSeq.size() && groupSeqList.size() == startedFullIndexGroupSeq.size()) {
                     loop = false;
-                    updateQueueIndexerConsume(maxOpenRetry);
+                    updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                 }
-                logger.info("Office Collections FULL_INDEX Waiting... startedProcedureGroupSeq: {} full index finish groupSeq: {}", startedProcedureGroupSeq, endGroupSeq);
+                logger.info("Office Collections FULL_INDEX Waiting... FinishedProcedureGroupSeq: {} full index finish groupSeq: {}", startedProcedureGroupSeq, endGroupSeq);
                 Thread.sleep(30 * 1000);
             } catch (StopSignalException se) {
                 logger.warn("[[Manual Cancel]] procedure trigger");
@@ -166,7 +174,7 @@ public class ProcedureTrigger implements Runnable {
                     }catch (Exception e) {
                         logger.error("", e);
                     }
-                    updateQueueIndexerConsume(maxOpenRetry);
+                    updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                 }
                 break;
             } catch (Exception e) {
@@ -183,13 +191,13 @@ public class ProcedureTrigger implements Runnable {
         logger.info("office thread terminate");
     }
 
-    public void updateQueueIndexerConsume(int maxOpenRetry) {
+    public void updateQueueIndexerConsume(int maxOpenRetry, int consumeCount) {
         if (enableAutoDynamic) {
             for (;maxOpenRetry >= 0; maxOpenRetry--) {
                 try {
                     Map<String, Object> body = new HashMap<>();
                     body.put("queue", officeQueueName);
-                    body.put("size", queueIndexConsumeCount);
+                    body.put("size", consumeCount);
                     if (!dryRun) {
                         restTemplate.exchange(officeQueueIndexUrl,
                                 HttpMethod.PUT,
