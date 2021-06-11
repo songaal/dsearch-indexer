@@ -165,11 +165,11 @@
             <version>3.1.3-2</version>
         </dependency>
 
-        <dependency>
-            <groupId>Altibase</groupId>
-            <artifactId>Altibase</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>Altibase</groupId>-->
+<!--            <artifactId>Altibase</artifactId>-->
+<!--            <version>1.0.0</version>-->
+<!--        </dependency>-->
 
     </dependencies>
 
