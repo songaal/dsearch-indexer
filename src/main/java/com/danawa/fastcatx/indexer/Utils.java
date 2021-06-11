@@ -154,4 +154,17 @@ public class Utils {
         return requestFactory;
     }
 
+    public static String calcSpendTime(long start, long end) {
+        String content = "";
+
+        long time = end - start; // 총 수행시간
+        double totalsecond = time / (double) 1000; // 총 수행 초 (ex : 333초)
+        int minute = (int) totalsecond / 60; // 분 (5)
+        int second = (int) totalsecond % 60; // 초(33)
+
+        content = " spend time : " + minute + " min" + " " + second + " sec";
+
+        return content;
+    }
+
 }
