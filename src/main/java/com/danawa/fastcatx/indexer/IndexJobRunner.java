@@ -3,7 +3,7 @@ package com.danawa.fastcatx.indexer;
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
 import com.danawa.fastcatx.indexer.preProcess.NTourPreProcess;
-import com.danawa.fastcatx.indexer.preProcess.VmFirstMakeDatePreProcess;
+//import com.danawa.fastcatx.indexer.preProcess.VmFirstMakeDatePreProcess;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
@@ -79,7 +79,7 @@ public class IndexJobRunner implements Runnable {
         try {
             job.setStatus(STATUS.RUNNING.name());
             Map<String, Object> payload = job.getRequest();
-
+            logger.debug("{}", gson.toJson(payload));
             Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
             if (preProcess) {
                 String type = (String) payload.getOrDefault("type", "");
@@ -99,7 +99,7 @@ public class IndexJobRunner implements Runnable {
                     String alti_rescue_url = (String) payload.getOrDefault("alti_rescue_url",null);
                     String alti_user = (String) payload.get("alti_user");
                     String alti_password = (String) payload.get("alti_password");
-                    new VmFirstMakeDatePreProcess(job, dataSQL, env, alti_master_url, alti_slave_url, alti_rescue_url, alti_user, alti_password);
+//                    new VmFirstMakeDatePreProcess(job, dataSQL, env, alti_master_url, alti_slave_url, alti_rescue_url, alti_user, alti_password);
                 } else {
                     logger.warn("PreProcess Not Match TYPE !!!!");
                 }
@@ -182,17 +182,14 @@ public class IndexJobRunner implements Runnable {
                 logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
             }
 
-            if (!type.equals("multipleDumpFile")) {
-                boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
-                if (dryRun) {
-                    int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
-                    Thread.sleep(r);
-                    job.setStatus(STATUS.SUCCESS.name());
-                    logger.info("[DRY_RUN] index: {} procedure Type {}. Index Success", index, type);
-                    return;
-                }
+            boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
+            if (dryRun) {
+                int r = (int) Math.abs((Math.random() * 999999) % 120) * 1000;
+                Thread.sleep(r);
+                job.setStatus(STATUS.SUCCESS.name());
+                logger.info("[DRY_RUN] index: {} procedure Type {}. Index Success", index, type);
+                return;
             }
-
 
             if (type.equals("ndjson")) {
                 ingester = new NDJsonIngester(path, encoding, 1000, limitSize);
