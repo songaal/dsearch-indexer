@@ -546,7 +546,7 @@ public class IndexJobRunner implements Runnable {
                                 break;
                             }
 //                            색인 완료 여부 체크
-                            logger.info("searchCheckUrl: {}", autoDynamicCheckUrl);
+                            logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
                             ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
                                     HttpMethod.GET,
                                     new HttpEntity(new HashMap<String, Object>()),
