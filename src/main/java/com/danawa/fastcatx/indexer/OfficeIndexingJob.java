@@ -151,7 +151,7 @@ public class OfficeIndexingJob implements Runnable {
                     updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                     logger.info("오피스 색인 완료");
                 }
-                logger.info("Office Collections FULL_INDEX Waiting... FinishedProcedureGroupSeq: {} full index finish groupSeq: {}", finishedProcedureGroupSeq, endGroupSeq);
+                logger.info("오피스 전체 색인 완료 대기. subStart: {}", startedFullIndexGroupSeq);
                 Thread.sleep(30 * 1000);
             } catch (StopSignalException se) {
                 logger.warn("[[Manual Cancel]] procedure trigger");
