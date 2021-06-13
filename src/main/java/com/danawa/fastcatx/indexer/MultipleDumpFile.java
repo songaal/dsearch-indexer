@@ -31,7 +31,7 @@ public class MultipleDumpFile {
                       Integer bulkSize, Integer threadSize, String pipeLine, Map<String, Object> indexSettings,
                       Map<String, Object> payload) {
         try {
-
+            logger.info("params: {}", payload);
             // --------- 파라미터 변수 변환 시작 ---------
 
             //파일 경로.
