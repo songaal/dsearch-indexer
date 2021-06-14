@@ -7,30 +7,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.Map;
 
-public class VmFirstMakeDatePreProcess {
+public class VmFirstMakeDatePreProcess implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(VmFirstMakeDatePreProcess.class);
     private Job job;
-    private String dataSQL;
-    private String env;
-    private String alti_master_url;
-    private String alti_slave_url;
-    private String alti_rescue_url;
-    private String alti_user;
-    private String alti_password;
-
-    public VmFirstMakeDatePreProcess(Job job, String dataSQL, String env, String alti_master_url, String alti_slave_url, String alti_rescue_url, String alti_user, String alti_password) {
+    public VmFirstMakeDatePreProcess(Job job) {
         this.job = job;
-        this.dataSQL = dataSQL;
-        this.env = env;
-        this.alti_master_url = alti_master_url;
-        this.alti_slave_url = alti_slave_url;
-        this.alti_rescue_url = alti_rescue_url;
-        this.alti_user = alti_user;
-        this.alti_password = alti_password;
+
     }
 
-    public void start() {
+    public void start() throws Exception {
+        Map<String, Object> payload = job.getRequest();
+        String dataSQL = (String) payload.get("dataSQL");
+        String env = (String) payload.get("env");
+        String alti_master_url = (String) payload.get("alti_master_url");
+        String alti_slave_url = (String) payload.getOrDefault("alti_slave_url",null);
+        String alti_rescue_url = (String) payload.getOrDefault("alti_rescue_url",null);
+        String alti_user = (String) payload.get("alti_user");
+        String alti_password = (String) payload.get("alti_password");
+
+
         Connection selectConn = null;
         Connection insertConn = null;
         AltibasePreparedStatement insertPstmt = null;

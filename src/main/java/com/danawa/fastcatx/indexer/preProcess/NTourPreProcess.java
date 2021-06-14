@@ -12,7 +12,7 @@ import java.sql.SQLException;
 import java.util.Map;
 
 // 투어 전처리 객체
-public class NTourPreProcess {
+public class NTourPreProcess implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(NTourPreProcess.class);
     private Job job;
     private Map<String, Object> payload;
@@ -25,7 +25,7 @@ public class NTourPreProcess {
         this.payload = job.getRequest();
     }
 
-    public void start() throws SQLException, ClassNotFoundException {
+    public void start() throws Exception {
         logger.info("--- 색인용 여행 메뉴 테이블 구성 ---");
         // 필요한 파라미터
         String altibaseDriver = (String) payload.getOrDefault("altibaseDriver", "");
