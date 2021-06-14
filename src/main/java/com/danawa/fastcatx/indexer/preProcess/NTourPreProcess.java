@@ -103,7 +103,7 @@ public class NTourPreProcess {
                 }
             }
             // 나머지 처리.
-            if (rowCount % EXECUTE_BATCH_SIZE != 0) {
+            if (addCount % EXECUTE_BATCH_SIZE != 0) {
                 try {
                     batchPreparedStatement.executeBatch();
                     batchPreparedStatement.clearBatch();
@@ -122,6 +122,11 @@ public class NTourPreProcess {
                     logger.warn("", e);
                 }
             }
+
+
+            int afterCount = databaseQueryHelper.getRowCount(connection, tableName);
+            logger.info("여행 대표 상품 갯수(갱신 후) : " + afterCount);
+
         }
     }
 }
