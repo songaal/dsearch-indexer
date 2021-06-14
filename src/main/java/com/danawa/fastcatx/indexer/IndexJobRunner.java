@@ -2,8 +2,8 @@ package com.danawa.fastcatx.indexer;
 
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.*;
-import com.danawa.fastcatx.indexer.preProcess.NTourPreProcess;
 //import com.danawa.fastcatx.indexer.preProcess.VmFirstMakeDatePreProcess;
+import com.danawa.fastcatx.indexer.preProcess.PreProcess;
 import com.github.fracpete.processoutput4j.output.CollectingProcessOutput;
 import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
@@ -82,29 +82,9 @@ public class IndexJobRunner implements Runnable {
             logger.debug("{}", gson.toJson(payload));
             Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
             if (preProcess) {
-                String type = (String) payload.getOrDefault("type", "");
-                String dataSQL = (String) payload.get("dataSQL");
-                String env = (String) payload.get("env");
-
-                logger.info("[{}] Start PreProcess. TYPE: {}", job.getId(), type);
-                if ("ntour".equalsIgnoreCase(type)) {
-                    new NTourPreProcess(job).start();
-                } else if ("category-keyword".equalsIgnoreCase(type)) {
-
-                } else if ("vm-keyword".equalsIgnoreCase(type)) {
-
-                } else if ("vm-firstmake-date".equalsIgnoreCase(type)) {
-                    String alti_master_url = (String) payload.get("alti_master_url");
-                    String alti_slave_url = (String) payload.getOrDefault("alti_slave_url",null);
-                    String alti_rescue_url = (String) payload.getOrDefault("alti_rescue_url",null);
-                    String alti_user = (String) payload.get("alti_user");
-                    String alti_password = (String) payload.get("alti_password");
-//                    new VmFirstMakeDatePreProcess(job, dataSQL, env, alti_master_url, alti_slave_url, alti_rescue_url, alti_user, alti_password);
-                } else {
-                    logger.warn("PreProcess Not Match TYPE !!!!");
-                }
-
-                logger.info("[{}] End PreProcess. TYPE: {}", job.getId(), type);
+                PreProcess process = new PreProcess.EmptyPreProcess();
+                process.starter(job);
+                job.setStatus(STATUS.SUCCESS.name());
                 return;
             }
 
