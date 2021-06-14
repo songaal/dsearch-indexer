@@ -63,5 +63,9 @@ public class PreProcessTest {
 
     }
 
+    @Test
+    public void cronTest() {
+
+    }
 
 }
