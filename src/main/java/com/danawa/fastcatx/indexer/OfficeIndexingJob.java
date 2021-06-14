@@ -20,7 +20,7 @@ public class OfficeIndexingJob implements Runnable {
     private boolean enableAutoDynamic;
     private Set<Integer> finishedProcedureGroupSeq;
     private String officeQueueIndexUrl;
-    private String startOfficeFullIndexUrl;
+    private String officeFullIndexUrl;
     private String officeCheckUrl;
     private int queueIndexConsumeCount;
     private String officeQueueName;
@@ -36,30 +36,29 @@ public class OfficeIndexingJob implements Runnable {
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
-    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String startOfficeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
+    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
+        logger.info("office params: {}", job.getRequest());
         this.dryRun = dryRun;
         this.job = job;
         this.finishedProcedureGroupSeq = finishedProcedureGroupSeq;
         this.enableAutoDynamic = enableAutoDynamic;
         this.groupSeqList = groupSeqList;
-        this.startOfficeFullIndexUrl = startOfficeFullIndexUrl;
+        this.officeFullIndexUrl = officeFullIndexUrl;
         this.officeQueueIndexUrl = officeQueueIndexUrl;
         this.officeCheckUrl = officeCheckUrl;
         this.queueIndexConsumeCount = queueIndexConsumeCount;
         this.officeQueueName = officeQueueName;
 
         // 오피스 동적색인 처리
-        if (enableAutoDynamic) {
-            if (!dryRun) {
-                updateQueueIndexerConsume(10, 0);
-                logger.info("OFFICE Dynamic >>> OFF <<<");
-            } else {
-                logger.info("[DRY_RUN] OFFICE Dynamic >>> Close <<<");
-            }
+        if (!dryRun) {
+            updateQueueIndexerConsume(10, 0);
+            logger.info("OFFICE Dynamic >>> OFF <<<");
+        } else {
+            logger.info("[DRY_RUN] OFFICE Dynamic >>> Close <<<");
         }
 
         // 오피스 색인 호출
-        String startUrl = startOfficeFullIndexUrl;
+        String startUrl = officeFullIndexUrl;
         if (startUrl != null && !"".equals(startUrl)) {
             startUrl += "&action=all";
             startUrl += "&groupSeq=" + groupSeqStr;
@@ -90,7 +89,7 @@ public class OfficeIndexingJob implements Runnable {
                 // 그룹시퀀스 반복하며, 시작 호출
                 for (int groupSeq : groupSeqList) {
                     if (!startedFullIndexGroupSeq.contains(groupSeq) && finishedProcedureGroupSeq.contains(groupSeq)) {
-                        String startUrl = startOfficeFullIndexUrl;
+                        String startUrl = officeFullIndexUrl;
                         // 호출
                         if (startUrl != null && !"".equals(startUrl)) {
                             startUrl += "&action=sub_start";
@@ -150,17 +149,18 @@ public class OfficeIndexingJob implements Runnable {
                     loop = false;
                     updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                     logger.info("오피스 색인 완료");
+                } else {
+                    logger.info("오피스 전체 색인 완료 대기. subStart: {}", startedFullIndexGroupSeq);
+                    Thread.sleep(30 * 1000);
                 }
-                logger.info("오피스 전체 색인 완료 대기. subStart: {}", startedFullIndexGroupSeq);
-                Thread.sleep(30 * 1000);
             } catch (StopSignalException se) {
                 logger.warn("[[Manual Cancel]] procedure trigger");
                 logger.error("cancel", se);
                 loop = false;
                 try {
-                    String stopUrl = startOfficeFullIndexUrl;
+                    String stopUrl = officeFullIndexUrl;
                     if (stopUrl != null && !"".equals(stopUrl)) {
-                        String stopIndexUrl = startOfficeFullIndexUrl + "&action=stop_indexing";
+                        String stopIndexUrl = officeFullIndexUrl + "&action=stop_indexing";
                         logger.info("오피스 취소 요청 URL: {}", stopIndexUrl);
                         try {
                             restTemplate.exchange(stopIndexUrl, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
@@ -192,15 +192,11 @@ public class OfficeIndexingJob implements Runnable {
                     body.put("queue", officeQueueName);
                     body.put("size", consumeCount);
                     logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
-                    if (!dryRun) {
-                        restTemplate.exchange(officeQueueIndexUrl,
-                                HttpMethod.PUT,
-                                new HttpEntity(body),
-                                String.class
-                        );
-                    } else {
-                        logger.info("[DRY_RUN] >> Office << queue indexer request skip");
-                    }
+                    restTemplate.exchange(officeQueueIndexUrl,
+                            HttpMethod.PUT,
+                            new HttpEntity(body),
+                            String.class
+                    );
                     break;
                 } catch (Exception e) {
                     logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
