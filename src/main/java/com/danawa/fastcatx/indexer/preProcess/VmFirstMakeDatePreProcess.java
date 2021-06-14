@@ -51,9 +51,13 @@ public class VmFirstMakeDatePreProcess {
             }
 
             // 2. truncate
-            TruncateManager truncateManager = new TruncateManager();
-            Boolean isEmpty = truncateManager.linkTruncateCall(env, "tFirstDateForSearch", alti_master_url, alti_slave_url, alti_rescue_url, alti_user, alti_password);
-
+            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
+            Boolean isEmpty = true;
+//            Boolean isEmpty = truncateManager.linkTruncateCall(env, "tFirstDateForSearch", alti_master_url, alti_slave_url, alti_rescue_url, alti_user, alti_password);
+            if(!databaseQueryHelper.truncate(selectConn, "tFirstDateForSearch")) {
+                isEmpty = false;
+            }
+            //....
 
             // 3. insert
             long insertStart = System.currentTimeMillis(); // INSERT TIME 시작
