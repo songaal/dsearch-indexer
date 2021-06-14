@@ -37,7 +37,7 @@ public class OfficeIndexingJob implements Runnable {
     private Set<Integer> endGroupSeq = new HashSet<>();
 
     public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
-        logger.info("office params: {}", job.getRequest());
+        logger.info("enableAutoDynamic: {}, office params: {}", enableAutoDynamic, job.getRequest());
         this.dryRun = dryRun;
         this.job = job;
         this.finishedProcedureGroupSeq = finishedProcedureGroupSeq;
@@ -186,17 +186,19 @@ public class OfficeIndexingJob implements Runnable {
 
     public void updateQueueIndexerConsume(int maxOpenRetry, int consumeCount) {
         if (enableAutoDynamic) {
+            logger.info("동적색인 Off 호출");
             for (;maxOpenRetry >= 0; maxOpenRetry--) {
                 try {
                     Map<String, Object> body = new HashMap<>();
                     body.put("queue", officeQueueName);
                     body.put("size", consumeCount);
                     logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
-                    restTemplate.exchange(officeQueueIndexUrl,
+                    ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
                             HttpMethod.PUT,
                             new HttpEntity(body),
                             String.class
                     );
+                    logger.info("edit Consume Response: {}", response);
                     break;
                 } catch (Exception e) {
                     logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);

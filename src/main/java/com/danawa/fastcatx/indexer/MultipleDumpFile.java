@@ -61,7 +61,7 @@ public class MultipleDumpFile {
 //            오피스 전체 색인 실행 여부
             boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob",false); //   office full index
 //            Q인덱서 컨슘 on/off 처리 여부
-            boolean enableAutoDynamic = (Boolean) payload.getOrDefault("enableAutoDynamic",false);
+            boolean enableOfficeAutoDynamic = (Boolean) payload.getOrDefault("enableOfficeAutoDynamic",false);
 //            Q인덱서 컨슘 갯수
             int officeIndexConsumeCount = (int) payload.getOrDefault("officeIndexConsumeCount",1);
 
@@ -118,7 +118,7 @@ public class MultipleDumpFile {
                         dryRun,
                         job,
                         String.valueOf(payload.get("groupSeq")),
-                        enableAutoDynamic,
+                        enableOfficeAutoDynamic,
                         startedProcedureGroupSeq,
                         officeFullIndexUrl,
                         groupSeqList,
