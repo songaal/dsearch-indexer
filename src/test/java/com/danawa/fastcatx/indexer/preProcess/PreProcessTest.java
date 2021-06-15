@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.scheduling.support.CronTrigger;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,10 +41,12 @@ public class PreProcessTest {
 
             Map<String, Object> payload  = new HashMap<>();
             payload.put("altibaseDriver", "Altibase.jdbc.driver.AltibaseDriver");
-//            payload.put("altibaseAddress", "jdbc:Altibase://altitour-dev.danawa.com:20200/DNWTOUR");
-            payload.put("altibaseAddress", "jdbc:Altibase://es2.danawa.io:30031/DNWTOUR");
-            payload.put("altibaseUsername", "DBNTOUR_A");
-            payload.put("altibasePassword", "qnxmfhtm#^^");
+            payload.put("altibaseAddress", "jdbc:Altibase://altitour-dev.danawa.io:20200/DNWTOUR");
+//            payload.put("altibaseAddress", "jdbc:Altibase://es2.danawa.io:30031/DNWTOUR");
+//            payload.put("altibaseUsername", "DBNTOUR_A");
+//            payload.put("altibasePassword", "qnxmfhtm#^^");
+            payload.put("altibaseUsername", "DBNTOUR_A1");
+            payload.put("altibasePassword", "qnxmfhtm#^^1");
             payload.put("selectSql", selectSql);
             payload.put("insertSql", insertSql);
             payload.put("tableName", "TMAINTOURPRODUCTMENU");
@@ -60,11 +63,6 @@ public class PreProcessTest {
         }
 
         logger.info("{}", job);
-
-    }
-
-    @Test
-    public void cronTest() {
 
     }
 
