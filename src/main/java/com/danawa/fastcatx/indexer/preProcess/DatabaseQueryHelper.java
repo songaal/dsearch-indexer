@@ -45,12 +45,14 @@ public class DatabaseQueryHelper {
 
         String truncatedCheckSql = String.format("SELECT COUNT(1) FROM %s", tableName);
         String truncateSql = "{CALL PRTRUNCATE(?, ?)}";
-
+        String out = new String();
         CallableStatement callableStatement = connection.prepareCall(truncateSql);
         callableStatement.setString(1, tableName);
+        callableStatement.setString(2, out);
         callableStatement.registerOutParameter(2, Types.CHAR);
         boolean result = callableStatement.execute();
-        logger.info("Truncate Call. TableName: {}, result: {}", tableName, result);
+
+        logger.info("Truncate Call. TableName: {}, result: {}, out: {}", tableName, result, out);
 
         long endTime = System.currentTimeMillis() + timeout;
         int n = 0;
