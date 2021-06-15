@@ -3,6 +3,7 @@ package com.danawa.fastcatx.indexer.preProcess;
 import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -225,5 +226,59 @@ public class PreProcessTest {
         logger.info("{}", job);
 
     }
+
+
+    @Test
+    public void categoryTest() {
+        Job job = new Job();
+        try {
+
+            Map<String, Object> payload  = new HashMap<>();
+            payload.put("categoryXmlFilePath", "D:\\tmpFile\\search.xml");
+            payload.put("categorySearchUrl", "http://es2.danawa.io:9200/category/_search");
+            payload.put("categorySearchBody", "{\n" +
+                    "  \"from\": 0, \n" +
+                    "  \"size\": 500, \n" +
+                    "  \"sort\": [\n" +
+                    "    {\n" +
+                    "      \"pCategoryCode\": {\n" +
+                    "        \"order\": \"desc\"\n" +
+                    "      }\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"categoryCode\": {\n" +
+                    "        \"order\": \"desc\"\n" +
+                    "      }\n" +
+                    "    }\n" +
+                    "  ], \n" +
+                    "  \"query\": {\n" +
+                    "    \"bool\": {\n" +
+                    "      \"filter\": [\n" +
+                    "        {\n" +
+                    "          \"terms\": {\n" +
+                    "            \"depth\": [\n" +
+                    "              \"1\",\n" +
+                    "              \"2\"\n" +
+                    "            ]\n" +
+                    "          }\n" +
+                    "        }\n" +
+                    "      ]\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}");
+
+
+            job.setStartTime(System.currentTimeMillis());
+            job.setId(UUID.randomUUID());
+            job.setAction(IndexJobRunner.STATUS.READY.name());
+            job.setRequest(payload);
+
+            new CategoryPreProcess(job).start();
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+        logger.info("{}", job);
+    }
+
 
 }
