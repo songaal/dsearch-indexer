@@ -4,7 +4,6 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.SQLException;
 import java.util.Map;
 
 public interface PreProcess {
@@ -16,7 +15,7 @@ public interface PreProcess {
         if (TYPE.NTOUR.name().equalsIgnoreCase(type)) {
             new NTourPreProcess(job).start();
         } else if (TYPE.CATEGORY_KEYWORD.name().equalsIgnoreCase(type)) {
-
+            new CategoryKeywordPreProcess(job).start();
         } else if (TYPE.VM_KEYWORD.name().equalsIgnoreCase(type)) {
 
         } else if (TYPE.VM_FIRSTMAKE_DATE.name().equalsIgnoreCase(type)) {
