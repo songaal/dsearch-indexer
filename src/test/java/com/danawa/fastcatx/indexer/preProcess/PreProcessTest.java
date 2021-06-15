@@ -189,9 +189,9 @@ public class PreProcessTest {
                     "        AND tC4.depth=4\n" +
                     "GROUP BY\n" +
                     "        tC1.cate_c, tC2.cate_c, tC3.cate_c, tC4.cate_c, tC1.cate_n, tC2.cate_n, tC3.cate_n, tC4.cate_n, tC4.disp_yn, tC4.emBundleRepresentProductSetting";
-            String insertSql = "INSERT INTO TCATEGORYFORSEARCH " +
-                    "(NCATEGORYSEQ1,NCATEGORYSEQ2,NCATEGORYSEQ3,NCATEGORYSEQ4,SCATEGORYNAME1,SCATEGORYNAME2,SCATEGORYNAME3,SCATEGORYNAME4,SDISPYN,SVIRTUALYN,SCATEGORYKEYWORDLIST,SCATEGORYWEIGHTLIST,SBRPS) " +
-                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+            String insertSql = "INSERT INTO TCATEGORYFORSEARCH "
+                    + "(NCATEGORYSEQ1,NCATEGORYSEQ2,NCATEGORYSEQ3,NCATEGORYSEQ4,SCATEGORYNAME1,SCATEGORYNAME2,SCATEGORYNAME3,SCATEGORYNAME4,SDISPYN,SVIRTUALYN,SCATEGORYKEYWORDLIST,SCATEGORYWEIGHTLIST,SBRPS)"
+                    + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
             Map<String, Object> payload  = new HashMap<>();
             payload.put("selectSql", selectSql);
@@ -199,17 +199,17 @@ public class PreProcessTest {
             payload.put("tableName", "tCategoryForSearch");
 
             payload.put("altibaseDriver", "Altibase.jdbc.driver.AltibaseDriver");
-            payload.put("altibaseMasterAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI?SessionFailOver=off&ConnectionRetryCount=2&ConnectionRetryDelay=0&LoadBalance=off");
+            payload.put("altibaseMasterAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI");
             payload.put("altibaseMasterUsername", "DBLINKDATA_A");
             payload.put("altibaseMasterPassword", "ektbfm#^^");
 
-            payload.put("altibaseSlaveEnable", false);
-            payload.put("altibaseSlaveAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI?SessionFailOver=off&ConnectionRetryCount=2&ConnectionRetryDelay=0&LoadBalance=off");
-            payload.put("altibaseSlaveUsername", "DB");
-            payload.put("altibaseSlavePassword", "PW");
+            payload.put("altibaseSlaveEnable", true);
+            payload.put("altibaseSlaveAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI");
+            payload.put("altibaseSlaveUsername", "DBLINKDATA_A");
+            payload.put("altibaseSlavePassword", "ektbfm#^^");
 
             payload.put("altibaseRescueEnable", false);
-            payload.put("altibaseRescueAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI?SessionFailOver=off&ConnectionRetryCount=2&ConnectionRetryDelay=0&LoadBalance=off");
+            payload.put("altibaseRescueAddress", "jdbc:Altibase://es2.danawa.io:30032/DNWALTI");
             payload.put("altibaseRescueUsername", "DB");
             payload.put("altibaseRescuePassword", "PW");
 

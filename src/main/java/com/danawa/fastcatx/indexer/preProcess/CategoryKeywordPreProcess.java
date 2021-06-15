@@ -169,16 +169,16 @@ public class CategoryKeywordPreProcess implements PreProcess {
 
     private String[] getCategories(ResultSet resultSet) throws SQLException {
         int depth = Integer.parseInt(resultSet.getString("depth"));
-        String[] categories = new String[depth];
 
-        for (int i = 0; i < depth; i++) {
-            String tmpStr = resultSet.getString("cate_k" + (i + 1));
-            if (i < depth - 1) {
-                tmpStr += ", ";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i <= depth; i++) {
+            sb.append(resultSet.getString("cate_k" + i));
+            if (i < depth) {
+                sb.append(", ");
             }
-            categories[i] = tmpStr;
         }
-        return categories;
+
+        return sb.toString().split(", ");
     }
 
 }
