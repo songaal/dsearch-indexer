@@ -58,30 +58,27 @@ public class CategoryKeywordPreProcess implements PreProcess {
         try (
                 Connection masterConnection = databaseConnector.getConn(DB_TYPE.master.name());
                 Connection slaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
-                Connection rescueConnection = databaseConnector.getConn(DB_TYPE.slave.name());
+                Connection rescueConnection = databaseConnector.getConn(DB_TYPE.rescue.name());
         ) {
             DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
 //            현재 테이블 조회
-            ResultSet resultSet = databaseQueryHelper.simpleSelect(slaveConnection, selectSql);
-            int rowCount = resultSet.getRow();
+            ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
+            int rowCount = 0;
+            if (resultSet.last()) {
+                rowCount = resultSet.getRow();
+                resultSet.beforeFirst();
+            }
             logger.info("조회 Row 갯수: {}, SQL: {}", rowCount, selectSql.substring(0, 100));
 
 //            truncate 프로시저 호출
             boolean isMasterTruncated = databaseQueryHelper.truncate(masterConnection, tableName);
             logger.info("[master] truncate result: {}", isMasterTruncated);
             // slave, rescue 선택적으로 truncate 호출
-            boolean isSlaveTruncated = false;
-            boolean isRescueTruncated = false;
-            if (altibaseSlaveEnable) {
-                isSlaveTruncated = databaseQueryHelper.truncate(slaveConnection, tableName);
-                logger.info("[slave] truncate result: {}", isSlaveTruncated);
-            }
-            if (altibaseRescueEnable) {
-                isRescueTruncated = databaseQueryHelper.truncate(rescueConnection, tableName);
-                logger.info("[rescue] truncate result: {}", isRescueTruncated);
-            }
-
+            boolean isSlaveTruncated = !altibaseSlaveEnable || databaseQueryHelper.truncate(slaveConnection, tableName);
+            boolean isRescueTruncated = !altibaseRescueEnable || databaseQueryHelper.truncate(rescueConnection, tableName);
+            logger.info("[slave] truncate result: {}", isSlaveTruncated);
+            logger.info("[rescue] truncate result: {}", isRescueTruncated);
             if (!isMasterTruncated || !isSlaveTruncated || !isRescueTruncated) {
                 logger.warn("Truncate 실패했습니다.");
                 throw new SQLException("Truncate failure");
