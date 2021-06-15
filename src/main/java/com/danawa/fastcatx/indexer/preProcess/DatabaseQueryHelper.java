@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.HashSet;
+import java.util.Set;
 
 public class DatabaseQueryHelper {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseQueryHelper.class);
@@ -28,7 +30,7 @@ public class DatabaseQueryHelper {
 
     public ResultSet simpleSelect(Connection connection, String sql) throws SQLException {
         long st = System.currentTimeMillis();
-        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+        PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
         ResultSet resultSet = preparedStatement.executeQuery();
         long nt = System.currentTimeMillis();
         logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 100));
@@ -41,30 +43,39 @@ public class DatabaseQueryHelper {
     public boolean truncate(Connection connection, String tableName, long timeout) throws SQLException {
         boolean isTruncated = false;
 
-        String truncatedCheckSql = String.format("SELECT COUNT(*) FROM %s", tableName);
+        String truncatedCheckSql = String.format("SELECT COUNT(1) FROM %s", tableName);
         String truncateSql = "{CALL PRTRUNCATE(?, ?)}";
 
         CallableStatement callableStatement = connection.prepareCall(truncateSql);
         callableStatement.setString(1, tableName);
         callableStatement.registerOutParameter(2, Types.CHAR);
-        callableStatement.execute();
-        logger.info("Truncate Call. TableName: {}", tableName);
+        boolean result = callableStatement.execute();
+        logger.info("Truncate Call. TableName: {}, result: {}", tableName, result);
 
         long endTime = System.currentTimeMillis() + timeout;
         int n = 0;
+        Set<Integer> infinityCheck = new HashSet<>();
         for (;System.currentTimeMillis() < endTime;) {
 //            데이터가 별루 없으면 빨리 끝날거같아서,, 처음 10회는 1초마다 확인하고, 이후 부터는 5초 간격으로 갯수 확인한다.
             Utils.sleep(n++ < 10 ? 1000 : 5000);
-            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
             ResultSet resultSet = preparedStatement.executeQuery();
             if(resultSet.next()) {
-                if(resultSet.getInt(1) == 0) {
+                int count = resultSet.getInt(1);
+                if(count == 0) {
                     isTruncated = true;
                     break;
+                } else {
+                    infinityCheck.add(count);
                 }
             }
             if (n % 10 == 0) {
                 logger.warn("Truncate Check Loop.. {}", n);
+                if (infinityCheck.size() == 1) {
+                    logger.warn("프로시져 호출 후 데이터 감소 안함.");
+                    break;
+                }
+                infinityCheck.clear();
             }
         }
 //            TODO 실패 시 알림 기능 추가
