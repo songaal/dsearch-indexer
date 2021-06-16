@@ -201,11 +201,12 @@ public class MultipleDumpFile {
                                         long nt = System.currentTimeMillis();
                                         logger.info("procedure finished. groupSeq: {}, elapsed time: {} s", groupSeq, (nt - st) / 1000);
 
-//                                        그룹시퀀스를 추가할때마다 오피스 색인 작업 시작
-                                        startedProcedureGroupSeq.add(groupSeq);
                                     } else {
                                         logger.info("not start procedure. groupSeq: {}", groupSeq);
                                     }
+
+//                                      그룹시퀀스를 추가할때마다 오피스 색인 작업 시작
+                                    startedProcedureGroupSeq.add(groupSeq);
 
                                     if (!dryRun) {
                                         // Not DryRun !!!!!!!!!!!!!!!!!!

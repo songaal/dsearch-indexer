@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 public interface PreProcess {
-    enum TYPE { NTOUR, CATEGORY_KEYWORD, CATEGORY, VM_KEYWORD, VM_FIRSTMAKE_DATE }
+    enum TYPE { NTOUR, CATEGORY_KEYWORD, CATEGORY, VM_KEYWORD, VM_FIRSTMAKE_DATE, ACKEYWORD }
 
     default void starter(Job job) throws Exception {
         Map<String, Object> payload = job.getRequest();
@@ -17,6 +17,8 @@ public interface PreProcess {
         } else if (TYPE.CATEGORY_KEYWORD.name().equalsIgnoreCase(type)) {
             new CategoryKeywordPreProcess(job).start();
         } else if (TYPE.CATEGORY.name().equalsIgnoreCase(type)) {
+            new CategoryPreProcess(job).start();
+        } else if (TYPE.ACKEYWORD.name().equalsIgnoreCase(type)) {
             new CategoryPreProcess(job).start();
         } else if (TYPE.VM_KEYWORD.name().equalsIgnoreCase(type)) {
 
