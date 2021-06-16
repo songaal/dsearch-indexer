@@ -135,6 +135,7 @@ public class OfficeIndexingJob implements Runnable {
                                 isEnd = true;
                             } else if ("STOP".equalsIgnoreCase(status)) {
                                 job.setStopSignal(true);
+                                throw new StopSignalException();
                             }
                             break;
                         } catch (Exception e) {
