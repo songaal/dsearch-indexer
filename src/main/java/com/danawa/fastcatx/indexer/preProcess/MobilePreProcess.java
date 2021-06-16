@@ -3,9 +3,6 @@ package com.danawa.fastcatx.indexer.preProcess;
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -26,29 +23,27 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CategoryPreProcess implements PreProcess {
-    private static final Logger logger = LoggerFactory.getLogger(CategoryPreProcess.class);
+public class MobilePreProcess implements PreProcess {
+    private static final Logger logger = LoggerFactory.getLogger(MobilePreProcess.class);
     private Job job;
     private Map<String, Object> payload;
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final Gson gson = new Gson();
 
-    public CategoryPreProcess(Job job) {
+    public MobilePreProcess(Job job) {
         this.job = job;
         this.payload = job.getRequest();
     }
 
     @Override
     public void start() throws Exception {
-        logger.info("카테고리 전처리를 시작합니다.");
+        logger.info("MOBILE 전처리를 시작합니다.");
         String categorySearchUrl = (String) payload.getOrDefault("categorySearchUrl", "");
         String categorySearchBody = (String) payload.getOrDefault("categorySearchBody", "");
         String categoryXmlFilePath = (String) payload.getOrDefault("categoryXmlFilePath", "");
@@ -68,11 +63,11 @@ public class CategoryPreProcess implements PreProcess {
             logger.warn("카테고리 조회 결과가 없습니다. body: {}", body);
         }
 
-        String categoryCode = "";
-        String categoryName = "";
-
         deleteCategoryXml(categoryXmlFilePath);
 
+
+        String categoryCode = "";
+        String categoryName = "";
         for (Map<String, Object> category : categories) {
             Map<String, Object> source = (Map<String, Object>) category.get("_source");
             if (source.get("depth").equals("1")) {
@@ -92,18 +87,12 @@ public class CategoryPreProcess implements PreProcess {
             }
             updateCategoryXml(categoryXmlFilePath, categoryCode, categoryName);
         }
-
-
         logger.info("로그분석기용 카테고리 재구성 완료");
 
-        //        로그분석기 반영 API 호출
         refreshCategoryInfo(refreshApiUri);
 
-        logger.info("카테고리 전처리 완료하였습니다.");
+        logger.info("MOBILE 전처리를 완료하였습니다.");
     }
-
-
-
 
     private void deleteCategoryXml(String xmlFilePath) {
         logger.info("기존 카테고리 삭제");
@@ -159,7 +148,6 @@ public class CategoryPreProcess implements PreProcess {
         }
     }
 
-
     public void updateCategoryXml(String xmlFilePath, String categoryCode, String categoryName) {
         logger.info(categoryCode + " " + categoryName + " 추가");
         File file = new File(xmlFilePath);
@@ -193,7 +181,6 @@ public class CategoryPreProcess implements PreProcess {
         }
     }
 
-
     public void refreshCategoryInfo(String refreshApiUri) throws Exception {
         logger.info("로그분석기 반영 API 호출");
 
@@ -210,5 +197,4 @@ public class CategoryPreProcess implements PreProcess {
             throw new Exception("LogAnalytics Refresh Fail.");
         }
     }
-
 }
