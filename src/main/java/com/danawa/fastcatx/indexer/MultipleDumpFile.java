@@ -430,9 +430,9 @@ public class MultipleDumpFile {
 
                 // 제한된 갯수만큼 그룹시퀀스 시작
                 int runningSize = current.size() - startedProcedureGroupSeqList.size();
-                logger.info("selfStartRunner wait.. {}", runningSize);
-                if (current.size() < groupSeqList.size() && runningSize < procedureLimit && lastIndex < groupSeqSize) {
-                    int availableSize = procedureLimit - runningSize;
+                int availableSize = procedureLimit - runningSize;
+                logger.info("selfStartRunner wait.. {}, availableSize: {}", runningSize, availableSize);
+                if (runningSize < procedureLimit) {
                     lastIndex = runGroupSeq(current, lastIndex, availableSize);
                 }
 
