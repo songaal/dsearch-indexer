@@ -385,11 +385,14 @@ public class MultipleDumpFile {
         }
 
         private int runGroupSeq(Set<Integer> current, int start, int addSize) {
-            for (int i = start; i < start + addSize && i < groupSeqList.size(); i++) {
-                current.add(groupSeqList.get(i));
-                logger.info("GroupSeq 자동 시작 >>>>>>> {}", i);
+            for (int i = start; i < start + addSize; i++) {
+                if (i < groupSeqList.size()) {
+                    int n = groupSeqList.get(i);
+                    current.add(n);
+                    job.getGroupSeq().add(n);
+                    logger.info("add GroupSeq >>>>>>>>>>>>>>> groupSeq: {}, index: {}", n, i);
+                }
             }
-            job.getGroupSeq().addAll(current);
             logger.info("자동시작된 모든 그룹시퀀스 번호: {}", job.getGroupSeq());
             return start + addSize;
         }
@@ -404,8 +407,8 @@ public class MultipleDumpFile {
             remoteCmd("CLOSE", 10);
 
             // 처음엔 즉시 제한까지 실행
-            int lastIndex = runGroupSeq(current, 0, groupSeqList.size() < procedureLimit ? procedureLimit : groupSeqList.size());
-            logger.info(">>>>>>>>>>>>>>>>> lastIndex: {}", lastIndex);
+            int groupSeqSize = groupSeqList.size() < procedureLimit ? procedureLimit : groupSeqList.size();
+            int lastIndex = runGroupSeq(current, 0, groupSeqSize);
             boolean isFinish = false;
             while (true) {
                 // 1분씩 지연
@@ -419,10 +422,9 @@ public class MultipleDumpFile {
                 // 제한된 갯수만큼 그룹시퀀스 시작
                 int runningSize = current.size() - startedProcedureGroupSeqList.size();
                 logger.info("selfStartRunner wait.. {}", runningSize);
-                if (current.size() < groupSeqList.size() && runningSize < procedureLimit) {
+                if (current.size() < groupSeqList.size() && runningSize < procedureLimit && lastIndex < groupSeqSize) {
                     int availableSize = procedureLimit - runningSize;
                     lastIndex = runGroupSeq(current, lastIndex, availableSize);
-                    logger.info(">>>>>>>>>>>>>>>>> lastIndex: {}, current: {} ", lastIndex, current);
                 }
 
                 // 전부 시작 완료
