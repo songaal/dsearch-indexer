@@ -152,7 +152,8 @@ public class MultipleDumpFile {
                     subStarted.addAll(groupSeqList);
                     logger.info("Stop Signal. Started GroupSeq: {}", job.getGroupSeq());
                     job.getGroupSeq().addAll(groupSeqList);
-                    break;
+                    throw new StopSignalException();
+//                    break;
                 } else {
                     while (iterator.hasNext()) {
                         Integer groupSeq = iterator.next();
