@@ -33,7 +33,24 @@ public class DatabaseQueryHelper {
         PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
         ResultSet resultSet = preparedStatement.executeQuery();
         long nt = System.currentTimeMillis();
-        logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 100));
+        if (sql.length() < 50){
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
+        } else {
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
+        }
+        return resultSet;
+    }
+
+    public ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
+        long st = System.currentTimeMillis();
+        PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+        ResultSet resultSet = preparedStatement.executeQuery();
+        long nt = System.currentTimeMillis();
+        if (sql.length() < 50){
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
+        } else {
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
+        }
         return resultSet;
     }
 

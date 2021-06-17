@@ -281,4 +281,119 @@ public class PreProcessTest {
     }
 
 
+    @Test
+    public void vmFirstMakeDateTest() {
+        Job job = new Job();
+        try {
+
+//        // 쿼리
+            String selectSql = "SELECT tP.prod_c,\n" +
+                    "        (select MIN(temp.make_d)\n" +
+                    "        FROM\n" +
+                    "          tprod temp\n" +
+                    "        where\n" +
+                    "          temp.maker_c = tP.maker_c\n" +
+                    "          AND NVL(temp.brand_c,0) = NVL(tP.brand_c,0)\n" +
+                    "          AND temp.prod_n = tP.prod_n\n" +
+                    ") as FIRSTDATE\n" +
+                    "FROM\n" +
+                    "        TPROD tP;\n";
+
+            String insertSql = "INSERT INTO TFIRSTDATEFORSEARCH (PROD_C , FIRSTDATE) VALUES (?,?)";
+
+            Map<String, Object> payload  = new HashMap<>();
+            payload.put("selectSql", selectSql);
+            payload.put("insertSql", insertSql);
+            payload.put("tableName", "tFirstDateForSearch");
+
+            payload.put("altibaseDriver", "Altibase.jdbc.driver.AltibaseDriver");
+            payload.put("altibaseMasterAddress", "jdbc:Altibase://alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseMasterUsername", "DBLINKDATA_A");
+            payload.put("altibaseMasterPassword", "ektbfm#^^");
+
+            payload.put("altibaseSlaveEnable", true);
+            payload.put("altibaseSlaveAddress", "jdbc:Altibase://alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseSlaveUsername", "DBLINKDATA_A");
+            payload.put("altibaseSlavePassword", "ektbfm#^^");
+
+            payload.put("altibaseRescueEnable", false);
+            payload.put("altibaseRescueAddress", "jdbc:Altibase://alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseRescueUsername", "DB");
+            payload.put("altibaseRescuePassword", "PW");
+
+            job.setStartTime(System.currentTimeMillis());
+            job.setId(UUID.randomUUID());
+            job.setAction(IndexJobRunner.STATUS.READY.name());
+            job.setRequest(payload);
+
+            new VmFirstMakeDatePreProcess(job).start();
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+        logger.info("{}", job);
+    }
+
+
+
+    @Test
+    public void vmKeywordTest(){
+        Job job = new Job();
+        try {
+
+//        // 쿼리
+            String selectSql = "SELECT\n" +
+                    "        tP.prod_c prod_c,\n" +
+                    "        GROUP_CONCAT(DISTINCT(tPS.keyword) , ', ') sKeywordList,\n" +
+                    "        GROUP_CONCAT(DISTINCT(tSKB.sBrandKeyword) , ', ') sBrandKeywordList,\n" +
+                    "        GROUP_CONCAT(DISTINCT(tSKM.sMakerKeyword) , ', ') sMakerKeywordList,\n" +
+                    "        SUBSTR(GROUP_CONCAT(DISTINCT(tSKD.sModelKeyword) , ', '),1,255) sModeKeywordListl\n" +
+                    "FROM\n" +
+                    "        tprod tP\n" +
+                    "        LEFT JOIN tprod_search tPS ON (tP.prod_c = tPS.prod_c)\n" +
+                    "        LEFT JOIN tSearchKeywordBrand tSKB ON (tP.brand_c = tSKB.brand_c)\n" +
+                    "        LEFT JOIN tSearchKeywordMaker tSKM ON (tP.maker_c = tSKM.maker_c)\n" +
+                    "        LEFT JOIN tSearchKeywordModel tSKD ON (tP.prod_c = tSKD.prod_c and tSKD.SKEYWORDTYPE = 'R')\n" +
+                    "GROUP BY\n" +
+                    "        tP.prod_c;\n";
+
+            String insertSql = "INSERT INTO "
+                    + "tKeywordForSearch(nProductSeq, sKeywordList, sBrandKeywordList, sMakerKeywordList, sModelKeywordList) "
+                    + "VALUES(?, ?, ?, ?, ?)";
+
+            String countSql = "SELECT COUNT(tP.prod_c) FROM tprod tP";
+
+            Map<String, Object> payload  = new HashMap<>();
+            payload.put("selectSql", selectSql);
+            payload.put("insertSql", insertSql);
+            payload.put("countSql", countSql);
+            payload.put("tableName", "tKeywordForSearch");
+
+            payload.put("altibaseDriver", "Altibase.jdbc.driver.AltibaseDriver");
+            payload.put("altibaseMasterAddress", "jdbc:Altibase://alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseMasterUsername", "DBLINKDATA_A");
+            payload.put("altibaseMasterPassword", "ektbfm#^^");
+
+            payload.put("altibaseSlaveEnable", true);
+            payload.put("altibaseSlaveAddress", "jdbc:Altibase://alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseSlaveUsername", "DBLINKDATA_A");
+            payload.put("altibaseSlavePassword", "ektbfm#^^");
+
+            payload.put("altibaseRescueEnable", false);
+            payload.put("altibaseRescueAddress", "jdbc:Altibase:/alti1-dev.danawa.com:20200/DNWALTI");
+            payload.put("altibaseRescueUsername", "DB");
+            payload.put("altibaseRescuePassword", "PW");
+
+            job.setStartTime(System.currentTimeMillis());
+            job.setId(UUID.randomUUID());
+            job.setAction(IndexJobRunner.STATUS.READY.name());
+            job.setRequest(payload);
+
+            new VmKeywordPreProcess(job).start();
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+        logger.info("{}", job);
+    }
+
+
 }
