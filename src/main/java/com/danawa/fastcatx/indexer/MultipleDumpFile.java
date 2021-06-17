@@ -423,7 +423,7 @@ public class MultipleDumpFile {
                 // 1분씩 지연
                 Utils.sleep(30 * 1000);
 
-                if (job.getStopSignal()) {
+                if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                     logger.info("자동시작 스래드 중지");
                     break;
                 }
@@ -470,14 +470,14 @@ public class MultipleDumpFile {
             logger.info("SelfSubStart Finished. buy~!");
         }
 
-//      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능)
+//      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능 )
         private void remoteCmd(String action, int retry) {
+            String url = String.format("%s?action=%s", remoteCmdUrl, action);
+            logger.info("REMOTE-CMD isCall: {}, URL: {}", enableRemoteCmd, url);
             if (!enableRemoteCmd) {
                 return;
             }
             try {
-                String url = String.format("%s?action=%s", remoteCmdUrl, action);
-                logger.info("REMOTE-CMD 호출 URL: {}", url);
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
                 ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
