@@ -437,7 +437,7 @@ public class MultipleDumpFile {
                 }
 
                 // 전부 시작 완료
-                if (job.getGroupSeq().size() == groupSeqList.size()) {
+                if (job.getGroupSeq().size() == groupSeqList.size() && groupSeqList.size() == startedProcedureGroupSeqList.size()) {
                     logger.info("자동 시작 완료하였습니다.");
                     isFinish = true;
                     break;
