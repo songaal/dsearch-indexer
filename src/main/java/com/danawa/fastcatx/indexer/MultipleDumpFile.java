@@ -416,7 +416,7 @@ public class MultipleDumpFile {
             remoteCmd("CLOSE", 10);
 
             // 처음엔 즉시 제한까지 실행
-            int groupSeqSize = groupSeqList.size() < procedureLimit ? procedureLimit : groupSeqList.size();
+            int groupSeqSize = groupSeqList.size() < procedureLimit ? groupSeqList.size() : procedureLimit;
             int lastIndex = runGroupSeq(current, 0, groupSeqSize);
             boolean isFinish = false;
             while (true) {
