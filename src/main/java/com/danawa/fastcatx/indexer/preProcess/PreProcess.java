@@ -21,7 +21,7 @@ public interface PreProcess {
         } else if (TYPE.ACKEYWORD.name().equalsIgnoreCase(type)) {
             new CategoryPreProcess(job).start();
         } else if (TYPE.VM_KEYWORD.name().equalsIgnoreCase(type)) {
-
+            new VmKeywordPreProcess(job).start();
         } else if (TYPE.VM_FIRSTMAKE_DATE.name().equalsIgnoreCase(type)) {
             new VmFirstMakeDatePreProcess(job).start();
         }
