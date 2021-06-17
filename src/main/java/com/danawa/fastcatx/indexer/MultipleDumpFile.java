@@ -94,7 +94,15 @@ public class MultipleDumpFile {
             // GroupSeq 개별 색인 시작 호출을 자동으로 진행함.
             if (enableSelfSubStart) {
                 // 시작할 그룹시퀀스
-                new Thread(new SelfStartRunner(job, groupSeqList, startedProcedureGroupSeq, failedProcedureGroupSeq, procedureLimit, enableRemoteCmd, remoteCmdUrl)).start();
+//                Job job, Set<Integer> startedProcedureGroupSeqList, Set<Integer> failedProcedureGroupSeqList, Set<Integer> groupSeqList, Integer procedureLimit, boolean enableRemoteCmd, String remoteCmdUrl
+                new Thread(new SelfStartRunner(job,
+                        startedProcedureGroupSeq,
+                        failedProcedureGroupSeq,
+                        groupSeqList,
+                        procedureLimit,
+                        enableRemoteCmd,
+                        remoteCmdUrl)
+                ).start();
             }
 
             if (dryRun) {
@@ -382,6 +390,7 @@ public class MultipleDumpFile {
             this.remoteCmdUrl = remoteCmdUrl;
             this.groupSeqList = new ArrayList<>(groupSeqList);
             logger.info("selfStartRunner init");
+            logger.info("groupSeqList: {}, procedureLimit: {}", groupSeqList, procedureLimit);
         }
 
         private int runGroupSeq(Set<Integer> current, int start, int addSize) {
