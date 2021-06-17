@@ -82,7 +82,11 @@ public class CallProcedure {
             }
             return true;
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            logger.info("groupSeq: {}", groupSeq);
+            logger.info("driverClassName: {}, url: {}, user: {}, password: {}", driverClassName, url, user, password);
+            logger.error("", e);
+
             if (connection != null) {
                 closeConnection();
             }
