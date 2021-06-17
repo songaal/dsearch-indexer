@@ -4,8 +4,7 @@ import com.danawa.fastcatx.indexer.entity.Job;
 import com.danawa.fastcatx.indexer.ingester.ProcedureIngester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
+import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -22,6 +21,7 @@ public class MultipleDumpFile {
     private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
     private Set<Integer> subStarted = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> startedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
+    private Set<Integer> failedProcedureGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
     private Set<Integer> finishedGroupSeq = Collections.synchronizedSet(new LinkedHashSet<>());
 
     private IndexService service;
@@ -57,7 +57,7 @@ public class MultipleDumpFile {
 //            모의 색인 실행 여부
             boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false);
 //            IDXP에서 subStart 호출없이 그룹시퀀스 색인 실행할지 여부
-            boolean enableSelfStartSubStart = (Boolean) payload.getOrDefault("enableSelfStartSubStart",false);
+            boolean enableSelfSubStart = (Boolean) payload.getOrDefault("enableSelfSubStart",false);
 //            오피스 전체 색인 실행 여부
             boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob",false); //   office full index
 //            Q인덱서 컨슘 on/off 처리 여부
@@ -75,6 +75,15 @@ public class MultipleDumpFile {
             String officeCheckUrl = (String) payload.getOrDefault("officeCheckUrl","");
 //            문자열로 나열된 그룹시퀀스 분리
             Set<Integer> groupSeqList = parseGroupSeq(String.valueOf(payload.get("groupSeq")));
+//            프로시져 동시 호출 제한 수
+            Integer procedureLimit = (Integer) payload.getOrDefault("procedureLimit", 7);
+
+
+//            원격 호출 사용 여부 (패스트캣 임시로직)
+            boolean enableRemoteCmd = (boolean) payload.getOrDefault("enableRemoteCmd",false);
+//            원격 호출 URL (패스트캣 임시로직)
+            String remoteCmdUrl = (String) payload.getOrDefault("remoteCmdUrl","");
+
             // --------- 파라미터 변수 변환 마지막 ---------
 
             if (groupSeqList.size() == 0) {
@@ -83,10 +92,9 @@ public class MultipleDumpFile {
                 return;
             }
             // GroupSeq 개별 색인 시작 호출을 자동으로 진행함.
-            if (enableSelfStartSubStart) {
+            if (enableSelfSubStart) {
                 // 시작할 그룹시퀀스
-                job.getGroupSeq().addAll(groupSeqList);
-                logger.info("enable self Sub Start GroupSeq >>> {} ", job.getGroupSeq());
+                new Thread(new SelfStartRunner(job, groupSeqList, startedProcedureGroupSeq, failedProcedureGroupSeq, procedureLimit, enableRemoteCmd, remoteCmdUrl)).start();
             }
 
             if (dryRun) {
@@ -102,7 +110,7 @@ public class MultipleDumpFile {
             }
 
             // IDXP를 사용안할때, 오피스 전채색인, 프로시저 시작 할때만 새로운 스래드 시작
-            if (enableSelfStartSubStart && enableOfficeIndexingJob && !procedureSkip) {
+            if (enableSelfSubStart && enableOfficeIndexingJob && !procedureSkip) {
                 logger.info("start office thread");
 //                logger.info("dryRun: {}", dryRun);
 //                logger.info("enableAutoDynamic: {}", enableAutoDynamic);
@@ -128,7 +136,7 @@ public class MultipleDumpFile {
                         officeQueueName
                 )).start();
             } else {
-                logger.info("not start office trigger, enableSelfStartSubStart: {}, enableOfficeIndexingJob: {}, procedureSkip: {}", enableSelfStartSubStart, enableOfficeIndexingJob, !procedureSkip);
+                logger.info("not start office trigger, enableSelfSubStart: {}, enableOfficeIndexingJob: {}, procedureSkip: {}", enableSelfSubStart, enableOfficeIndexingJob, !procedureSkip);
             }
 
             CountDownLatch latch = new CountDownLatch(groupSeqList.size());
@@ -205,8 +213,13 @@ public class MultipleDumpFile {
                                         logger.info("not start procedure. groupSeq: {}", groupSeq);
                                     }
 
+                                    if (execProdure) {
 //                                      그룹시퀀스를 추가할때마다 오피스 색인 작업 시작
-                                    startedProcedureGroupSeq.add(groupSeq);
+                                        startedProcedureGroupSeq.add(groupSeq);
+                                    } else {
+//                                        프로시저 실패
+                                        failedProcedureGroupSeq.add(groupSeq);
+                                    }
 
                                     if (!dryRun) {
                                         // Not DryRun !!!!!!!!!!!!!!!!!!
@@ -344,6 +357,120 @@ public class MultipleDumpFile {
             range.add(i);
         }
         return range;
+    }
+
+
+    private static class SelfStartRunner implements Runnable {
+        private static final Logger logger = LoggerFactory.getLogger(SelfStartRunner.class);
+        private RestTemplate restTemplate = new RestTemplate();
+
+        private Job job;
+        private List<Integer> groupSeqList;
+        private Set<Integer> startedProcedureGroupSeqList;
+        private Set<Integer> failedProcedureGroupSeqList;
+        private Integer procedureLimit;
+        boolean enableRemoteCmd;
+        private String remoteCmdUrl;
+
+        public SelfStartRunner(Job job, Set<Integer> startedProcedureGroupSeqList, Set<Integer> failedProcedureGroupSeqList, Set<Integer> groupSeqList, Integer procedureLimit, boolean enableRemoteCmd, String remoteCmdUrl) {
+            this.job = job;
+            this.startedProcedureGroupSeqList = startedProcedureGroupSeqList;
+            this.failedProcedureGroupSeqList = failedProcedureGroupSeqList;
+            this.procedureLimit = procedureLimit;
+            this.enableRemoteCmd = enableRemoteCmd;
+            this.remoteCmdUrl = remoteCmdUrl;
+            this.groupSeqList = new ArrayList<>(groupSeqList);
+        }
+
+        private int runGroupSeq(Set<Integer> current, int start, int addSize) {
+            for (int i = start; i < start + addSize && i < groupSeqList.size(); i++) {
+                current.add(groupSeqList.get(i));
+                logger.info("GroupSeq 자동 시작 >>>>>>> {}", i);
+            }
+            job.getGroupSeq().addAll(current);
+            logger.info("자동시작된 모든 그룹시퀀스 번호: {}", job.getGroupSeq());
+            return start + addSize;
+        }
+
+        @Override
+        public void run() {
+            logger.info("자동시작 기능을 시작합니다.");
+            Set<Integer> current = new HashSet<>();
+//            job.groupSeq: 그룹시퀀스를 추가할때마다 프로시저가 시작
+//            groupSeqList: 전체색인해야할 그룹시퀀스
+
+            remoteCmd("CLOSE", 10);
+
+            // 처음엔 즉시 제한까지 실행
+            int lastIndex = runGroupSeq(current, 0, groupSeqList.size() < procedureLimit ? procedureLimit : groupSeqList.size());
+
+            boolean isFinish = false;
+            while (true) {
+                // 1분씩 지연
+                Utils.sleep(30 * 1000);
+
+                if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                    logger.info("자동시작 스래드 중지");
+                    break;
+                }
+
+                // 제한된 갯수만큼 그룹시퀀스 시작
+                int runningSize = current.size() - startedProcedureGroupSeqList.size();
+                if (current.size() < groupSeqList.size() && runningSize < procedureLimit) {
+                    int availableSize = procedureLimit - runningSize;
+                    lastIndex = runGroupSeq(current, lastIndex, availableSize);
+                }
+
+                // 전부 시작 완료
+                if (job.getGroupSeq().size() == startedProcedureGroupSeqList.size()) {
+                    logger.info("자동 시작 완료하였습니다.");
+                    isFinish = true;
+                    break;
+                }
+
+                // 프로시저 실패인 경우.
+                if (failedProcedureGroupSeqList.size() > 0) {
+                    logger.info("--------------------------------------------");
+                    logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
+                    logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
+                    logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
+                    logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
+                    logger.info("--------------------------------------------");
+                    job.setStopSignal(true);
+                    job.setError("procedure error");
+                    break;
+                }
+            }
+
+            if (isFinish) {
+                // 정상완료
+                remoteCmd("INDEX", 10);
+            } else {
+                // 프로시저 실패되면 동적색인은 다시 오픈.
+                remoteCmd("OPEN", 10);
+            }
+        }
+
+//      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능)
+        private void remoteCmd(String action, int retry) {
+            if (!enableRemoteCmd) {
+                return;
+            }
+            try {
+                String url = String.format("%s?action=%s", remoteCmdUrl, action);
+                logger.info("REMOTE-CMD 호출 URL: {}", url);
+                HttpHeaders headers = new HttpHeaders();
+                headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+                ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+                logger.info("REMOTE-CMD Action: {} response status code: {}", action, responseEntity.getStatusCodeValue());
+            } catch (Exception e) {
+                logger.error("", e);
+                Utils.sleep(3000);
+                remoteCmd(action, retry - 1);
+            }
+        }
+
+
     }
 
 }
