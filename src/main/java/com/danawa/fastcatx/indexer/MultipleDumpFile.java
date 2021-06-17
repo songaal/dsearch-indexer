@@ -381,6 +381,7 @@ public class MultipleDumpFile {
             this.enableRemoteCmd = enableRemoteCmd;
             this.remoteCmdUrl = remoteCmdUrl;
             this.groupSeqList = new ArrayList<>(groupSeqList);
+            logger.info("selfStartRunner init");
         }
 
         private int runGroupSeq(Set<Integer> current, int start, int addSize) {
@@ -404,26 +405,28 @@ public class MultipleDumpFile {
 
             // 처음엔 즉시 제한까지 실행
             int lastIndex = runGroupSeq(current, 0, groupSeqList.size() < procedureLimit ? procedureLimit : groupSeqList.size());
-
+            logger.info(">>>>>>>>>>>>>>>>> lastIndex: {}", lastIndex);
             boolean isFinish = false;
             while (true) {
                 // 1분씩 지연
                 Utils.sleep(30 * 1000);
 
-                if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                if (job.getStopSignal()) {
                     logger.info("자동시작 스래드 중지");
                     break;
                 }
 
                 // 제한된 갯수만큼 그룹시퀀스 시작
                 int runningSize = current.size() - startedProcedureGroupSeqList.size();
+                logger.info("selfStartRunner wait.. {}", runningSize);
                 if (current.size() < groupSeqList.size() && runningSize < procedureLimit) {
                     int availableSize = procedureLimit - runningSize;
                     lastIndex = runGroupSeq(current, lastIndex, availableSize);
+                    logger.info(">>>>>>>>>>>>>>>>> lastIndex: {}, current: {} ", lastIndex, current);
                 }
 
                 // 전부 시작 완료
-                if (job.getGroupSeq().size() == startedProcedureGroupSeqList.size()) {
+                if (job.getGroupSeq().size() == groupSeqList.size()) {
                     logger.info("자동 시작 완료하였습니다.");
                     isFinish = true;
                     break;
@@ -446,10 +449,14 @@ public class MultipleDumpFile {
             if (isFinish) {
                 // 정상완료
                 remoteCmd("INDEX", 10);
+                logger.info("SelfSubStart Success.");
             } else {
                 // 프로시저 실패되면 동적색인은 다시 오픈.
                 remoteCmd("OPEN", 10);
+                logger.info("SelfSubStart Fail.");
             }
+
+            logger.info("SelfSubStart Finished. buy~!");
         }
 
 //      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능)
