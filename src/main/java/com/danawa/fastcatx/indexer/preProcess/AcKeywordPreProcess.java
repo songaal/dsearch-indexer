@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -441,14 +440,15 @@ public class AcKeywordPreProcess implements PreProcess {
         try{
             logger.info("키워드 누적 데이타 생성 시작");
 
-            Writer bw = new OutputStreamWriter(new FileOutputStream(outputFilePath), StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath));
             Iterator<Map.Entry<String, String[]>> i = rowMap.entrySet().iterator();
 
             while (i.hasNext()) {
                 Map.Entry<String, String[]> entry = i.next();
                 if(Double.parseDouble(entry.getValue()[0]) > 0.000) {
                     //공백제거된키워드	검색횟수	검색결과여부	검색키워드
-                    bw.write(entry.getKey() + "\t" + entry.getValue()[0] + "\t" + entry.getValue()[1]+ "\t" + entry.getValue()[2] + "\n");
+                    bw.write(entry.getKey() + "\t" + entry.getValue()[0] + "\t" + entry.getValue()[1]+ "\t" + entry.getValue()[2]);
+                    bw.newLine();
                 }else{
                     System.out.println();
                 }
@@ -519,8 +519,7 @@ public class AcKeywordPreProcess implements PreProcess {
 
         try {
             exportFile.createNewFile();
-//            BufferedWriter bw = new BufferedWriter(new FileWriter(exportFile));
-            Writer bw = new OutputStreamWriter(new FileOutputStream(exportFile), StandardCharsets.UTF_8);
+            BufferedWriter bw = new BufferedWriter(new FileWriter(exportFile));
 
             // 기준상품 write
             logger.info("기준상품 DUMP FILE 생성 시작");
@@ -530,28 +529,28 @@ public class AcKeywordPreProcess implements PreProcess {
 
                 // 2019-09-20 - 식품의약품안저처 : 식품안전관리 강화 협조 요청 공문의 건으로 인한 자동완성에서의 특정 키워드포함 제외처리
                 if (!entry.getKey().contains("조개젓")) {
-                    bw.write("<doc>\n");
-//                    bw.newLine();
-                    bw.write("<KEYWORD>\n");
-//                    bw.newLine();
-                    bw.write(entry.getKey() + "\n");
-//                    bw.newLine(); // 키워드
-                    bw.write("</KEYWORD>\n");
-//                    bw.newLine();
-                    bw.write("<HIT>\n");
-//                    bw.newLine();
-                    bw.write(String.format("%d", entry.getValue()) + "\n");
-//                    bw.newLine(); // 상품 인기점수
-                    bw.write("</HIT>\n");
-//                    bw.newLine();
-                    bw.write("<RANGE>\n");
-//                    bw.newLine();
-                    bw.write(String.format("%d", entry.getValue()) + "\n");
-//                    bw.newLine(); // 정렬점수 : 상품인기 점수 (20만 이하)
-                    bw.write("</RANGE>\n");
-//                    bw.newLine();
-                    bw.write("</doc>\n");
-//                    bw.newLine();
+                    bw.write("<doc>");
+                    bw.newLine();
+                    bw.write("<KEYWORD>");
+                    bw.newLine();
+                    bw.write(entry.getKey());
+                    bw.newLine(); // 키워드
+                    bw.write("</KEYWORD>");
+                    bw.newLine();
+                    bw.write("<HIT>");
+                    bw.newLine();
+                    bw.write(String.format("%d", entry.getValue()));
+                    bw.newLine(); // 상품 인기점수
+                    bw.write("</HIT>");
+                    bw.newLine();
+                    bw.write("<RANGE>");
+                    bw.newLine();
+                    bw.write(String.format("%d", entry.getValue()));
+                    bw.newLine(); // 정렬점수 : 상품인기 점수 (20만 이하)
+                    bw.write("</RANGE>");
+                    bw.newLine();
+                    bw.write("</doc>");
+                    bw.newLine();
                 }
             }
             logger.info(String.format("기준상품 DUMP FILE 생성 종료 [총 갯수 : %d]", productNameMap.size()));
@@ -567,34 +566,34 @@ public class AcKeywordPreProcess implements PreProcess {
                 // 2019-09-20 - 식품의약품안저처 : 식품안전관리 강화 협조 요청 공문의 건으로 인한 자동완성에서의 특정 키워드포함 제외처리
                 if (!entry.getValue()[2].contains("조개젓")) {
                     if (Double.parseDouble(entry.getValue()[0]) > standardCount && !entry.getValue()[1].equals("N") && !entry.getValue()[1].equals("T")) {
-                        bw.write("<doc>\n");
-//                        bw.newLine();
-                        bw.write("<KEYWORD>\n");
-//                        bw.newLine();
+                        bw.write("<doc>");
+                        bw.newLine();
+                        bw.write("<KEYWORD>");
+                        bw.newLine();
                         // 검색된 키워드를 색인해야하므로 배열 데이터 사용
-                        bw.write(entry.getValue()[2] + "\n");
-//                        bw.newLine(); // 키워드
-                        bw.write("</KEYWORD>\n");
-//                        bw.newLine();
-                        bw.write("<HIT>\n");
-//                        bw.newLine();
+                        bw.write(entry.getValue()[2]);
+                        bw.newLine(); // 키워드
+                        bw.write("</KEYWORD>");
+                        bw.newLine();
+                        bw.write("<HIT>");
+                        bw.newLine();
                         // bw.write(String.format("%.2f", Double.parseDouble(entry.getValue()[0])));
                         // bw.newLine(); // 검색 횟수
                         // System.out.println(entry.getValue()[0]);
-                        bw.write(entry.getValue()[0] + "\n");
-//                        bw.newLine(); // 검색 횟수
-                        bw.write("</HIT>\n");
-//                        bw.newLine();
-                        bw.write("<RANGE>\n");
-//                        bw.newLine();
+                        bw.write(entry.getValue()[0]);
+                        bw.newLine(); // 검색 횟수
+                        bw.write("</HIT>");
+                        bw.newLine();
+                        bw.write("<RANGE>");
+                        bw.newLine();
                         // bw.write(String.format("%.2f", Double.parseDouble(entry.getValue()[0]
                         // +200000))); bw.newLine(); // 정렬점수 : 검색횟수 + 200000
-                        bw.write(setNumber(Double.parseDouble(entry.getValue()[0]) + 200000) + "\n");
-//                        bw.newLine(); // 정렬점수 : 검색횟수 + 200000
-                        bw.write("</RANGE>\n");
-//                        bw.newLine();
-                        bw.write("</doc>\n");
-//                        bw.newLine();
+                        bw.write(setNumber(Double.parseDouble(entry.getValue()[0]) + 200000));
+                        bw.newLine(); // 정렬점수 : 검색횟수 + 200000
+                        bw.write("</RANGE>");
+                        bw.newLine();
+                        bw.write("</doc>");
+                        bw.newLine();
                         cnt++;
                     }
                 }
@@ -615,8 +614,7 @@ public class AcKeywordPreProcess implements PreProcess {
         logger.info(inpuFilePath + " : " + outputFilePath);
 
         File file = new File(outputFilePath);
-//        FileWriter fw = new FileWriter(file, true);
-        Writer fw = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+        FileWriter fw = new FileWriter(file, true);
 
         Scanner scanner = null;
         try {
