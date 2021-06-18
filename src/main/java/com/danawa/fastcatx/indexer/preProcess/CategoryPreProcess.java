@@ -66,7 +66,10 @@ public class CategoryPreProcess implements PreProcess {
         ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, method, httpEntity, String.class);
         Map<String, Object> body = gson.fromJson(response.getBody(), new TypeToken<HashMap<String, Object>>(){}.getType());
         List<Map<String, Object>> categories = new ArrayList<>();
-        if (body != null && body.get("hits") != null) {
+        
+        if (body != null && body.get("result") != null) {
+            categories = (List<Map<String, Object>>) body.get("result");
+        } else if (body != null && body.get("hits") != null) {
             Map<String, Object> hitsMap = (Map<String, Object>) body.get("hits");
             categories = (List<Map<String, Object>>) hitsMap.get("hits");
         } else {
