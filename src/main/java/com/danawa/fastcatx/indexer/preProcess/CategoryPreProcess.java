@@ -58,15 +58,17 @@ public class CategoryPreProcess implements PreProcess {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
-        HttpEntity<String> httpEntity = new HttpEntity<>(categorySearchBody, headers);
+        HttpEntity<String> httpEntity;
+        httpEntity = new HttpEntity<>(headers);
         HttpMethod method = HttpMethod.GET;
         if ("POST".equalsIgnoreCase(categorySearchMethod)) {
             method = HttpMethod.POST;
+            httpEntity = new HttpEntity<>(categorySearchBody, headers);
         }
         ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, method, httpEntity, String.class);
         Map<String, Object> body = gson.fromJson(response.getBody(), new TypeToken<HashMap<String, Object>>(){}.getType());
         List<Map<String, Object>> categories = new ArrayList<>();
-        
+
         if (body != null && body.get("result") != null) {
             categories = (List<Map<String, Object>>) body.get("result");
         } else if (body != null && body.get("hits") != null) {
