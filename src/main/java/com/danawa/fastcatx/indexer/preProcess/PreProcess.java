@@ -19,7 +19,7 @@ public interface PreProcess {
         } else if (TYPE.CATEGORY.name().equalsIgnoreCase(type)) {
             new CategoryPreProcess(job).start();
         } else if (TYPE.ACKEYWORD.name().equalsIgnoreCase(type)) {
-            new CategoryPreProcess(job).start();
+            new AcKeywordPreProcess(job).start();
         } else if (TYPE.VM_KEYWORD.name().equalsIgnoreCase(type)) {
             new VmKeywordPreProcess(job).start();
         } else if (TYPE.VM_FIRSTMAKE_DATE.name().equalsIgnoreCase(type)) {
