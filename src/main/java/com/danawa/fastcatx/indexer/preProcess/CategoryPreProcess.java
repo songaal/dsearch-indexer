@@ -49,7 +49,7 @@ public class CategoryPreProcess implements PreProcess {
     @Override
     public void start() throws Exception {
         logger.info("카테고리 전처리를 시작합니다.");
-        String categorySearchMethod = (String) payload.getOrDefault("categorySearchMethod", "GET");
+        String searchType = (String) payload.getOrDefault("searchType", "");
         String categorySearchUrl = (String) payload.getOrDefault("categorySearchUrl", "");
         String categorySearchBody = (String) payload.getOrDefault("categorySearchBody", "");
         String categoryXmlFilePath = (String) payload.getOrDefault("categoryXmlFilePath", "");
@@ -59,9 +59,11 @@ public class CategoryPreProcess implements PreProcess {
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
         HttpEntity<String> httpEntity;
-        httpEntity = new HttpEntity<>(headers);
-        HttpMethod method = HttpMethod.GET;
-        if ("POST".equalsIgnoreCase(categorySearchMethod)) {
+        HttpMethod method;
+        if ("fastcat".equalsIgnoreCase(searchType)) {
+            method = HttpMethod.GET;
+            httpEntity = new HttpEntity<>(headers);
+        } else {
             method = HttpMethod.POST;
             httpEntity = new HttpEntity<>(categorySearchBody, headers);
         }
@@ -84,21 +86,38 @@ public class CategoryPreProcess implements PreProcess {
         deleteCategoryXml(categoryXmlFilePath);
 
         for (Map<String, Object> category : categories) {
-            Map<String, Object> source = (Map<String, Object>) category.get("_source");
-            if (source.get("depth").equals("1")) {
-                categoryCode = source.get("categoryCode").toString();
-                categoryName = source.get("categoryName").toString();
-            } else {
-                categoryCode = source.get("pCategoryCode").toString() +
-                        "_" + source.get("categoryCode").toString();
-                for (Map<String, Object> pcategory : categories) {
-                    Map<String, Object> psource = (Map<String, Object>) pcategory.get("_source");
-                    if (source.get("pCategoryCode").toString().equals(psource.get("categoryCode"))){
-                        categoryName = psource.get("categoryName").toString();
-                        break;
+            if ("fastcat".equalsIgnoreCase(searchType)) {
+                if (category.get("DEPTH").equals("1")) {
+                    categoryCode = category.get("CATEGORYCODE").toString();
+                    categoryName = category.get("CATEGORYNAME").toString();
+                } else {
+                    categoryCode = category.get("PCATEGORYCODE").toString() +
+                            "_" + category.get("CATEGORYCODE").toString();
+                    for (Map<String, Object> pcategory : categories) {
+                        if (category.get("PCATEGORYCODE").toString().equals(pcategory.get("CATEGORYCODE"))){
+                            categoryName = pcategory.get("CATEGORYNAME").toString();
+                            break;
+                        }
                     }
+                    categoryName += ">" + category.get("CATEGORYNAME").toString();
                 }
-                categoryName += ">" + source.get("categoryName").toString();
+            } else {
+                Map<String, Object> source = (Map<String, Object>) category.get("_source");
+                if (source.get("depth").equals("1")) {
+                    categoryCode = source.get("categoryCode").toString();
+                    categoryName = source.get("categoryName").toString();
+                } else {
+                    categoryCode = source.get("pCategoryCode").toString() +
+                            "_" + source.get("categoryCode").toString();
+                    for (Map<String, Object> pcategory : categories) {
+                        Map<String, Object> psource = (Map<String, Object>) pcategory.get("_source");
+                        if (source.get("pCategoryCode").toString().equals(psource.get("categoryCode"))){
+                            categoryName = psource.get("categoryName").toString();
+                            break;
+                        }
+                    }
+                    categoryName += ">" + source.get("categoryName").toString();
+                }
             }
             updateCategoryXml(categoryXmlFilePath, categoryCode, categoryName);
         }
