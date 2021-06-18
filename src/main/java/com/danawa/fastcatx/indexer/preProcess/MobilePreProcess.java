@@ -44,6 +44,7 @@ public class MobilePreProcess implements PreProcess {
     @Override
     public void start() throws Exception {
         logger.info("MOBILE 전처리를 시작합니다.");
+        String categorySearchMethod = (String) payload.getOrDefault("categorySearchMethod", "");
         String categorySearchUrl = (String) payload.getOrDefault("categorySearchUrl", "");
         String categorySearchBody = (String) payload.getOrDefault("categorySearchBody", "");
         String categoryXmlFilePath = (String) payload.getOrDefault("categoryXmlFilePath", "");
@@ -53,7 +54,11 @@ public class MobilePreProcess implements PreProcess {
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
         HttpEntity<String> httpEntity = new HttpEntity<>(categorySearchBody, headers);
-        ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, HttpMethod.POST, httpEntity, String.class);
+        HttpMethod method = HttpMethod.GET;
+        if ("POST".equalsIgnoreCase(categorySearchMethod)) {
+            method = HttpMethod.POST;
+        }
+        ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, method, httpEntity, String.class);
         Map<String, Object> body = gson.fromJson(response.getBody(), new TypeToken<HashMap<String, Object>>(){}.getType());
         List<Map<String, Object>> categories = new ArrayList<>();
         if (body != null && body.get("hits") != null) {
