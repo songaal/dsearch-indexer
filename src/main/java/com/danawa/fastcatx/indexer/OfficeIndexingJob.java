@@ -178,6 +178,7 @@ public class OfficeIndexingJob implements Runnable {
                 maxRetry --;
                 if (maxRetry <= 0) {
                     loop = false;
+                    updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                     break;
                 }
             }
