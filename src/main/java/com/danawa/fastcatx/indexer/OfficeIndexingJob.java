@@ -195,7 +195,7 @@ public class OfficeIndexingJob implements Runnable {
                         Map<String, Object> body = new HashMap<>();
                         body.put("queue", queueName);
                         body.put("size", consumeCount);
-                        logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueNames, consumeCount);
+                        logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, queueName, consumeCount);
                         ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
                                 HttpMethod.PUT,
                                 new HttpEntity(body),
