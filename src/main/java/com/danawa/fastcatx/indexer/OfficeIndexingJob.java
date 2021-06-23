@@ -23,7 +23,7 @@ public class OfficeIndexingJob implements Runnable {
     private String officeFullIndexUrl;
     private String officeCheckUrl;
     private int queueIndexConsumeCount;
-    private String officeQueueName;
+    private String officeQueueNames;
 
     private Set<Integer> startedFullIndexGroupSeq = new HashSet<>();
     private final Gson gson = new Gson();
@@ -36,7 +36,7 @@ public class OfficeIndexingJob implements Runnable {
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
-    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
+    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueNames) {
         logger.info("enableAutoDynamic: {}, office params: {}", enableAutoDynamic, job.getRequest());
         this.dryRun = dryRun;
         this.job = job;
@@ -47,7 +47,7 @@ public class OfficeIndexingJob implements Runnable {
         this.officeQueueIndexUrl = officeQueueIndexUrl;
         this.officeCheckUrl = officeCheckUrl;
         this.queueIndexConsumeCount = queueIndexConsumeCount;
-        this.officeQueueName = officeQueueName;
+        this.officeQueueNames = officeQueueNames;
 
         // 오피스 동적색인 처리
         if (!dryRun) {
@@ -189,26 +189,29 @@ public class OfficeIndexingJob implements Runnable {
     public void updateQueueIndexerConsume(int maxOpenRetry, int consumeCount) {
         if (enableAutoDynamic) {
             logger.info("동적색인 Off 호출");
-            for (;maxOpenRetry >= 0; maxOpenRetry--) {
-                try {
-                    Map<String, Object> body = new HashMap<>();
-                    body.put("queue", officeQueueName);
-                    body.put("size", consumeCount);
-                    logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
-                    ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
-                            HttpMethod.PUT,
-                            new HttpEntity(body),
-                            String.class
-                    );
-                    logger.info("edit Consume Response: {}", response);
-                    break;
-                } catch (Exception e) {
-                    logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
-                    logger.error("", e);
+            for (String queueName : officeQueueNames.split(",")) {
+                for (;maxOpenRetry >= 0; maxOpenRetry--) {
                     try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignore) {}
+                        Map<String, Object> body = new HashMap<>();
+                        body.put("queue", queueName);
+                        body.put("size", consumeCount);
+                        logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueNames, consumeCount);
+                        ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
+                                HttpMethod.PUT,
+                                new HttpEntity(body),
+                                String.class
+                        );
+                        logger.info("edit Consume Response: {}", response);
+                        break;
+                    } catch (Exception e) {
+                        logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+                        logger.error("", e);
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ignore) {}
+                    }
                 }
+                Utils.sleep(500);
             }
         }
     }

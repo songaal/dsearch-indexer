@@ -66,7 +66,7 @@ public class MultipleDumpFile {
             int officeIndexConsumeCount = (int) payload.getOrDefault("officeIndexConsumeCount",1);
 
 //            오피스 Q 이름
-            String officeQueueName = (String) payload.getOrDefault("officeQueueName","");
+            String officeQueueNames = (String) payload.getOrDefault("officeQueueNames","");
 //            오피스 전체색인 URL
             String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
 //            오피스 Q 인덱서 URL
@@ -128,7 +128,7 @@ public class MultipleDumpFile {
 //                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
 //                logger.info("officeCheckUrl: {}", officeCheckUrl);
 //                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
-//                logger.info("officeQueueName: {}", officeQueueName);
+//                logger.info("officeQueueNames: {}", officeQueueNames);
                 // 오피스 색인 스래드 실행
                 new Thread(new OfficeIndexingJob(
                         dryRun,
@@ -141,7 +141,7 @@ public class MultipleDumpFile {
                         officeQueueIndexUrl,
                         officeCheckUrl,
                         officeIndexConsumeCount,
-                        officeQueueName
+                        officeQueueNames
                 )).start();
             } else {
                 logger.info("not start office trigger, enableSelfSubStart: {}, enableOfficeIndexingJob: {}, procedureSkip: {}", enableSelfSubStart, enableOfficeIndexingJob, !procedureSkip);
