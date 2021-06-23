@@ -70,7 +70,7 @@ public class MultipleDumpFile {
 //            오피스 전체색인 URL
             String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
 //            오피스 Q 인덱서 URL
-            String officeQueueIndexUrl = (String) payload.getOrDefault("officeQueueIndexUrl","");
+            String officeQueueIndexUrls = (String) payload.getOrDefault("officeQueueIndexUrls","");
 //            오피스 색인 체크 URL
             String officeCheckUrl = (String) payload.getOrDefault("officeCheckUrl","");
 //            문자열로 나열된 그룹시퀀스 분리
@@ -125,7 +125,7 @@ public class MultipleDumpFile {
 //                logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
 //                logger.info("officeFullIndexUrl: {}", officeFullIndexUrl);
 //                logger.info("groupSeqList: {}", groupSeqList);
-//                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+//                logger.info("officeQueueIndexUrls: {}", officeQueueIndexUrls);
 //                logger.info("officeCheckUrl: {}", officeCheckUrl);
 //                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
 //                logger.info("officeQueueNames: {}", officeQueueNames);
@@ -138,7 +138,7 @@ public class MultipleDumpFile {
                         startedProcedureGroupSeq,
                         officeFullIndexUrl,
                         groupSeqList,
-                        officeQueueIndexUrl,
+                        officeQueueIndexUrls,
                         officeCheckUrl,
                         officeIndexConsumeCount,
                         officeQueueNames
