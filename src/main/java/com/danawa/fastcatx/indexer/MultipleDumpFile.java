@@ -66,11 +66,11 @@ public class MultipleDumpFile {
             int officeIndexConsumeCount = (int) payload.getOrDefault("officeIndexConsumeCount",1);
 
 //            오피스 Q 이름
-            String officeQueueName = (String) payload.getOrDefault("officeQueueName","");
+            String officeQueueNames = (String) payload.getOrDefault("officeQueueNames","");
 //            오피스 전체색인 URL
             String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
 //            오피스 Q 인덱서 URL
-            String officeQueueIndexUrl = (String) payload.getOrDefault("officeQueueIndexUrl","");
+            String officeQueueIndexUrls = (String) payload.getOrDefault("officeQueueIndexUrls","");
 //            오피스 색인 체크 URL
             String officeCheckUrl = (String) payload.getOrDefault("officeCheckUrl","");
 //            문자열로 나열된 그룹시퀀스 분리
@@ -125,10 +125,10 @@ public class MultipleDumpFile {
 //                logger.info("startedProcedureGroupSeq: {}", startedProcedureGroupSeq);
 //                logger.info("officeFullIndexUrl: {}", officeFullIndexUrl);
 //                logger.info("groupSeqList: {}", groupSeqList);
-//                logger.info("officeQueueIndexUrl: {}", officeQueueIndexUrl);
+//                logger.info("officeQueueIndexUrls: {}", officeQueueIndexUrls);
 //                logger.info("officeCheckUrl: {}", officeCheckUrl);
 //                logger.info("officeIndexConsumeCount: {}", officeIndexConsumeCount);
-//                logger.info("officeQueueName: {}", officeQueueName);
+//                logger.info("officeQueueNames: {}", officeQueueNames);
                 // 오피스 색인 스래드 실행
                 new Thread(new OfficeIndexingJob(
                         dryRun,
@@ -138,10 +138,10 @@ public class MultipleDumpFile {
                         startedProcedureGroupSeq,
                         officeFullIndexUrl,
                         groupSeqList,
-                        officeQueueIndexUrl,
+                        officeQueueIndexUrls,
                         officeCheckUrl,
                         officeIndexConsumeCount,
-                        officeQueueName
+                        officeQueueNames
                 )).start();
             } else {
                 logger.info("not start office trigger, enableSelfSubStart: {}, enableOfficeIndexingJob: {}, procedureSkip: {}", enableSelfSubStart, enableOfficeIndexingJob, !procedureSkip);
@@ -437,7 +437,7 @@ public class MultipleDumpFile {
                 }
 
                 // 전부 시작 완료
-                if (job.getGroupSeq().size() == groupSeqList.size()) {
+                if (job.getGroupSeq().size() == groupSeqList.size() && groupSeqList.size() == startedProcedureGroupSeqList.size()) {
                     logger.info("자동 시작 완료하였습니다.");
                     isFinish = true;
                     break;

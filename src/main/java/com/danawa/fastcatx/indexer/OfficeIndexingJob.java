@@ -19,11 +19,11 @@ public class OfficeIndexingJob implements Runnable {
 
     private boolean enableAutoDynamic;
     private Set<Integer> finishedProcedureGroupSeq;
-    private String officeQueueIndexUrl;
+    private String officeQueueIndexUrls;
     private String officeFullIndexUrl;
     private String officeCheckUrl;
     private int queueIndexConsumeCount;
-    private String officeQueueName;
+    private String officeQueueNames;
 
     private Set<Integer> startedFullIndexGroupSeq = new HashSet<>();
     private final Gson gson = new Gson();
@@ -36,7 +36,7 @@ public class OfficeIndexingJob implements Runnable {
 
     private Set<Integer> endGroupSeq = new HashSet<>();
 
-    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrl, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueName) {
+    public OfficeIndexingJob(boolean dryRun, Job job, String groupSeqStr, boolean enableAutoDynamic, Set<Integer> finishedProcedureGroupSeq, String officeFullIndexUrl, Set<Integer> groupSeqList, String officeQueueIndexUrls, String officeCheckUrl, int queueIndexConsumeCount, String officeQueueNames) {
         logger.info("enableAutoDynamic: {}, office params: {}", enableAutoDynamic, job.getRequest());
         this.dryRun = dryRun;
         this.job = job;
@@ -44,10 +44,10 @@ public class OfficeIndexingJob implements Runnable {
         this.enableAutoDynamic = enableAutoDynamic;
         this.groupSeqList = groupSeqList;
         this.officeFullIndexUrl = officeFullIndexUrl;
-        this.officeQueueIndexUrl = officeQueueIndexUrl;
+        this.officeQueueIndexUrls = officeQueueIndexUrls;
         this.officeCheckUrl = officeCheckUrl;
         this.queueIndexConsumeCount = queueIndexConsumeCount;
-        this.officeQueueName = officeQueueName;
+        this.officeQueueNames = officeQueueNames;
 
         // 오피스 동적색인 처리
         if (!dryRun) {
@@ -135,6 +135,7 @@ public class OfficeIndexingJob implements Runnable {
                                 isEnd = true;
                             } else if ("STOP".equalsIgnoreCase(status)) {
                                 job.setStopSignal(true);
+                                throw new StopSignalException();
                             }
                             break;
                         } catch (Exception e) {
@@ -177,6 +178,7 @@ public class OfficeIndexingJob implements Runnable {
                 maxRetry --;
                 if (maxRetry <= 0) {
                     loop = false;
+                    updateQueueIndexerConsume(maxOpenRetry, queueIndexConsumeCount);
                     break;
                 }
             }
@@ -187,26 +189,61 @@ public class OfficeIndexingJob implements Runnable {
     public void updateQueueIndexerConsume(int maxOpenRetry, int consumeCount) {
         if (enableAutoDynamic) {
             logger.info("동적색인 Off 호출");
-            for (;maxOpenRetry >= 0; maxOpenRetry--) {
-                try {
-                    Map<String, Object> body = new HashMap<>();
-                    body.put("queue", officeQueueName);
-                    body.put("size", consumeCount);
-                    logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
-                    ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
-                            HttpMethod.PUT,
-                            new HttpEntity(body),
-                            String.class
-                    );
-                    logger.info("edit Consume Response: {}", response);
-                    break;
-                } catch (Exception e) {
-                    logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrl);
-                    logger.error("", e);
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException ignore) {}
+            if (officeQueueIndexUrls != null) {
+                if (officeQueueIndexUrls.split(",").length == 1) {
+                    for (String queueName : officeQueueNames.split(",")) {
+                        for (;maxOpenRetry >= 0; maxOpenRetry--) {
+                            try {
+                                Map<String, Object> body = new HashMap<>();
+                                body.put("queue", queueName);
+                                body.put("size", consumeCount);
+                                logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrls, queueName, consumeCount);
+                                ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrls,
+                                        HttpMethod.PUT,
+                                        new HttpEntity(body),
+                                        String.class
+                                );
+                                logger.info("edit Consume Response: {}", response);
+                                break;
+                            } catch (Exception e) {
+                                logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrls);
+                                logger.error("", e);
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException ignore) {}
+                            }
+                        }
+                        Utils.sleep(500);
+                    }
+                } else {
+                    for (int i = 0; i < officeQueueIndexUrls.split(",").length; i++) {
+                        String officeQueueIndexUrl = officeQueueIndexUrls.split(",")[i];
+                        String officeQueueName = officeQueueNames.split(",")[i];
+                        for (;maxOpenRetry >= 0; maxOpenRetry--) {
+                            try {
+                                Map<String, Object> body = new HashMap<>();
+                                body.put("queue", officeQueueName);
+                                body.put("size", consumeCount);
+                                logger.info("QueueIndexUrl: {}, queue: {}, count: {}", officeQueueIndexUrl, officeQueueName, consumeCount);
+                                ResponseEntity<String> response = restTemplate.exchange(officeQueueIndexUrl,
+                                        HttpMethod.PUT,
+                                        new HttpEntity(body),
+                                        String.class
+                                );
+                                logger.info("edit Consume Response: {}", response);
+                                break;
+                            } catch (Exception e) {
+                                logger.warn("officeQueueIndexUrl: {}", officeQueueIndexUrls);
+                                logger.error("", e);
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException ignore) {}
+                            }
+                        }
+                    }
                 }
+            } else {
+                logger.warn("officeQueueIndexUrls is Null");
             }
         }
     }

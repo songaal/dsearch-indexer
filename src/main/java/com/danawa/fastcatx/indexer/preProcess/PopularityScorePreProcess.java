@@ -34,15 +34,15 @@ public class PopularityScorePreProcess implements PreProcess {
 //        remakePopularityScore_new.sql
         String selectSql = (String)  payload.getOrDefault("selectSql", "");
 
-        String alti1MasterDBDriver = (String) payload.getOrDefault("alti1MasterDBDriver", "");
-        String alti1MasterDBAddress = (String) payload.getOrDefault("alti1MasterDBAddress", "");
-        String alti1MasterDBUsername = (String) payload.getOrDefault("alti1MasterDBUsername", "");
-        String alti1MasterDBPassword = (String) payload.getOrDefault("alti1MasterDBPassword", "");
+        String altiMasterDBDriver = (String) payload.getOrDefault("altiMasterDBDriver", "");
+        String altiMasterDBAddress = (String) payload.getOrDefault("altiMasterDBAddress", "");
+        String altiMasterDBUsername = (String) payload.getOrDefault("altiMasterDBUsername", "");
+        String altiMasterDBPassword = (String) payload.getOrDefault("altiMasterDBPassword", "");
 
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn("logDB", logDBDriver, logDBAddress, logDBUsername, logDBPassword);
-        databaseConnector.addConn("master", alti1MasterDBDriver, alti1MasterDBAddress, alti1MasterDBUsername, alti1MasterDBPassword);
+        databaseConnector.addConn("master", altiMasterDBDriver, altiMasterDBAddress, altiMasterDBUsername, altiMasterDBPassword);
 
         // 1. 검색상품 클릭 로그 데이터 가져오기 - mysql
         // 2. 검색상품 인기점수 데이터 비우기 - altibase

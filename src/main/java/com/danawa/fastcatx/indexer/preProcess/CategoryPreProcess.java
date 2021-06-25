@@ -49,6 +49,7 @@ public class CategoryPreProcess implements PreProcess {
     @Override
     public void start() throws Exception {
         logger.info("카테고리 전처리를 시작합니다.");
+        String searchType = (String) payload.getOrDefault("searchType", "");
         String categorySearchUrl = (String) payload.getOrDefault("categorySearchUrl", "");
         String categorySearchBody = (String) payload.getOrDefault("categorySearchBody", "");
         String categoryXmlFilePath = (String) payload.getOrDefault("categoryXmlFilePath", "");
@@ -57,11 +58,22 @@ public class CategoryPreProcess implements PreProcess {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
-        HttpEntity<String> httpEntity = new HttpEntity<>(categorySearchBody, headers);
-        ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, HttpMethod.POST, httpEntity, String.class);
+        HttpEntity<String> httpEntity;
+        HttpMethod method;
+        if ("fastcat".equalsIgnoreCase(searchType)) {
+            method = HttpMethod.GET;
+            httpEntity = new HttpEntity<>(headers);
+        } else {
+            method = HttpMethod.POST;
+            httpEntity = new HttpEntity<>(categorySearchBody, headers);
+        }
+        ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, method, httpEntity, String.class);
         Map<String, Object> body = gson.fromJson(response.getBody(), new TypeToken<HashMap<String, Object>>(){}.getType());
         List<Map<String, Object>> categories = new ArrayList<>();
-        if (body != null && body.get("hits") != null) {
+
+        if (body != null && body.get("result") != null) {
+            categories = (List<Map<String, Object>>) body.get("result");
+        } else if (body != null && body.get("hits") != null) {
             Map<String, Object> hitsMap = (Map<String, Object>) body.get("hits");
             categories = (List<Map<String, Object>>) hitsMap.get("hits");
         } else {
@@ -74,21 +86,38 @@ public class CategoryPreProcess implements PreProcess {
         deleteCategoryXml(categoryXmlFilePath);
 
         for (Map<String, Object> category : categories) {
-            Map<String, Object> source = (Map<String, Object>) category.get("_source");
-            if (source.get("depth").equals("1")) {
-                categoryCode = source.get("categoryCode").toString();
-                categoryName = source.get("categoryName").toString();
-            } else {
-                categoryCode = source.get("pCategoryCode").toString() +
-                        "_" + source.get("categoryCode").toString();
-                for (Map<String, Object> pcategory : categories) {
-                    Map<String, Object> psource = (Map<String, Object>) pcategory.get("_source");
-                    if (source.get("pCategoryCode").toString().equals(psource.get("categoryCode"))){
-                        categoryName = psource.get("categoryName").toString();
-                        break;
+            if ("fastcat".equalsIgnoreCase(searchType)) {
+                if (category.get("DEPTH").equals("1")) {
+                    categoryCode = category.get("CATEGORYCODE").toString();
+                    categoryName = category.get("CATEGORYNAME").toString();
+                } else {
+                    categoryCode = category.get("PCATEGORYCODE").toString() +
+                            "_" + category.get("CATEGORYCODE").toString();
+                    for (Map<String, Object> pcategory : categories) {
+                        if (category.get("PCATEGORYCODE").toString().equals(pcategory.get("CATEGORYCODE"))){
+                            categoryName = pcategory.get("CATEGORYNAME").toString();
+                            break;
+                        }
                     }
+                    categoryName += ">" + category.get("CATEGORYNAME").toString();
                 }
-                categoryName += ">" + source.get("categoryName").toString();
+            } else {
+                Map<String, Object> source = (Map<String, Object>) category.get("_source");
+                if (source.get("depth").equals("1")) {
+                    categoryCode = source.get("categoryCode").toString();
+                    categoryName = source.get("categoryName").toString();
+                } else {
+                    categoryCode = source.get("pCategoryCode").toString() +
+                            "_" + source.get("categoryCode").toString();
+                    for (Map<String, Object> pcategory : categories) {
+                        Map<String, Object> psource = (Map<String, Object>) pcategory.get("_source");
+                        if (source.get("pCategoryCode").toString().equals(psource.get("categoryCode"))){
+                            categoryName = psource.get("categoryName").toString();
+                            break;
+                        }
+                    }
+                    categoryName += ">" + source.get("categoryName").toString();
+                }
             }
             updateCategoryXml(categoryXmlFilePath, categoryCode, categoryName);
         }

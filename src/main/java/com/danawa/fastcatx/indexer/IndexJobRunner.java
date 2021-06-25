@@ -150,13 +150,19 @@ public class IndexJobRunner implements Runnable {
                     autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
                 }
                 // 큐 이름이 여러개 일 경우.
-                for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                    try {
-                        // 동적색인 off
+                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                    // 멀티 MQ
+                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                        String queueName = autoDynamicQueueNames.get(i);
+                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
+                        Thread.sleep(1000);
+                    }
+                } else {
+                    // 싱글 MQ
+                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
                         updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
                         Thread.sleep(1000);
-                    } catch (Exception e){
-                        logger.error("", e);
                     }
                 }
                 logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
@@ -515,12 +521,19 @@ public class IndexJobRunner implements Runnable {
 //                            색인 취소 체크. 동적색인 on
                             if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                                 logger.info("STOP SIGNAL");
-                                for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                    try {
+                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                                    // 멀티 MQ
+                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                        String queueName = autoDynamicQueueNames.get(i);
+                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                } else {
+                                    // 싱글 MQ
+                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
                                         updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
                                         Thread.sleep(1000);
-                                    } catch (Exception e){
-                                        logger.error("", e);
                                     }
                                 }
                                 break;
@@ -540,12 +553,19 @@ public class IndexJobRunner implements Runnable {
                             }catch (Exception ignore) {}
 //                            색인이 완료라면 동적색인 ON
                             if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-                                for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                    try {
+                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                                    // 멀티 MQ
+                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                        String queueName = autoDynamicQueueNames.get(i);
+                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                } else {
+                                    // 싱글 MQ
+                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
                                         updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
                                         Thread.sleep(1000);
-                                    } catch (Exception e){
-                                        logger.error("", e);
                                     }
                                 }
                                 logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
