@@ -9,9 +9,7 @@ import com.github.fracpete.rsync4j.RSync;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
@@ -39,6 +37,8 @@ public class IndexJobRunner implements Runnable {
     private String autoDynamicQueueIndexUrl;
     private int autoDynamicQueueIndexConsumeCount = 1;
 
+    boolean enableRemoteCmd;
+    String remoteCmdUrl;
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -315,6 +315,10 @@ public class IndexJobRunner implements Runnable {
                 boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
                 boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
                 String procedureThreads = (String) payload.getOrDefault("procedureThreads","4"); // rsync 스킵 여부
+//            원격 호출 사용 여부 (패스트캣 임시로직)
+                enableRemoteCmd = (boolean) payload.getOrDefault("enableRemoteCmd",false);
+//            원격 호출 URL (패스트캣 임시로직)
+                remoteCmdUrl = (String) payload.getOrDefault("remoteCmdUrl","");
 
                 String[] groupSeqLists = groupSeqs.split(",");
 
@@ -323,6 +327,8 @@ public class IndexJobRunner implements Runnable {
                 // 3. 다 끝나면 rsync
                 StringBuffer sb = new StringBuffer();
                 Map<String, Boolean> procedureMap = new HashMap<>();
+
+                remoteCmd("CLOSE", 10);
 
                 if(procedureSkip == false) {
                     logger.info("Call Procedure");
@@ -360,6 +366,8 @@ public class IndexJobRunner implements Runnable {
 
 //                프로시저 -> multiThread
 //                rsync ->  singleThread -> 1개 씩
+                remoteCmd("INDEX", 10);
+
                 if(rsyncSkip == false){
                     ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
                     List threadsResults2 = new ArrayList<Future<Object>>();
@@ -605,6 +613,25 @@ public class IndexJobRunner implements Runnable {
             logger.info("edit Consume Response: {}", response);
         } else {
             logger.info("[DRY_RUN] queue indexer request skip");
+        }
+    }
+
+    //      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능 )
+    private void remoteCmd(String action, int retry) {
+        String url = String.format("%s?action=%s", remoteCmdUrl, action);
+        logger.info("REMOTE-CMD isCall: {}, URL: {}", enableRemoteCmd, url);
+        if (!enableRemoteCmd) {
+            return;
+        }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+            ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            logger.info("REMOTE-CMD Action: {} response status code: {}", action, responseEntity.getStatusCodeValue());
+        } catch (Exception e) {
+            logger.error("", e);
+            Utils.sleep(3000);
+            remoteCmd(action, retry - 1);
         }
     }
 
