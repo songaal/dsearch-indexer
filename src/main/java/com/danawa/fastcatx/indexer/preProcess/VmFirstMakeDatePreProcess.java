@@ -108,13 +108,13 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
                 insertPstmt.setDate(2, resultSet.getDate("FIRSTDATE"));
                 insertPstmt.addBatch();
                 totalCount++;
-                if (totalCount % 500 == 0) {
+                if (totalCount % 10000 == 0) {
                     insertPstmt.executeBatch();
                     insertPstmt.clearBatch();
                     logger.info("데이터를 추가하였습니다. {} / {}", totalCount, rowCount);
                 }
             }
-            if (totalCount % 500 != 0) {
+            if (totalCount % 10000 != 0) {
                 insertPstmt.executeBatch();
                 insertPstmt.clearBatch();
             }

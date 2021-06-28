@@ -124,13 +124,13 @@ public class VmKeywordPreProcess {
 
                 addCount++;
 
-                if (addCount % 500 == 0) { // 500개씩 실행
+                if (addCount % 10000 == 0) { // 500개씩 실행
                     preparedStatement.executeBatch();
                     preparedStatement.clearBatch();
                     logger.info("데이터를 추가하였습니다. {} / {}", addCount, rowCount);
                 }
             }
-            if (addCount % 500 != 0) {
+            if (addCount % 10000 != 0) {
                 preparedStatement.executeBatch();
                 preparedStatement.clearBatch();
             }
