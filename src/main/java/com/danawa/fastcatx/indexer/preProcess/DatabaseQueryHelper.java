@@ -41,18 +41,18 @@ public class DatabaseQueryHelper {
         return resultSet;
     }
 
-    public ResultSet simpleSelectDefault(Connection connection, String sql) throws SQLException {
-        long st = System.currentTimeMillis();
-        PreparedStatement preparedStatement = connection.prepareStatement(sql);
-        ResultSet resultSet = preparedStatement.executeQuery();
-        long nt = System.currentTimeMillis();
-        if (sql.length() < 50){
-            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
-        } else {
-            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
-        }
-        return resultSet;
-    }
+//    public ResultSet simpleSelectDefault(Connection connection, String sql) throws SQLException {
+//        long st = System.currentTimeMillis();
+//        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+//        ResultSet resultSet = preparedStatement.executeQuery();
+//        long nt = System.currentTimeMillis();
+//        if (sql.length() < 50){
+//            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
+//        } else {
+//            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
+//        }
+//        return resultSet;
+//    }
 
     public ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
         long st = System.currentTimeMillis();
@@ -86,7 +86,9 @@ public class DatabaseQueryHelper {
 
         long endTime = System.currentTimeMillis() + timeout;
         int n = 0;
-        Set<Integer> infinityCheck = new HashSet<>();
+//        Set<Integer> infinityCheck = new HashSet<>();
+        int prevRowSize = 0;
+        int checkCountDown = 5;
         for (;System.currentTimeMillis() < endTime;) {
 //            데이터가 별루 없으면 빨리 끝날거같아서,, 처음 10회는 1초마다 확인하고, 이후 부터는 5초 간격으로 갯수 확인한다.
             Utils.sleep(n++ < 10 ? 1000 : 5000);
@@ -97,22 +99,34 @@ public class DatabaseQueryHelper {
                 if(count == 0) {
                     isTruncated = true;
                     break;
+                } else if (n == 1) {
+                    prevRowSize = count;
+                } else if (prevRowSize <= count) {
+                    checkCountDown --;
+                    logger.warn("프로시져 호출 후 데이터 감소 안함. 이전 갯수: {}, 현재 갯수: {}", prevRowSize, count);
+                    logger.info("procedure truncate not working.. prev row Size: {}, current row Size: {}", prevRowSize, count);
+                    if (checkCountDown == 1) {
+                        callableStatement.execute();
+                        logger.info("procedure truncate retry.. TableName: {}, result: {}, out: {}", tableName, result, out);
+                        Utils.sleep(1000);
+                    }
                 } else {
-                    infinityCheck.add(count);
+                    prevRowSize = count;
                 }
             }
-            if (n % 10 == 0) {
-                logger.warn("Truncate Check Loop.. {}", n);
-                if (infinityCheck.size() == 1) {
-                    logger.warn("프로시져 호출 후 데이터 감소 안함.");
-                    break;
-                }
-                infinityCheck.clear();
+            if (checkCountDown <= 0) {
+                break;
+            } else if (n % 10 == 0) {
+                logger.info("Truncate Check Loop.. {}", n);
             }
         }
 //            TODO 실패 시 알림 기능 추가
+        if (checkCountDown > 0) {
+            logger.info("Truncated. tableName: {}. out: {}", tableName, out);
+        } else {
+            logger.info("Truncated fail !!!!!!!. tableName: {}. out: {}", tableName, out);
+        }
 
-        logger.info("Truncated. tableName: {}", tableName);
         return isTruncated;
     }
 
