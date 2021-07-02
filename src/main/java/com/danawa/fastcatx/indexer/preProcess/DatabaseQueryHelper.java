@@ -41,6 +41,19 @@ public class DatabaseQueryHelper {
         return resultSet;
     }
 
+    public ResultSet simpleSelectDefault(Connection connection, String sql) throws SQLException {
+        long st = System.currentTimeMillis();
+        PreparedStatement preparedStatement = connection.prepareStatement(sql);
+        ResultSet resultSet = preparedStatement.executeQuery();
+        long nt = System.currentTimeMillis();
+        if (sql.length() < 50){
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
+        } else {
+            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
+        }
+        return resultSet;
+    }
+
     public ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
         long st = System.currentTimeMillis();
         PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
