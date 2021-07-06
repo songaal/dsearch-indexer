@@ -64,7 +64,7 @@ public class VmKeywordPreProcess {
         {
             DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
-            ResultSet tProdCountSet = databaseQueryHelper.simpleSelectForwadOnly(slaveConnection, countSql);
+            ResultSet tProdCountSet = databaseQueryHelper.simpleSelect(slaveConnection, countSql);
             int tprodCount = 0;
             if (tProdCountSet.next()) {
                 tprodCount = tProdCountSet.getInt(1);
@@ -79,7 +79,7 @@ public class VmKeywordPreProcess {
 
             // 1. select
             long selectStart = System.currentTimeMillis(); // SELETE TIME 시작
-            ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
+            ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
             int rowCount = resultSet.getRow();
             logger.info("조회 Row 갯수: {}, SQL: {}", rowCount, selectSql.substring(0, 100));
             long selectEnd = System.currentTimeMillis(); // SELETE TIME 끝
