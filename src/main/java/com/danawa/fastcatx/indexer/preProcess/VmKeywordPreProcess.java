@@ -64,7 +64,7 @@ public class VmKeywordPreProcess {
         {
             DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
-            ResultSet tProdCountSet = databaseQueryHelper.simpleSelect(slaveConnection, countSql);
+            ResultSet tProdCountSet = databaseQueryHelper.simpleSelectForwadOnly(slaveConnection, countSql);
             int tprodCount = 0;
             if (tProdCountSet.next()) {
                 tprodCount = tProdCountSet.getInt(1);
