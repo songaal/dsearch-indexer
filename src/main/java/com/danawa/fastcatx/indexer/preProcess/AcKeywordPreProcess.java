@@ -614,7 +614,7 @@ public class AcKeywordPreProcess implements PreProcess {
         logger.info(inpuFilePath + " : " + outputFilePath);
 
         File file = new File(outputFilePath);
-        FileWriter fw = new FileWriter(file, true);
+        FileWriter fw = new FileWriter(file);
 
         Scanner scanner = null;
         try {
@@ -685,6 +685,7 @@ public class AcKeywordPreProcess implements PreProcess {
             fw.write("{\"keyword\": \""+ keyword+ "\", \"hit\": "+ hit + ", \"range\": " + range + ", \"search\": \"" + search + "\"}\n");
         }
 
+        fw.close();
 
     }
 
