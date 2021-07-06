@@ -78,7 +78,6 @@ public class DatabaseQueryHelper {
         String out = new String();
         CallableStatement callableStatement = connection.prepareCall(truncateSql);
         callableStatement.setString(1, tableName);
-        callableStatement.setString(2, out);
         callableStatement.registerOutParameter(2, Types.CHAR);
         boolean result = callableStatement.execute();
 
@@ -92,7 +91,8 @@ public class DatabaseQueryHelper {
         for (;System.currentTimeMillis() < endTime;) {
 //            데이터가 별루 없으면 빨리 끝날거같아서,, 처음 10회는 1초마다 확인하고, 이후 부터는 5초 간격으로 갯수 확인한다.
             Utils.sleep(n++ < 10 ? 1000 : 5000);
-            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
+//            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
+            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql, ResultSet.TYPE_SCROLL_INSENSITIVE,ResultSet.CONCUR_UPDATABLE);
             ResultSet resultSet = preparedStatement.executeQuery();
             if(resultSet.next()) {
                 int count = resultSet.getInt(1);
