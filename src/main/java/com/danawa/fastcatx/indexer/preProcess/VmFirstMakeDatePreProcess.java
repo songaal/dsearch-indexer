@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import Altibase.jdbc.driver.AltibaseConnection;
 import Altibase.jdbc.driver.AltibasePreparedStatement;
 import com.danawa.fastcatx.indexer.Utils;
 import com.danawa.fastcatx.indexer.entity.Job;
@@ -28,7 +29,6 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
         String selectSql = (String) payload.getOrDefault("selectSql", "");
         String insertSql = (String) payload.getOrDefault("insertSql", "");
         String tableName = (String) payload.getOrDefault("tableName", ""); // tFirstDateForSearch
-        AltibasePreparedStatement insertPstmt;
 
         String altibaseDriver = (String) payload.getOrDefault("altibaseDriver", "");
         String altibaseMasterAddress = (String) payload.getOrDefault("altibaseMasterAddress", "");
@@ -54,9 +54,9 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
             databaseConnector.addConn(VmFirstMakeDatePreProcess.DB_TYPE.rescue.name(), altibaseDriver, altibaseRescueAddress, altibaseRescueUsername, altibaseRescuePassword);
         }
 
-        try (Connection masterConnection = databaseConnector.getConn(VmFirstMakeDatePreProcess.DB_TYPE.master.name());
-             Connection slaveConnection = databaseConnector.getConn(VmFirstMakeDatePreProcess.DB_TYPE.slave.name());
-             Connection rescueConnection = databaseConnector.getConn(VmFirstMakeDatePreProcess.DB_TYPE.slave.name());
+        try (AltibaseConnection masterConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.master.name());
+             AltibaseConnection slaveConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.slave.name());
+             AltibaseConnection rescueConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.rescue.name());
              )
         {
             DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
@@ -98,7 +98,7 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
             // 3. insert
             long insertStart = System.currentTimeMillis(); // INSERT TIME 시작
             PreparedStatement preparedStatement = masterConnection.prepareStatement(insertSql);
-            insertPstmt = (AltibasePreparedStatement) preparedStatement;
+            AltibasePreparedStatement insertPstmt =  (AltibasePreparedStatement) preparedStatement;
             insertPstmt.setAtomicBatch(true);
             int totalCount = 0;
 

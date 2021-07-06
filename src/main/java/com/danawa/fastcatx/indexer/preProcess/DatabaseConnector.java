@@ -1,5 +1,8 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import Altibase.jdbc.driver.AltibaseConnection;
+import Altibase.jdbc.driver.AltibaseDataSource;
+import Altibase.jdbc.driver.AltibaseDataSourceFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,31 +38,31 @@ public class DatabaseConnector implements Closeable {
         return addConn(DEFAULT_NAME, driver, url, username, password);
     }
 
-    public Connection getConn(String alias) throws SQLException {
+    public Connection getConn(String alias) throws SQLException, ClassNotFoundException {
         JdbcConfig jdbcConfig = config.get(alias);
         if (!connectionMap.containsKey(DEFAULT_NAME) && jdbcConfig != null) {
-            BasicDataSource basicDataSource = new BasicDataSource();
-            basicDataSource.setDriverClassName(jdbcConfig.getDriver());
-            basicDataSource.setUrl(jdbcConfig.getAddress());
-            basicDataSource.setUsername(jdbcConfig.getUsername());
-            basicDataSource.setPassword(jdbcConfig.getPassword());
-
-            // 4개의 설정은 동일하게 설정하는 것이 예외 케이스를 줄일수 있음.
-            basicDataSource.setInitialSize(8); // 최초로 생성할 커넥션 객체의 수
-            basicDataSource.setMaxTotal(8); // 최대로 생성할 커넥션 객체의 수
-            basicDataSource.setMaxIdle(8); // 최대 대여가능한 커넥션 객체의 수
-            basicDataSource.setMinIdle(8); // 최소 대여가능한 커넥션 객체의 수
-
-            basicDataSource.setMaxWaitMillis(3000); // 커넥션 객체 반납을 기다리는 시간d
-            basicDataSource.setValidationQuery("select 1");
-            basicDataSource.setTestOnBorrow(true);
-            basicDataSource.setDefaultAutoCommit(true);
-
-            connectionMap.put(alias, basicDataSource.getConnection());
+            Class.forName(jdbcConfig.getDriver());
+            connectionMap.put(alias, DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword()));
         }
         return connectionMap.get(alias);
     }
-    public Connection getConn() throws SQLException {
+
+    public AltibaseConnection getConnAlti() throws SQLException {
+        return getConnAlti(DEFAULT_NAME);
+    }
+    public AltibaseConnection getConnAlti(String alias) throws SQLException {
+        JdbcConfig jdbcConfig = config.get(alias);
+        if (!connectionMap.containsKey(DEFAULT_NAME) && jdbcConfig != null) {
+            AltibaseDataSource dataSource = new AltibaseDataSource();
+            dataSource.setURL(jdbcConfig.getAddress());
+            dataSource.setUser(jdbcConfig.getUsername());
+            dataSource.setPassword(jdbcConfig.getPassword());
+            connectionMap.put(alias, dataSource.getConnection());
+        }
+        return (AltibaseConnection) connectionMap.get(alias);
+    }
+
+    public Connection getConn() throws SQLException, ClassNotFoundException {
         return getConn(DEFAULT_NAME);
     }
 

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.scheduling.support.CronTrigger;
 
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -16,6 +17,26 @@ import java.util.UUID;
 @SpringBootTest
 public class PreProcessTest {
     private static final Logger logger = LoggerFactory.getLogger(PreProcessTest.class);
+
+
+    @Test
+    public void dbSelectTest() {
+        DatabaseConnector databaseConnector = new DatabaseConnector();
+        databaseConnector.addConn("Altibase.jdbc.driver.AltibaseDriver",
+                "jdbc:Altibase://es2.danawa.io:30032/DNWALTI",
+                "DBLINKDATA_A",
+                "ektbfm#^^");
+
+
+        try (Connection connection = databaseConnector.getConnAlti() ) {
+
+            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
+            System.out.println(databaseQueryHelper.getRowCount(connection, "tCategoryForSearch"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
 
     @Test
     public void nTourTest() {

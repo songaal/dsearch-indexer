@@ -21,7 +21,7 @@ public class DBTest {
             DatabaseQueryHelper helper = new DatabaseQueryHelper();
             System.out.println(helper.truncate(conn, args[4]));
 
-        } catch (SQLException throwables) {
+        } catch (SQLException | ClassNotFoundException throwables) {
             throwables.printStackTrace();
         }
 
