@@ -261,14 +261,7 @@ public class JDBCIngester implements Ingester {
                         str = r.getString(columnIdx);
 
                         if(str != null) {
-                            // HTML Decode 처리
-                            byte[] euckrStringBuffer = str.getBytes(Charset.forName("euc-kr"));
-                            String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
-                            byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
-                            String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
-
-                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
-//                            keyValueMap.put(columnName[i], str);
+                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
                         } else {
                             // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
                             keyValueMap.put(columnName[i], "");
@@ -295,6 +288,7 @@ public class JDBCIngester implements Ingester {
                                     try {
                                         buffer.close();
                                     } catch (IOException ignore) {
+
                                     }
                                 }
                             }
@@ -307,13 +301,7 @@ public class JDBCIngester implements Ingester {
                             if(useBlobFile) {
                                 keyValueMap.put(columnName[i], file);
                             } else {
-                                byte[] euckrStringBuffer = sb.toString().getBytes(Charset.forName("euc-kr"));
-                                String decodedFromEucKr = new String(euckrStringBuffer, "euc-kr");
-                                byte[] utf8StringBuffer = decodedFromEucKr.getBytes("utf-8");
-                                String decodedFromUtf8 = new String(utf8StringBuffer, "utf-8");
-
-//                                keyValueMap.put(columnName[i], sb.toString());
-                                    keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(decodedFromUtf8));
+                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
                             }
                         }
 
