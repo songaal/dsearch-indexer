@@ -58,11 +58,13 @@ public class ProcedureIngester extends FileIngester {
                     if(dumpFormat.equals("konan")){
                         startStr = "[%productCode%]";
                         //endStr= "[%modifyDate%]";
-                        endStr= "[%feeMallType%]";
+//                        endStr= "[%feeMallType%]";
+                        endStr= "[%quickTime%]";
                     }else if(dumpFormat.equals("ndjson")){
                         startStr = "{\"productCode\":";
                         //endStr = "\"modifyDate\":";
-                        endStr = "\"feeMallType\":";
+//                        endStr = "\"feeMallType\":";
+                        endStr = "\"quickTime\":";
                     }
 
                     //추후 개행문자로 구분하도록 수정 예정
