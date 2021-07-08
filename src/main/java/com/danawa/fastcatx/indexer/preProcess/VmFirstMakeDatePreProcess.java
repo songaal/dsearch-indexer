@@ -81,15 +81,21 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
             boolean isSlaveTruncated = false;
             boolean isRescueTruncated = false;
             if (altibaseSlaveEnable) {
+                Thread.sleep(5000);
                 isSlaveTruncated = databaseQueryHelper.truncate(slaveConnection, tableName);
                 logger.info("[slave] truncate result: {}", isSlaveTruncated);
+            } else {
+                isSlaveTruncated = true;
             }
             if (altibaseRescueEnable) {
+                Thread.sleep(5000);
                 isRescueTruncated = databaseQueryHelper.truncate(rescueConnection, tableName);
                 logger.info("[rescue] truncate result: {}", isRescueTruncated);
+            } else {
+                isRescueTruncated = true;
             }
 
-            if (!isMasterTruncated || !isSlaveTruncated) {
+            if (!isMasterTruncated || !isSlaveTruncated || !isRescueTruncated) {
                 logger.warn("Truncate 실패했습니다.");
                 throw new SQLException("Truncate failure");
             }
