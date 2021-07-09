@@ -105,7 +105,7 @@ public class DatabaseQueryHelper {
                     checkCountDown --;
                     logger.warn("프로시져 호출 후 데이터 감소 안함. 이전 갯수: {}, 현재 갯수: {}", prevRowSize, count);
                     logger.info("procedure truncate not working.. prev row Size: {}, current row Size: {}", prevRowSize, count);
-                    if (checkCountDown == 1) {
+                    if (checkCountDown == 2) {
                         callableStatement.execute();
                         logger.info("procedure truncate retry.. TableName: {}, result: {}, out: {}", tableName, result, out);
                         Utils.sleep(1000);
