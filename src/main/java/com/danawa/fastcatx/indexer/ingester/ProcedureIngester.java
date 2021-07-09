@@ -58,13 +58,13 @@ public class ProcedureIngester extends FileIngester {
                     if(dumpFormat.equals("konan")){
                         startStr = "[%productCode%]";
                         //endStr= "[%modifyDate%]";
-//                        endStr= "[%feeMallType%]";
-                        endStr= "[%quickTime%]";
+                        endStr= "[%feeMallType%]";
+//                        endStr = "[%quickTime%]"; // [FASTCAT-1211] 상품 데이터 개선 3.0 관련 미링크 협력사 상품 API 필드
                     }else if(dumpFormat.equals("ndjson")){
                         startStr = "{\"productCode\":";
                         //endStr = "\"modifyDate\":";
-//                        endStr = "\"feeMallType\":";
-                        endStr = "\"quickTime\":";
+                        endStr = "\"feeMallType\":";
+//                        endStr = "\"quickTime\":"; // [FASTCAT-1211] 상품 데이터 개선 3.0 관련 미링크 협력사 상품 API 필드
                     }
 
                     //추후 개행문자로 구분하도록 수정 예정
