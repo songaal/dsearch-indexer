@@ -87,18 +87,10 @@ public class VmKeywordPreProcess {
 
 
             // 2. truncate
-            boolean isMasterTruncated = databaseQueryHelper.truncate(masterConnection, tableName);
-            logger.info("[master] truncate result: {}", isMasterTruncated);
             // slave, rescue 선택적으로 truncate 호출
             boolean isSlaveTruncated = true;
             boolean isRescueTruncated = false;
-            if (altibaseSlaveEnable) {
-                Thread.sleep(5000);
-                isSlaveTruncated = databaseQueryHelper.truncate(slaveConnection, tableName);
-                logger.info("[slave] truncate result: {}", isSlaveTruncated);
-            } else {
-                isSlaveTruncated = true;
-            }
+
             if (altibaseRescueEnable) {
                 Thread.sleep(5000);
                 isRescueTruncated = databaseQueryHelper.truncate(rescueConnection, tableName);
@@ -106,6 +98,18 @@ public class VmKeywordPreProcess {
             } else {
                 isRescueTruncated = true;
             }
+
+            if (altibaseSlaveEnable) {
+                Thread.sleep(5000);
+                isSlaveTruncated = databaseQueryHelper.truncate(slaveConnection, tableName);
+                logger.info("[slave] truncate result: {}", isSlaveTruncated);
+            } else {
+                isSlaveTruncated = true;
+            }
+
+            boolean isMasterTruncated = databaseQueryHelper.truncate(masterConnection, tableName);
+            logger.info("[master] truncate result: {}", isMasterTruncated);
+
             if (!isMasterTruncated || !isSlaveTruncated || !isRescueTruncated) {
                 logger.warn("Truncate 실패했습니다.");
                 throw new SQLException("Truncate failure");

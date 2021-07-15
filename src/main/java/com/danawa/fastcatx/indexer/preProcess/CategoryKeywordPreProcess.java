@@ -72,11 +72,12 @@ public class CategoryKeywordPreProcess implements PreProcess {
             logger.info("조회 Row 갯수: {}, SQL: {}", rowCount, selectSql.substring(0, 100));
 
 //            truncate 프로시저 호출
+            // slave, rescue 선택적으로 truncate 호출
+            boolean isRescueTruncated = !altibaseRescueEnable || databaseQueryHelper.truncate(rescueConnection, tableName);
+            boolean isSlaveTruncated = !altibaseSlaveEnable || databaseQueryHelper.truncate(slaveConnection, tableName);
+
             boolean isMasterTruncated = databaseQueryHelper.truncate(masterConnection, tableName);
             logger.info("[master] truncate result: {}", isMasterTruncated);
-            // slave, rescue 선택적으로 truncate 호출
-            boolean isSlaveTruncated = !altibaseSlaveEnable || databaseQueryHelper.truncate(slaveConnection, tableName);
-            boolean isRescueTruncated = !altibaseRescueEnable || databaseQueryHelper.truncate(rescueConnection, tableName);
             logger.info("[slave] truncate result: {}", isSlaveTruncated);
             logger.info("[rescue] truncate result: {}", isRescueTruncated);
             if (!isMasterTruncated || !isSlaveTruncated || !isRescueTruncated) {

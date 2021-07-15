@@ -85,14 +85,14 @@ public class DatabaseQueryHelper {
 
         long endTime = System.currentTimeMillis() + timeout;
         int n = 0;
-//        Set<Integer> infinityCheck = new HashSet<>();
         int prevRowSize = 0;
-        int checkCountDown = 5;
+        final int CHECK_COUNT = 5;
+        int checkCountDown = CHECK_COUNT;
+        int retryTruncateCount = 0;
         for (;System.currentTimeMillis() < endTime;) {
 //            데이터가 별루 없으면 빨리 끝날거같아서,, 처음 10회는 1초마다 확인하고, 이후 부터는 5초 간격으로 갯수 확인한다.
             Utils.sleep(n++ < 10 ? 1000 : 5000);
-//            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
-            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql, ResultSet.TYPE_SCROLL_INSENSITIVE,ResultSet.CONCUR_UPDATABLE);
+            PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
             ResultSet resultSet = preparedStatement.executeQuery();
             if(resultSet.next()) {
                 int count = resultSet.getInt(1);
@@ -104,19 +104,18 @@ public class DatabaseQueryHelper {
                 } else if (prevRowSize <= count) {
                     checkCountDown --;
                     logger.warn("프로시져 호출 후 데이터 감소 안함. 이전 갯수: {}, 현재 갯수: {}", prevRowSize, count);
-                    logger.info("procedure truncate not working.. prev row Size: {}, current row Size: {}", prevRowSize, count);
-                    if (checkCountDown == 2) {
+                    if (checkCountDown == 0) {
+                        n = 0;
+                        checkCountDown = CHECK_COUNT;
                         callableStatement.execute();
-                        logger.info("procedure truncate retry.. TableName: {}, result: {}, out: {}", tableName, result, out);
+                        logger.info("procedure truncate retry.. {} TableName: {}, result: {}, out: {}", ++retryTruncateCount, tableName, result, out);
                         Utils.sleep(1000);
                     }
                 } else {
                     prevRowSize = count;
                 }
             }
-            if (checkCountDown <= 0) {
-                break;
-            } else if (n % 10 == 0) {
+            if (n % 10 == 0) {
                 logger.info("Truncate Check Loop.. {}", n);
             }
         }
