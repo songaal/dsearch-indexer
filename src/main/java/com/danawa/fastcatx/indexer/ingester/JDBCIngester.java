@@ -301,7 +301,7 @@ public class JDBCIngester implements Ingester {
                             if(useBlobFile) {
                                 keyValueMap.put(columnName[i], file);
                             } else {
-                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
+                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(sb.toString()));
                             }
                         }
 
