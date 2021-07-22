@@ -26,6 +26,7 @@ ENV LANG=ko_KR.euckr
 ENV VERSION=1.1.0
 
 COPY lib/Altibase.jar .
+COPY lib/convert-category-0.0.1.jar .
 
 EXPOSE 9350
 EXPOSE 8080

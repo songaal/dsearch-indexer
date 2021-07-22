@@ -485,7 +485,10 @@ public class IndexJobRunner implements Runnable {
 
             Ingester finalIngester = ingester;
             Filter filter = (Filter) Utils.newInstance(filterClassName);
-
+            if (filter != null) {
+                // 필터가 존재하면 초기화 메소드 호출한다.
+                filter.init(payload);
+            }
             if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                 logger.info("[STOP SIGNAL] type: procedure");
                 throw new StopSignalException();
