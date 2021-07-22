@@ -32,9 +32,12 @@ public class UICategoryFilter implements Filter {
             categoryCode.add(Integer.parseInt(item.getOrDefault("categoryCode" + i, "0").toString()));
         }
         // 옵션들
-        Integer makerCode = (Integer) item.getOrDefault("makerCode", null);
-        Integer brandCode = (Integer) item.getOrDefault("brandCode", null);
-        // 123,123,123
+        String makerCodeStr = (String) item.getOrDefault("makerCode", null);
+        String brandCodeStr = (String) item.getOrDefault("brandCode", null);
+        Integer makerCode = makerCodeStr == null ? null : Integer.parseInt(makerCodeStr);
+        Integer brandCode = brandCodeStr == null ? null : Integer.parseInt(brandCodeStr);
+
+        // attr 123,123,123
         List<String> nAttributeValueSeqStrList = Arrays.asList(((String) item.getOrDefault("nAttributeValueSeq", "")).split(","));
         List<Integer> nAttributeValueSeqList = new ArrayList<>();
         for (String attr : nAttributeValueSeqStrList) {
