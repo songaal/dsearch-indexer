@@ -34,38 +34,38 @@ public class UICategoryFilter implements Filter {
 
     @Override
     public Map<String, Object> filter(Map<String, Object> item) {
-        // 옵션들
-        String makerCodeStr = (String) item.getOrDefault("makerCode", null);
-        String brandCodeStr = (String) item.getOrDefault("brandCode", null);
-        Integer makerCode = makerCodeStr == null ? null : Integer.parseInt(makerCodeStr);
-        Integer brandCode = brandCodeStr == null ? null : Integer.parseInt(brandCodeStr);
-
-        // attr 123,123,123
-        String[] nAttributeValueSeqStrList = ((String) item.getOrDefault("nAttributeValueSeq", "")).split(",");
+        String makerCodeStr = null;
+        String brandCodeStr = null;
+        Integer makerCode = null;
+        Integer brandCode = null;
         List<Integer> nAttributeValueSeqList = new ArrayList<>();
-        for (String attr : nAttributeValueSeqStrList) {
-            nAttributeValueSeqList.add(Integer.parseInt(attr));
-        }
+        Integer code = null;
+        try {
+            // 옵션들
+            makerCodeStr = (String) item.getOrDefault("makerCode", null);
+            brandCodeStr = (String) item.getOrDefault("brandCode", null);
+            makerCode = makerCodeStr == null ? null : Integer.parseInt(makerCodeStr);
+            brandCode = brandCodeStr == null ? null : Integer.parseInt(brandCodeStr);
 
-        Set<Map<String, Object>> mapping = null;
-        if (makerCode != null && brandCode != null) {
-            // 찾아본다.
-            for (int i = 4; i >= 1; i--) {
-                int code = Integer.parseInt(item.getOrDefault("categoryCode" + i, "0").toString());
-                if (code != 0) {
-                    try {
-                        mapping = categoryScheduler.findUICategoryList(code, nAttributeValueSeqList, makerCode, brandCode);
-                        if (mapping.size() > 0) {
-                            break;
-                        }
-                    } catch (Exception e) {
-                        logger.error("{}   {}   {}   {} ", code, nAttributeValueSeqList, makerCode, brandCode);
-                        logger.error("", e);
-                    }
-
+            // attr 123,123,123
+            String[] nAttributeValueSeqStrList = ((String) item.getOrDefault("nAttributeValueSeq", "")).split(",");
+            for (String attr : nAttributeValueSeqStrList) {
+                if (!"".equals(attr)) {
+                    nAttributeValueSeqList.add(Integer.parseInt(attr));
                 }
             }
-        }
+
+            Set<Map<String, Object>> mapping = null;
+            // 찾아본다.
+            for (int i = 4; i >= 1; i--) {
+                code = Integer.parseInt(item.getOrDefault("categoryCode" + i, "0").toString());
+                if (code != 0) {
+                    mapping = categoryScheduler.findUICategoryList(code, nAttributeValueSeqList, makerCode, brandCode);
+                    if (mapping.size() > 0) {
+                        break;
+                    }
+                }
+            }
 
         /*  구조
         * [{
@@ -95,14 +95,18 @@ public class UICategoryFilter implements Filter {
             ]
         }]
         * */
-        if (mapping != null && mapping.size() > 0) {
-            Set<List<String>> nameList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getName()).collect(Collectors.toSet());
-            Set<Integer> codeList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getCode()).collect(Collectors.toSet());
-            item.put("uiCategoryCode", codeList);
-            item.put("uiCategoryName", nameList);
-        } else {
-            item.put("uiCategoryCode", new HashSet<>());
-            item.put("uiCategoryName", new HashSet<>());
+            if (mapping != null && mapping.size() > 0) {
+                Set<List<String>> nameList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getName()).collect(Collectors.toSet());
+                Set<Integer> codeList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getCode()).collect(Collectors.toSet());
+                item.put("uiCategoryCode", codeList);
+                item.put("uiCategoryName", nameList);
+            } else {
+                item.put("uiCategoryCode", new HashSet<>());
+                item.put("uiCategoryName", new HashSet<>());
+            }
+        } catch (Exception e) {
+            logger.error("phCateCode: {},   maker: {},   brand:{},  attr: {} ", code, makerCode, brandCode, nAttributeValueSeqList);
+            logger.error("", e);
         }
         return item;
     }
