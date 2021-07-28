@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class UICategoryLastNameFilter implements Filter {
     private static final Logger logger = LoggerFactory.getLogger(UICategoryLastNameFilter.class);
     private CategoryScheduler categoryScheduler;
-    private RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
     public void init(Map<String, Object> payload) {
