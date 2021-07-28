@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StopWatch;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Type;
@@ -41,6 +42,8 @@ public class UICategoryLastNameFilter implements Filter {
         List<Integer> nAttributeValueSeqList = new ArrayList<>();
         Integer code = null;
         try {
+            StopWatch stopWatch = new StopWatch();
+            stopWatch.start();
             // 옵션들
             makerCodeStr = (String) item.getOrDefault("makerCode", null);
             brandCodeStr = (String) item.getOrDefault("brandCode", null);
@@ -97,22 +100,29 @@ public class UICategoryLastNameFilter implements Filter {
         * */
             if (mapping != null && mapping.size() > 0) {
                 Set<Integer> codeList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getCode()).collect(Collectors.toSet());
-                Set<String> lastNameSet = new HashSet<>();
-                Set<List<String>> nameList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getName()).collect(Collectors.toSet());
-                for (List<String> list : nameList) {
-                    lastNameSet.add(list.get(list.size() - 1));
+                Set<String> lastNameList = new HashSet<>();
+                List<List<String>> nameList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getName()).collect(Collectors.toList());
+                int listSize = nameList.size();
+                for (int i = 0; i < listSize; i++) {
+                    if (nameList.get(i).size() > 0) {
+                        lastNameList.add(nameList.get(i).get(nameList.get(i).size() - 1));
+                    }
                 }
+                logger.debug("lastNameList Size: {}", lastNameList.size());
                 item.put("uiCategoryCode", codeList);
-                item.put("uiCategoryName", lastNameSet);
+                item.put("uiCategoryName", lastNameList);
             } else {
                 item.put("uiCategoryCode", new HashSet<>());
                 item.put("uiCategoryName", new HashSet<>());
             }
+            stopWatch.stop();
+            long et = stopWatch.getTotalTimeMillis();
+            if (et > 10 * 1000) {
+                logger.debug("UI 카테고리 소요시간: {}", et);
+            }
         } catch (Exception e) {
             logger.error("phCateCode: {},   maker: {},   brand:{},  attr: {} ", code, makerCode, brandCode, nAttributeValueSeqList);
             logger.error("", e);
-            item.put("uiCategoryCode", new HashSet<>());
-            item.put("uiCategoryName", new HashSet<>());
         }
         return item;
     }
