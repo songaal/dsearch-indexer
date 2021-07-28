@@ -99,16 +99,15 @@ public class UICategoryLastNameFilter implements Filter {
         }]
         * */
             if (mapping != null && mapping.size() > 0) {
-                Set<Integer> codeList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getCode()).collect(Collectors.toSet());
+                Set<Integer> codeList = new HashSet<>();
                 Set<String> lastNameList = new HashSet<>();
-                List<List<String>> nameList = mapping.stream().map(stringObjectMap -> ((UICategory)stringObjectMap.get("uiCategory")).getName()).collect(Collectors.toList());
-                int listSize = nameList.size();
-                for (int i = 0; i < listSize; i++) {
-                    if (nameList.get(i).size() > 0) {
-                        lastNameList.add(nameList.get(i).get(nameList.get(i).size() - 1));
-                    }
+                Iterator<Map<String, Object>> iterator = mapping.iterator();
+                while (iterator.hasNext()) {
+                    Map<String, Object> tmp = iterator.next();
+                    UICategory uiCategory = (UICategory) tmp.get("uiCategory");
+                    codeList.add(uiCategory.getCode());
+                    lastNameList.add(uiCategory.getName().get(uiCategory.getName().size() - 1));
                 }
-                logger.debug("lastNameList Size: {}", lastNameList.size());
                 item.put("uiCategoryCode", codeList);
                 item.put("uiCategoryName", lastNameList);
             } else {
