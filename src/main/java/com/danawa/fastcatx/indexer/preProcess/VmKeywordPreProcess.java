@@ -88,7 +88,7 @@ public class VmKeywordPreProcess {
 
             // 2. truncate
             // slave, rescue 선택적으로 truncate 호출
-            boolean isSlaveTruncated = true;
+            boolean isSlaveTruncated = false;
             boolean isRescueTruncated = false;
 
             if (altibaseRescueEnable) {
