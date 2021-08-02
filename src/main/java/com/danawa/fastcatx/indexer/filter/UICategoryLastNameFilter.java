@@ -99,11 +99,9 @@ public class UICategoryLastNameFilter implements Filter {
         }]
         * */
             if (mapping != null && mapping.size() > 0) {
-                Set<Integer> codeList = new HashSet<>();
-                Set<String> lastNameList = new HashSet<>();
-                Iterator<Map<String, Object>> iterator = mapping.iterator();
-                while (iterator.hasNext()) {
-                    Map<String, Object> tmp = iterator.next();
+                List<Integer> codeList = new ArrayList<>();
+                List<String> lastNameList = new ArrayList<>();
+                for (Map<String, Object> tmp : mapping) {
                     UICategory uiCategory = (UICategory) tmp.get("uiCategory");
                     codeList.add(uiCategory.getCode());
                     lastNameList.add(uiCategory.getName().get(uiCategory.getName().size() - 1));
@@ -111,8 +109,8 @@ public class UICategoryLastNameFilter implements Filter {
                 item.put("uiCategoryCode", codeList);
                 item.put("uiCategoryName", lastNameList);
             } else {
-                item.put("uiCategoryCode", new HashSet<>());
-                item.put("uiCategoryName", new HashSet<>());
+                item.put("uiCategoryCode", new ArrayList<>());
+                item.put("uiCategoryName", new ArrayList<>());
             }
             stopWatch.stop();
             long et = stopWatch.getTotalTimeMillis();
