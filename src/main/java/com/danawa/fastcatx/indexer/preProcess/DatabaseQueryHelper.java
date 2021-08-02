@@ -1,16 +1,13 @@
 package com.danawa.fastcatx.indexer.preProcess;
-
 import com.danawa.fastcatx.indexer.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
 public class DatabaseQueryHelper {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseQueryHelper.class);
-
     private final long oneHour = 60 * 60 * 1000;
 
     public int getRowCount(Connection connection, String table) throws SQLException {
@@ -29,9 +26,11 @@ public class DatabaseQueryHelper {
     }
 
     public ResultSet simpleSelect(Connection connection, String sql) throws SQLException {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
         long st = System.currentTimeMillis();
-        PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
-        ResultSet resultSet = preparedStatement.executeQuery();
+        preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
+        resultSet = preparedStatement.executeQuery();
         long nt = System.currentTimeMillis();
         if (sql.length() < 50){
             logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
@@ -41,23 +40,12 @@ public class DatabaseQueryHelper {
         return resultSet;
     }
 
-//    public ResultSet simpleSelectDefault(Connection connection, String sql) throws SQLException {
-//        long st = System.currentTimeMillis();
-//        PreparedStatement preparedStatement = connection.prepareStatement(sql);
-//        ResultSet resultSet = preparedStatement.executeQuery();
-//        long nt = System.currentTimeMillis();
-//        if (sql.length() < 50){
-//            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
-//        } else {
-//            logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql.substring(0, 50));
-//        }
-//        return resultSet;
-//    }
-
-    public ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
+    ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
         long st = System.currentTimeMillis();
-        PreparedStatement preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-        ResultSet resultSet = preparedStatement.executeQuery();
+        preparedStatement = connection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+        resultSet = preparedStatement.executeQuery();
         long nt = System.currentTimeMillis();
         if (sql.length() < 50){
             logger.info("Select ExecuteQuery. Elapsed time: {}ms  SQL: {}", nt - st, sql);
@@ -70,19 +58,17 @@ public class DatabaseQueryHelper {
     public boolean truncate(Connection connection, String tableName) throws SQLException {
         return truncate(connection, tableName, oneHour);
     }
+
     public boolean truncate(Connection connection, String tableName, long timeout) throws SQLException {
         boolean isTruncated = false;
-
         String truncatedCheckSql = String.format("SELECT COUNT(1) FROM %s", tableName);
         String truncateSql = "{CALL PRTRUNCATE(?, ?)}";
         String out = new String();
         CallableStatement callableStatement = connection.prepareCall(truncateSql);
         callableStatement.setString(1, tableName);
-        callableStatement.registerOutParameter(2, Types.CHAR);
+        callableStatement.registerOutParameter(2, Types.VARCHAR);
         boolean result = callableStatement.execute();
-
         logger.info("Truncate Call. TableName: {}, result: {}, out: {}", tableName, result, out);
-
         long endTime = System.currentTimeMillis() + timeout;
         int n = 0;
         int prevRowSize = 0;
@@ -119,14 +105,12 @@ public class DatabaseQueryHelper {
                 logger.info("Truncate Check Loop.. {}", n);
             }
         }
-//            TODO 실패 시 알림 기능 추가
+
         if (checkCountDown > 0) {
             logger.info("Truncated. tableName: {}. out: {}", tableName, out);
         } else {
             logger.info("Truncated fail !!!!!!!. tableName: {}. out: {}", tableName, out);
         }
-
         return isTruncated;
     }
-
 }

@@ -1,23 +1,23 @@
 package com.danawa.fastcatx.indexer.preProcess;
-
 import Altibase.jdbc.driver.AltibaseConnection;
 import Altibase.jdbc.driver.AltibaseDataSource;
 import Altibase.jdbc.driver.AltibaseDataSourceFactory;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DatabaseConnector implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseConnector.class);
-    private final Map<String, Connection> connectionMap = new ConcurrentHashMap<>();
+    private final Map<String, List<Connection>> connectionMap = new ConcurrentHashMap<>();
     private final Map<String, JdbcConfig> config = new ConcurrentHashMap<>();
     private final String DEFAULT_NAME = "DEFAULT_NAME";
 
@@ -34,32 +34,38 @@ public class DatabaseConnector implements Closeable {
         }
         return isAdd;
     }
+
     public boolean addConn(String driver, String url, String username, String password) {
         return addConn(DEFAULT_NAME, driver, url, username, password);
     }
 
     public Connection getConn(String alias) throws SQLException, ClassNotFoundException {
         JdbcConfig jdbcConfig = config.get(alias);
-        if (!connectionMap.containsKey(DEFAULT_NAME) && jdbcConfig != null) {
-            Class.forName(jdbcConfig.getDriver());
-            connectionMap.put(alias, DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword()));
+        if(!connectionMap.containsKey(alias)) {
+            connectionMap.put(alias, new ArrayList<>());
         }
-        return connectionMap.get(alias);
+        Class.forName(jdbcConfig.getDriver());
+        Connection connection = DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword());
+        connectionMap.get(alias).add(connection);
+        return connection;
     }
 
     public AltibaseConnection getConnAlti() throws SQLException {
         return getConnAlti(DEFAULT_NAME);
     }
+
     public AltibaseConnection getConnAlti(String alias) throws SQLException {
-        JdbcConfig jdbcConfig = config.get(alias);
-        if (!connectionMap.containsKey(DEFAULT_NAME) && jdbcConfig != null) {
-            AltibaseDataSource dataSource = new AltibaseDataSource();
-            dataSource.setURL(jdbcConfig.getAddress());
-            dataSource.setUser(jdbcConfig.getUsername());
-            dataSource.setPassword(jdbcConfig.getPassword());
-            connectionMap.put(alias, dataSource.getConnection());
+        if(!connectionMap.containsKey(alias)) {
+            connectionMap.put(alias, new ArrayList<>());
         }
-        return (AltibaseConnection) connectionMap.get(alias);
+        JdbcConfig jdbcConfig = config.get(alias);
+        AltibaseDataSource dataSource = new AltibaseDataSource();
+        dataSource.setURL(jdbcConfig.getAddress());
+        dataSource.setUser(jdbcConfig.getUsername());
+        dataSource.setPassword(jdbcConfig.getPassword());
+        Connection connection = dataSource.getConnection();
+        connectionMap.get(alias).add(connection);
+        return (AltibaseConnection) connection;
     }
 
     public Connection getConn() throws SQLException, ClassNotFoundException {
@@ -68,52 +74,50 @@ public class DatabaseConnector implements Closeable {
 
     @Override
     public void close() throws IOException {
-        connectionMap.values().forEach(connection -> {
+        connectionMap.values().forEach(connections -> {
             try {
-                if (connection != null && !connection.isClosed()) {
-                    connection.close();
-                }
+                connections.forEach(connection -> {
+                    try {
+                        if (connection != null && !connection.isClosed()) {
+                            connection.close();
+                            logger.info("close connection. {}", connection.getClientInfo());
+                        }
+                    } catch (Exception e) {
+                        logger.error("", e);
+                    }
+                });
             } catch (Exception e) {
                 logger.warn("", e);
             }
         });
     }
 
-
     private static class JdbcConfig {
         private String driver;
         private String address;
         private String username;
         private String password;
-
         public String getDriver() {
             return driver;
         }
-
         public void setDriver(String driver) {
             this.driver = driver;
         }
-
         public String getAddress() {
             return address;
         }
-
         public void setAddress(String address) {
             this.address = address;
         }
-
         public String getUsername() {
             return username;
         }
-
         public void setUsername(String username) {
             this.username = username;
         }
-
         public String getPassword() {
             return password;
         }
-
         public void setPassword(String password) {
             this.password = password;
         }
