@@ -41,12 +41,15 @@ public class DatabaseConnector implements Closeable {
 
     public Connection getConn(String alias) throws SQLException, ClassNotFoundException {
         JdbcConfig jdbcConfig = config.get(alias);
+        Connection connection = null;
         if(!connectionMap.containsKey(alias)) {
             connectionMap.put(alias, new ArrayList<>());
         }
-        Class.forName(jdbcConfig.getDriver());
-        Connection connection = DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword());
-        connectionMap.get(alias).add(connection);
+        if (jdbcConfig != null){
+            Class.forName(jdbcConfig.getDriver());
+            connection = DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword());
+            connectionMap.get(alias).add(connection);
+        }
         return connection;
     }
 
@@ -59,12 +62,15 @@ public class DatabaseConnector implements Closeable {
             connectionMap.put(alias, new ArrayList<>());
         }
         JdbcConfig jdbcConfig = config.get(alias);
-        AltibaseDataSource dataSource = new AltibaseDataSource();
-        dataSource.setURL(jdbcConfig.getAddress());
-        dataSource.setUser(jdbcConfig.getUsername());
-        dataSource.setPassword(jdbcConfig.getPassword());
-        Connection connection = dataSource.getConnection();
-        connectionMap.get(alias).add(connection);
+        Connection connection = null;
+        if (jdbcConfig != null){
+            AltibaseDataSource dataSource = new AltibaseDataSource();
+            dataSource.setURL(jdbcConfig.getAddress());
+            dataSource.setUser(jdbcConfig.getUsername());
+            dataSource.setPassword(jdbcConfig.getPassword());
+            connection = dataSource.getConnection();
+            connectionMap.get(alias).add(connection);
+        }
         return (AltibaseConnection) connection;
     }
 
