@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.Map;
 
 public class VmKeywordPreProcess {
-    private static final Logger logger = LoggerFactory.getLogger(VmFirstMakeDatePreProcess.class);
+    private static final Logger logger = LoggerFactory.getLogger(VmKeywordPreProcess.class);
     private Job job;
     private Map<String, Object> payload;
     private enum DB_TYPE {master, slave, rescue};
