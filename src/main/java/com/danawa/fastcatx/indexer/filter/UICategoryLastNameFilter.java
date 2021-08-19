@@ -19,11 +19,16 @@ public class UICategoryLastNameFilter implements Filter {
     private static final Logger logger = LoggerFactory.getLogger(UICategoryLastNameFilter.class);
     private CategoryScheduler categoryScheduler;
     private final RestTemplate restTemplate = new RestTemplate();
+    private List<String> ignoreCategoryChar = null;
 
     @Override
     public void init(Map<String, Object> payload) {
         String categoryMappingUrl = (String) payload.getOrDefault("categoryMappingUrl", "");
+        String ignoreCategoryCharStr = (String) payload.getOrDefault("ignoreCategoryChar", "");
+        ignoreCategoryChar = Arrays.asList(ignoreCategoryCharStr.split(","));
+
         logger.info("UI카테고리 맵핑 조회 URL: {}", categoryMappingUrl);
+        logger.info("UI카테고리 제외, 무시할 문자: {}", ignoreCategoryChar);
         String body = restTemplate.getForObject(categoryMappingUrl, String.class);
         Type type = new TypeToken<CategoryMappingModel<String, List<CategoryMappingModel.Mapping>>>(){}.getType();
         CategoryMappingModel<String, List<CategoryMappingModel.Mapping>> mappingModel = new Gson().fromJson(body, type);
@@ -41,6 +46,7 @@ public class UICategoryLastNameFilter implements Filter {
         Integer brandCode = null;
         List<Integer> nAttributeValueSeqList = new ArrayList<>();
         Integer code = null;
+
         try {
             StopWatch stopWatch = new StopWatch();
             stopWatch.start();
@@ -103,8 +109,18 @@ public class UICategoryLastNameFilter implements Filter {
                 List<String> lastNameList = new ArrayList<>();
                 for (Map<String, Object> tmp : mapping) {
                     UICategory uiCategory = (UICategory) tmp.get("uiCategory");
-                    codeList.add(uiCategory.getCode());
-                    lastNameList.add(uiCategory.getName().get(uiCategory.getName().size() - 1));
+                    String lastCategoryName = uiCategory.getName().get(uiCategory.getName().size() - 1);
+                    boolean isInclude = false;
+                    for (String c : ignoreCategoryChar) {
+                        if (c.contains(lastCategoryName)) {
+                            isInclude = true;
+                            break;
+                        }
+                    }
+                    if (!isInclude) {
+                        codeList.add(uiCategory.getCode());
+                        lastNameList.add(lastCategoryName);
+                    }
                 }
                 item.put("uiCategoryCode", codeList);
                 item.put("uiCategoryName", lastNameList);
