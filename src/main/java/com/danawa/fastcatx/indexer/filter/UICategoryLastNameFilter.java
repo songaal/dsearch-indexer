@@ -112,7 +112,7 @@ public class UICategoryLastNameFilter implements Filter {
                     String lastCategoryName = uiCategory.getName().get(uiCategory.getName().size() - 1);
                     boolean isInclude = false;
                     for (String c : ignoreCategoryChar) {
-                        if (c.contains(lastCategoryName)) {
+                        if (lastCategoryName != null && lastCategoryName.contains(c)) {
                             isInclude = true;
                             break;
                         }
