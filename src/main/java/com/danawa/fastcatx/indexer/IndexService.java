@@ -559,4 +559,34 @@ public class IndexService {
                 client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
         return null;
     }
+
+    public boolean retryUntilCreatingIndex(String index, Map<String, Object> indexSettings, int retryCount) throws IOException, InterruptedException {
+        boolean result = false;
+
+        for (int r = 0; r < retryCount; r ++) {
+            boolean isExistsIndex = existsIndex(index);
+            logger.info("[{}] existsIndex: {}", index, isExistsIndex);
+            if (isExistsIndex) {
+                // 기존 인덱스가 존재할때 지우고 다시 생성
+                boolean isDeleteIndex = deleteIndex(index);
+                logger.info("[{}] isDeleteIndex: {}", index, isDeleteIndex);
+                if(isDeleteIndex) {
+                    if (createIndex(index, indexSettings)) {
+                        // 생성 플래그값
+                        result = true;
+                        break;
+                    }
+                }
+            } else {
+                // 기존 인덱스가 없으면 생성
+                if (createIndex(index, indexSettings)) {
+                    // 생성 플래그값
+                    result = true;
+                    break;
+                }
+            }
+            Thread.sleep(500);
+        }
+        return result;
+    }
 }
