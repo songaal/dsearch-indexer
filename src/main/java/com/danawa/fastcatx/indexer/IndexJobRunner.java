@@ -39,6 +39,7 @@ public class IndexJobRunner implements Runnable {
 
     boolean enableRemoteCmd;
     String remoteCmdUrl;
+    private boolean isCreatedIndex;
 
     public IndexJobRunner(Job job) {
         this.job = job;
@@ -494,10 +495,35 @@ public class IndexJobRunner implements Runnable {
             service = new IndexService(host, port, scheme, esUsername, esPassword);
             // 인덱스를 초기화하고 0건부터 색인이라면.
             if (reset) {
-                if (service.existsIndex(index)) {
-                    if(service.deleteIndex(index)) {
-                        service.createIndex(index, indexSettings);
+                isCreatedIndex = false;
+                for (int r = 0; r < 30; r ++) {
+                    boolean isExistsIndex = service.existsIndex(index);
+                    logger.info("[{}] existsIndex: {}", index, isExistsIndex);
+                    if (isExistsIndex) {
+                        // 기존 인덱스가 존재할때 지우고 다시 생성
+                        boolean isDeleteIndex = service.deleteIndex(index);
+                        logger.info("[{}] isDeleteIndex: {}", index, isDeleteIndex);
+                        if(isDeleteIndex) {
+                            if (service.createIndex(index, indexSettings)) {
+                                // 생성 플래그값
+                                isCreatedIndex = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        // 기존 인덱스가 없으면 생성
+                        if (service.createIndex(index, indexSettings)) {
+                            // 생성 플래그값
+                            isCreatedIndex = true;
+                            break;
+                        }
                     }
+                    Thread.sleep(500);
+                }
+                if (isCreatedIndex) {
+                    logger.info("Index Created Success!! index: {}", index);
+                } else {
+                    logger.info("Index ReCreated Fail... index: {}", index);
                 }
             }
 
