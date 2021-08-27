@@ -48,6 +48,7 @@ public class CategoryKeywordPreProcess implements PreProcess {
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn(DB_TYPE.master.name(), altibaseDriver, altibaseMasterAddress, altibaseMasterUsername, altibaseMasterPassword);
+        DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
         if (altibaseSlaveEnable) {
             databaseConnector.addConn(DB_TYPE.slave.name(), altibaseDriver, altibaseSlaveAddress, altibaseSlaveUsername, altibaseSlavePassword);
@@ -59,11 +60,9 @@ public class CategoryKeywordPreProcess implements PreProcess {
                 Connection masterConnection = databaseConnector.getConn(DB_TYPE.master.name());
                 Connection slaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
                 Connection rescueConnection = databaseConnector.getConn(DB_TYPE.rescue.name());
+                ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
         ) {
-            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
-
 //            현재 테이블 조회
-            ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
             int rowCount = 0;
             if (resultSet.last()) {
                 rowCount = resultSet.getRow();

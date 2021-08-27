@@ -17,6 +17,7 @@ public class DatabaseQueryHelper {
         if (resultSet.next()) {
             count = resultSet.getInt(1);
         }
+        resultSet.close();
         return count;
     }
 
@@ -40,7 +41,7 @@ public class DatabaseQueryHelper {
         return resultSet;
     }
 
-    ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
+    public ResultSet simpleSelectForwadOnly(Connection connection, String sql) throws SQLException {
         PreparedStatement preparedStatement = null;
         ResultSet resultSet = null;
         long st = System.currentTimeMillis();
@@ -79,30 +80,37 @@ public class DatabaseQueryHelper {
 //            데이터가 별루 없으면 빨리 끝날거같아서,, 처음 10회는 1초마다 확인하고, 이후 부터는 5초 간격으로 갯수 확인한다.
             Utils.sleep(n++ < 10 ? 1000 : 5000);
             PreparedStatement preparedStatement = connection.prepareStatement(truncatedCheckSql);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if(resultSet.next()) {
-                int count = resultSet.getInt(1);
-                if(count == 0) {
-                    isTruncated = true;
-                    break;
-                } else if (n == 1) {
-                    prevRowSize = count;
-                } else if (prevRowSize <= count) {
-                    checkCountDown --;
-                    logger.warn("프로시져 호출 후 데이터 감소 안함. 이전 갯수: {}, 현재 갯수: {}", prevRowSize, count);
-                    if (checkCountDown == 0) {
-                        n = 0;
-                        checkCountDown = CHECK_COUNT;
-                        callableStatement.execute();
-                        logger.info("procedure truncate retry.. {} TableName: {}, result: {}, out: {}", ++retryTruncateCount, tableName, result, out);
-                        Utils.sleep(1000);
+            ResultSet resultSet = null;
+            try {
+                resultSet = preparedStatement.executeQuery();
+                if(resultSet.next()) {
+                    int count = resultSet.getInt(1);
+                    if(count == 0) {
+                        isTruncated = true;
+                        break;
+                    } else if (n == 1) {
+                        prevRowSize = count;
+                    } else if (prevRowSize <= count) {
+                        checkCountDown --;
+                        logger.warn("프로시져 호출 후 데이터 감소 안함. 이전 갯수: {}, 현재 갯수: {}", prevRowSize, count);
+                        if (checkCountDown == 0) {
+                            n = 0;
+                            checkCountDown = CHECK_COUNT;
+                            callableStatement.execute();
+                            logger.info("procedure truncate retry.. {} TableName: {}, result: {}, out: {}", ++retryTruncateCount, tableName, result, out);
+                            Utils.sleep(1000);
+                        }
+                    } else {
+                        prevRowSize = count;
                     }
-                } else {
-                    prevRowSize = count;
                 }
-            }
-            if (n % 10 == 0) {
-                logger.info("Truncate Check Loop.. {}", n);
+                if (n % 10 == 0) {
+                    logger.info("Truncate Check Loop.. {}", n);
+                }
+            } catch (SQLException e) {
+                logger.error(e.getMessage());
+            } finally {
+                resultSet.close();
             }
         }
 
