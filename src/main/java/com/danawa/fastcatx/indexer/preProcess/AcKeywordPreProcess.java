@@ -498,6 +498,8 @@ public class AcKeywordPreProcess implements PreProcess {
                 map.put(keyword, score);
 
             }
+
+            rs.close();
         } catch (SQLException e) {
             logger.error("", e);
             logger.info(URLDecoder.decode(e.getMessage(), "MS949"));
