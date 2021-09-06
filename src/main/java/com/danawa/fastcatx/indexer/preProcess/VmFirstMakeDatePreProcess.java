@@ -103,6 +103,7 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
             while (resultSet.next()) {
                 insertPstmt.setInt(1, resultSet.getInt("PROD_C"));
                 insertPstmt.setDate(2, resultSet.getDate("FIRSTDATE"));
+                insertPstmt.setDate(3, resultSet.getDate("LASTDATE"));
                 insertPstmt.addBatch();
                 totalCount++;
                 if (totalCount % 10000 == 0) {
