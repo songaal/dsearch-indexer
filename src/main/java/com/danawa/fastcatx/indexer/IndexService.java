@@ -385,6 +385,12 @@ public class IndexService {
                 }
             } catch (Throwable e) {
                 logger.error("indexParallel : {}", e);
+            } finally {
+                try {
+                    client.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
             // 기존 소스
@@ -553,10 +559,14 @@ public class IndexService {
     }
 
     public String getStorageSize(String index) throws IOException {
-        RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)));
-        StatsRequest statsRequest = new StatsRequest();
-        StatsResponse statsResponse =
-                client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
+        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+            StatsRequest statsRequest = new StatsRequest();
+            StatsResponse statsResponse =
+                    client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
+            return null;
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        }
         return null;
     }
 
