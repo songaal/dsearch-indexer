@@ -378,7 +378,7 @@ public class IndexJobRunner implements Runnable {
                 }
 
                 if (enableOfficeIndexingJob) {
-                    officeLinkIndexing(officeFullIndexUrl);
+                    officeLinkIndexing(officeFullIndexUrl, groupSeqs);
                 }
 
                 if(rsyncSkip == false){
@@ -650,9 +650,10 @@ public class IndexJobRunner implements Runnable {
         }
     }
 
-    private void officeLinkIndexing(String url) {
+    private void officeLinkIndexing(String url, String groupSeqStr) {
         logger.info("office-link indexing start");
         url += "&action=all";
+        url += "&groupSeq=" + groupSeqStr;
         try {
             restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
             logger.info("office-link indexing start");
