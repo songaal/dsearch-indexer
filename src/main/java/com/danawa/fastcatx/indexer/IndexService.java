@@ -119,11 +119,6 @@ public class IndexService {
 
     public boolean createIndex(String index, Map<String, ?> settings) throws IOException {
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
-//        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-//                .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-//                        .setSocketTimeout(SOCKET_TIMEOUT))
-//                .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-//                        .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
             CreateIndexRequest request = new CreateIndexRequest(index);
             request.settings(settings);
             AcknowledgedResponse deleteIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
@@ -138,14 +133,6 @@ public class IndexService {
 
     public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
-//        try (
-//                RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-//                        .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-//                                .setSocketTimeout(SOCKET_TIMEOUT))
-//                        .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-//                                .setKeepAliveStrategy(getConnectionKeepAliveStrategy())))) {
-
-
             count = 0;
 
             String id = "";
@@ -289,7 +276,7 @@ public class IndexService {
 
     class Worker implements Callable {
         private BlockingQueue queue;
-        private RestHighLevelClient client;
+//        private RestHighLevelClient client;
         private int sleepTime = 1000;
         private boolean isStop = false;
         private String index;
@@ -298,20 +285,14 @@ public class IndexService {
         public Worker(BlockingQueue queue, String index, Job job) {
             this.queue = queue;
             this.index = index;
-            this.client = new RestHighLevelClient(restClientBuilder);
             this.job = job;
-//            this.client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme))
-//                    .setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder.setConnectTimeout(CONNECTION_TIMEOUT)
-//                            .setSocketTimeout(SOCKET_TIMEOUT))
-//                    .setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder
-//                            .setKeepAliveStrategy(getConnectionKeepAliveStrategy())));
         }
 
         private void retry(BulkRequest bulkRequest) {
             // 동기 방식
-            try {
+            BulkResponse bulkResponse = null;
 
-                BulkResponse bulkResponse;
+            try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
                 // 문서 손실 방지. es rejected 에러시 무한 색인 요청
                 while (true) {
                     bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
@@ -319,7 +300,7 @@ public class IndexService {
                     if (bulkResponse.hasFailures()) {
                         // bulkResponse에 에러가 있다면
                         // retry 1회 시도
-//                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
+                        //                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
                         BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
                         List<DocWriteRequest<?>> requests = bulkRequest.requests();
                         for (int i = 0; i < bulkItemResponses.length; i++) {
@@ -329,8 +310,9 @@ public class IndexService {
                                 BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
 
                                 // write queue reject 이슈 코드 = ( 429 )
-                                if (failure.getStatus() == RestStatus.fromCode(429)) {
-//                                logger.error("write queue rejected!! >> {}", failure);
+                                if ("429".equals(failure.getStatus().name())) {
+
+                                    //                                logger.error("write queue rejected!! >> {}", failure);
 
                                     // retry bulk request에 추가
                                     // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
@@ -341,7 +323,6 @@ public class IndexService {
                                 }
                             }
                         }
-
                     }
 
                     if (retryBulkRequest.requests().size() == 0) {
@@ -354,14 +335,13 @@ public class IndexService {
                     if (job.getStopSignal()) {
                         throw new StopSignalException();
                     }
-
                 }
 
-                logger.debug("Bulk Success : index:{} - count:{}, - elapsed:{}", index, count, bulkResponse.getTook());
-
             } catch (Exception e) {
-                logger.error("retry", e);
+                // exception 발생 시 무한 색인 요청(while)을 빠져나간다.
+                logger.error(e.getMessage());
             }
+            logger.debug("Bulk Success : index:{} - count:{}, - elapsed:{}", index, count, bulkResponse.getTook());
         }
 
 
@@ -385,12 +365,6 @@ public class IndexService {
                 }
             } catch (Throwable e) {
                 logger.error("indexParallel : {}", e);
-            } finally {
-                try {
-                    client.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
 
             // 기존 소스
@@ -558,11 +532,10 @@ public class IndexService {
         }
     }
 
-    public String getStorageSize(String index) throws IOException {
-        try (RestHighLevelClient client = new RestHighLevelClient(RestClient.builder(new HttpHost(host, port, scheme)))) {
+    public String getStorageSize() throws IOException {
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             StatsRequest statsRequest = new StatsRequest();
-            StatsResponse statsResponse =
-                    client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
+            StatsResponse statsResponse = client.enrich().stats(statsRequest, RequestOptions.DEFAULT);
             return null;
         } catch (Exception e) {
             logger.error(e.getMessage());
