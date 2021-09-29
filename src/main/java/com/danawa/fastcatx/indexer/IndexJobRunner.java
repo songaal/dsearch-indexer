@@ -655,8 +655,8 @@ public class IndexJobRunner implements Runnable {
         url += "&action=all";
         url += "&groupSeq=" + groupSeqStr;
         try {
+            logger.info("office-link indexing start - {}", url);
             restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
-            logger.info("office-link indexing start");
         } catch (Exception e) {
             logger.error("", e);
         }
