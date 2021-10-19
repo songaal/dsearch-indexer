@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -119,6 +120,7 @@ public class MobilePreProcess implements PreProcess {
 
         refreshCategoryInfo(refreshApiUri);
 
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("MOBILE 전처리를 완료하였습니다.");
     }
 

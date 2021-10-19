@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +45,22 @@ public class AcKeywordPreProcess implements PreProcess {
 //        /data/product/export/text/ACKEYWORD/AutoCompleteKeyword.json
         String elasticSavePath = (String) payload.getOrDefault("elasticSavePath", "");
 
+        // 잠깐 주석
         Map<String, String[]> accKeywordResultMap = getAccureNewKeyword_n(statisticsPath, outputFilePath, getAccureKeyword(acKeywordTxtFilePath));
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn(searchDBDriver, searchDBAddress, searchDBUsername, searchDBPassword);
+
         try (Connection connection = databaseConnector.getConn()) {
-            //
+            
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여 
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             HashMap<String, Integer> productNameMap = getProductNameForAC(connection, selectSql); // 공통
 
             // 검색횟수 수집 기준
@@ -62,7 +73,8 @@ public class AcKeywordPreProcess implements PreProcess {
             logger.info("자동완성 파일 dump->json 파일 변환 완료");
         }
 
-
+        // 성공하면 status는 여기에서 부여
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("ACKEYWORD 전처리를 완료하였습니다.");
     }
 

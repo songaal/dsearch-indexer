@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -128,6 +129,7 @@ public class CategoryPreProcess implements PreProcess {
         //        로그분석기 반영 API 호출
         refreshCategoryInfo(refreshApiUri);
 
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("카테고리 전처리 완료하였습니다.");
     }
 

@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,16 @@ public class CategoryKeywordPreProcess implements PreProcess {
                 Connection slaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
                 Connection rescueConnection = databaseConnector.getConn(DB_TYPE.rescue.name());
         ) {
+
+            // Connection 정상적으로 이루어지지 않음.
+            if(masterConnection == null || slaveConnection == null || rescueConnection == null){
+                logger.error("masterConnection: {}, slaveConnection: {}, rescueConnection: {}",
+                        masterConnection, slaveConnection, rescueConnection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
 //            현재 테이블 조회
@@ -165,6 +176,7 @@ public class CategoryKeywordPreProcess implements PreProcess {
             logger.info("데이터를 추가하였습니다. {} / {}", addCount, rowCount);
         }
 
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("카테고리키워드 전처리를 완료하였습니다.");
     }
 

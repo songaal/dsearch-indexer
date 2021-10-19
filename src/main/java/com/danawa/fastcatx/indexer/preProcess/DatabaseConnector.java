@@ -39,17 +39,27 @@ public class DatabaseConnector implements Closeable {
         return addConn(DEFAULT_NAME, driver, url, username, password);
     }
 
-    public Connection getConn(String alias) throws SQLException, ClassNotFoundException {
-        JdbcConfig jdbcConfig = config.get(alias);
+    public Connection getConn(String alias) {
         Connection connection = null;
-        if(!connectionMap.containsKey(alias)) {
-            connectionMap.put(alias, new ArrayList<>());
+
+        try{
+            JdbcConfig jdbcConfig = config.get(alias);
+            if(!connectionMap.containsKey(alias)) {
+                connectionMap.put(alias, new ArrayList<>());
+            }
+            if (jdbcConfig != null){
+                Class.forName(jdbcConfig.getDriver());
+                connection = DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword());
+                connectionMap.get(alias).add(connection);
+            }
+        }catch (SQLException sqlException){
+            logger.error("{}", sqlException);
+        }catch (ClassNotFoundException classNotFoundException){
+            logger.error("{}", classNotFoundException);
+        }catch (Exception e){
+            logger.error("{}", e);
         }
-        if (jdbcConfig != null){
-            Class.forName(jdbcConfig.getDriver());
-            connection = DriverManager.getConnection(jdbcConfig.getAddress(), jdbcConfig.getUsername(), jdbcConfig.getPassword());
-            connectionMap.get(alias).add(connection);
-        }
+
         return connection;
     }
 
@@ -74,7 +84,7 @@ public class DatabaseConnector implements Closeable {
         return (AltibaseConnection) connection;
     }
 
-    public Connection getConn() throws SQLException, ClassNotFoundException {
+    public Connection getConn() {
         return getConn(DEFAULT_NAME);
     }
 

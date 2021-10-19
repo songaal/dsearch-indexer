@@ -81,11 +81,13 @@ public class IndexJobRunner implements Runnable {
             job.setStatus(STATUS.RUNNING.name());
             Map<String, Object> payload = job.getRequest();
             logger.debug("{}", gson.toJson(payload));
+
+            // 전처리 컬렉션인지 체크
             Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
             if (preProcess) {
+                // 전처리 컬렉션 일때
                 PreProcess process = new PreProcess.EmptyPreProcess();
                 process.starter(job);
-                job.setStatus(STATUS.SUCCESS.name());
                 return;
             }
 
