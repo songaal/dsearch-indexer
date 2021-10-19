@@ -66,8 +66,8 @@ public class CategoryKeywordPreProcess implements PreProcess {
             if(masterConnection == null ||
                     (altibaseSlaveEnable && slaveConnection == null) ||
                     (altibaseRescueEnable && rescueConnection == null)){
-                logger.error("masterConnection: {}, slaveConnection: {}, rescueConnection: {}",
-                        masterConnection, slaveConnection, rescueConnection);
+                logger.error("masterConnection: {}\naltibaseSlaveEnable: {}, slaveConnection: {}\naltibaseRescueEnable: {}, rescueConnection: {}",
+                        masterConnection, altibaseSlaveEnable, slaveConnection, altibaseRescueEnable, rescueConnection);
                 // 따라서 Error status 부여
                 job.setStatus(IndexJobRunner.STATUS.ERROR.name());
                 return;
