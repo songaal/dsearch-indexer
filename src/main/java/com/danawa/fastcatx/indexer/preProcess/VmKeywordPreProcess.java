@@ -59,7 +59,10 @@ public class VmKeywordPreProcess {
         )
         {
             // Connection이 정상적으로 이루어지지 않음.
-            if(masterConnection == null || selectSlaveConnection == null || slaveConnection == null || rescueConnection == null){
+            if(masterConnection == null
+                    || (altibaseSlaveEnable && selectSlaveConnection == null)
+                    || (altibaseSlaveEnable && slaveConnection == null)
+                    || (altibaseRescueEnable && rescueConnection == null)){
                 logger.error("masterConnection: {}, selectSlaveConnection: {}, slaveConnection: {}, rescueConnection: {}",
                         masterConnection, selectSlaveConnection, slaveConnection, rescueConnection);
                 // 따라서 Error status 부여
