@@ -104,9 +104,7 @@ public class AcKeywordPreProcess implements PreProcess {
 
         // 결과 없음 키워드
         Map<String, String[]> noResultKeywordMap = new LinkedHashMap<>();
-        BufferedReader inputFilePathNoResultBufferedReader = null;
-        try {
-            inputFilePathNoResultBufferedReader = new BufferedReader(new FileReader(inputFilePathNoResult));
+        try (BufferedReader inputFilePathNoResultBufferedReader = new BufferedReader(new FileReader(inputFilePathNoResult)) ) {
             System.out.println("inputFilePathNoResult : " + inputFilePathNoResult);
             String rline;
 
@@ -139,19 +137,10 @@ public class AcKeywordPreProcess implements PreProcess {
             logger.info("결과없는 키워드 갯수. :  " + noResultKeywordMap.size());
         } catch (Exception e) {
             logger.error("", e);
-        } finally {
-            if (inputFilePathNoResultBufferedReader != null) {
-                try {
-                    inputFilePathNoResultBufferedReader.close();
-                } catch (Exception ignore) {}
-            }
         }
 
-
         Map<String, Double> newCountMap = new HashMap<>();
-        BufferedReader inputFileBufferedReader = null;
-        try {
-            inputFileBufferedReader = new BufferedReader(new FileReader(inputFilePath));
+        try (BufferedReader inputFileBufferedReader = new BufferedReader(new FileReader(inputFilePath))){
             String rline;
 
             // 어제 로그에 대한 키워드별 MAP 생성
@@ -278,12 +267,6 @@ public class AcKeywordPreProcess implements PreProcess {
             }
         } catch (Exception e) {
             logger.error("", e);
-        } finally {
-            if (inputFileBufferedReader != null) {
-                try {
-                    inputFileBufferedReader.close();
-                } catch (Exception ignore) {}
-            }
         }
 
         logger.info("누적 프로세스 진행. :  " + map.size());
@@ -324,12 +307,10 @@ public class AcKeywordPreProcess implements PreProcess {
     }
 
 
-    private Map<String, String[]> getAccureKeyword(String filePath) throws IOException {
+    private Map<String, String[]> getAccureKeyword(String filePath)  {
         Map<String, String[]> map = new LinkedHashMap<>();
-        BufferedReader br = null;
 
-        try {
-            br = new BufferedReader(new FileReader(filePath));
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))){
             String rline = null;
             while ((rline = br.readLine()) != null) {
                 // ex) skg2400 0.136 Y skg 2400
@@ -394,15 +375,8 @@ public class AcKeywordPreProcess implements PreProcess {
 
         } catch (Exception e) {
             logger.error("", e);
-            throw e;
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (Exception ignore){}
-            }
-
         }
+
         return map;
     }
 
@@ -448,11 +422,10 @@ public class AcKeywordPreProcess implements PreProcess {
         }
     }
 
-    public void makeAccureKeywordFile(String outputFilePath, Map<String, String[]> rowMap) throws IOException {
-        try{
+    public void makeAccureKeywordFile(String outputFilePath, Map<String, String[]> rowMap) {
+        try(BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath))){
             logger.info("키워드 누적 데이타 생성 시작");
 
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath));
             Iterator<Map.Entry<String, String[]>> i = rowMap.entrySet().iterator();
 
             while (i.hasNext()) {
@@ -470,7 +443,6 @@ public class AcKeywordPreProcess implements PreProcess {
             logger.info("키워드 누적 데이타 생성 종료");
         } catch(IOException e){
             logger.error("", e);
-            throw e;
         }
     }
 
