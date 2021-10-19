@@ -63,7 +63,9 @@ public class CategoryKeywordPreProcess implements PreProcess {
         ) {
 
             // Connection 정상적으로 이루어지지 않음.
-            if(masterConnection == null || slaveConnection == null || rescueConnection == null){
+            if(masterConnection == null ||
+                    (altibaseSlaveEnable && slaveConnection == null) ||
+                    (altibaseRescueEnable && rescueConnection == null)){
                 logger.error("masterConnection: {}, slaveConnection: {}, rescueConnection: {}",
                         masterConnection, slaveConnection, rescueConnection);
                 // 따라서 Error status 부여
