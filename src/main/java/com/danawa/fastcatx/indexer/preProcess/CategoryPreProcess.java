@@ -127,9 +127,15 @@ public class CategoryPreProcess implements PreProcess {
         logger.info("로그분석기용 카테고리 재구성 완료");
 
         //        로그분석기 반영 API 호출
-        refreshCategoryInfo(refreshApiUri);
-
-        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
+        boolean isSuccess = refreshCategoryInfo(refreshApiUri);
+        
+        if(isSuccess){
+            // 로그분석기 반영 성봉
+            job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
+        }else{
+            // 로그분석기 반영 실패
+            job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+        }
         logger.info("카테고리 전처리 완료하였습니다.");
     }
 
@@ -225,7 +231,7 @@ public class CategoryPreProcess implements PreProcess {
     }
 
 
-    public void refreshCategoryInfo(String refreshApiUri) throws Exception {
+    public boolean refreshCategoryInfo(String refreshApiUri) {
         logger.info("로그분석기 반영 API 호출");
 
         HttpHeaders headers = new HttpHeaders();
@@ -236,9 +242,10 @@ public class CategoryPreProcess implements PreProcess {
 
         if("true".equalsIgnoreCase(String.valueOf(body.get("success")))) {
             logger.info("로그분석기 반영 성공");
+            return true;
         } else {
             logger.error("로그분석기 반영 실패");
-            throw new Exception("LogAnalytics Refresh Fail.");
+            return false;
         }
     }
 
