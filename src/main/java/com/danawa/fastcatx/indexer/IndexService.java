@@ -589,4 +589,8 @@ public class IndexService {
         }
         return result;
     }
+
+    public RestClientBuilder getRestClientBuilder() {
+        return this.restClientBuilder;
+    }
 }
