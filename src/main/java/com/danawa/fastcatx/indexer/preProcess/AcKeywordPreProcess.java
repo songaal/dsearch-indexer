@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +45,22 @@ public class AcKeywordPreProcess implements PreProcess {
 //        /data/product/export/text/ACKEYWORD/AutoCompleteKeyword.json
         String elasticSavePath = (String) payload.getOrDefault("elasticSavePath", "");
 
+        // 잠깐 주석
         Map<String, String[]> accKeywordResultMap = getAccureNewKeyword_n(statisticsPath, outputFilePath, getAccureKeyword(acKeywordTxtFilePath));
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn(searchDBDriver, searchDBAddress, searchDBUsername, searchDBPassword);
+
         try (Connection connection = databaseConnector.getConn()) {
-            //
+            
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여 
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             HashMap<String, Integer> productNameMap = getProductNameForAC(connection, selectSql); // 공통
 
             // 검색횟수 수집 기준
@@ -62,7 +73,8 @@ public class AcKeywordPreProcess implements PreProcess {
             logger.info("자동완성 파일 dump->json 파일 변환 완료");
         }
 
-
+        // 성공하면 status는 여기에서 부여
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("ACKEYWORD 전처리를 완료하였습니다.");
     }
 
@@ -74,8 +86,7 @@ public class AcKeywordPreProcess implements PreProcess {
      * @return map
      * @throws IOException
      */
-    public Map<String, String[]> getAccureNewKeyword_n(String statisticsPath, String outputFilePath, Map<String, String[]> map)
-            throws IOException {
+    public Map<String, String[]> getAccureNewKeyword_n(String statisticsPath, String outputFilePath, Map<String, String[]> map) {
         logger.info("누적키워드와 신규키워드 누적 프로세스 시작.");
         HashMap<String, String[]> keywordMap;
 
@@ -92,9 +103,8 @@ public class AcKeywordPreProcess implements PreProcess {
 
         // 결과 없음 키워드
         Map<String, String[]> noResultKeywordMap = new LinkedHashMap<>();
-        BufferedReader inputFilePathNoResultBufferedReader = null;
-        try {
-            inputFilePathNoResultBufferedReader = new BufferedReader(new FileReader(inputFilePathNoResult));
+        try (BufferedReader inputFilePathNoResultBufferedReader = new BufferedReader(new FileReader(inputFilePathNoResult))) {
+
             System.out.println("inputFilePathNoResult : " + inputFilePathNoResult);
             String rline;
 
@@ -127,19 +137,12 @@ public class AcKeywordPreProcess implements PreProcess {
             logger.info("결과없는 키워드 갯수. :  " + noResultKeywordMap.size());
         } catch (Exception e) {
             logger.error("", e);
-        } finally {
-            if (inputFilePathNoResultBufferedReader != null) {
-                try {
-                    inputFilePathNoResultBufferedReader.close();
-                } catch (Exception ignore) {}
-            }
         }
 
 
         Map<String, Double> newCountMap = new HashMap<>();
-        BufferedReader inputFileBufferedReader = null;
-        try {
-            inputFileBufferedReader = new BufferedReader(new FileReader(inputFilePath));
+        try (BufferedReader inputFileBufferedReader = new BufferedReader(new FileReader(inputFilePath))){
+
             String rline;
 
             // 어제 로그에 대한 키워드별 MAP 생성
@@ -266,12 +269,6 @@ public class AcKeywordPreProcess implements PreProcess {
             }
         } catch (Exception e) {
             logger.error("", e);
-        } finally {
-            if (inputFileBufferedReader != null) {
-                try {
-                    inputFileBufferedReader.close();
-                } catch (Exception ignore) {}
-            }
         }
 
         logger.info("누적 프로세스 진행. :  " + map.size());
@@ -312,12 +309,11 @@ public class AcKeywordPreProcess implements PreProcess {
     }
 
 
-    private Map<String, String[]> getAccureKeyword(String filePath) throws IOException {
+    private Map<String, String[]> getAccureKeyword(String filePath) {
         Map<String, String[]> map = new LinkedHashMap<>();
-        BufferedReader br = null;
 
-        try {
-            br = new BufferedReader(new FileReader(filePath));
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))){
+
             String rline = null;
             while ((rline = br.readLine()) != null) {
                 // ex) skg2400 0.136 Y skg 2400
@@ -382,14 +378,6 @@ public class AcKeywordPreProcess implements PreProcess {
 
         } catch (Exception e) {
             logger.error("", e);
-            throw e;
-        } finally {
-            if (br != null) {
-                try {
-                    br.close();
-                } catch (Exception ignore){}
-            }
-
         }
         return map;
     }
@@ -436,11 +424,10 @@ public class AcKeywordPreProcess implements PreProcess {
         }
     }
 
-    public void makeAccureKeywordFile(String outputFilePath, Map<String, String[]> rowMap) throws IOException {
-        try{
+    public void makeAccureKeywordFile(String outputFilePath, Map<String, String[]> rowMap) {
+        try(BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath))){
             logger.info("키워드 누적 데이타 생성 시작");
 
-            BufferedWriter bw = new BufferedWriter(new FileWriter(outputFilePath));
             Iterator<Map.Entry<String, String[]>> i = rowMap.entrySet().iterator();
 
             while (i.hasNext()) {
@@ -453,17 +440,14 @@ public class AcKeywordPreProcess implements PreProcess {
                     System.out.println();
                 }
             }
-
-            bw.close();
             logger.info("키워드 누적 데이타 생성 종료");
         } catch(IOException e){
             logger.error("", e);
-            throw e;
         }
     }
 
     // 가격비교 중인 기준상품명 데이타 HashMap
-    public HashMap<String, Integer> getProductNameForAC(Connection connection, String selectSql) throws Exception {
+    public HashMap<String, Integer> getProductNameForAC(Connection connection, String selectSql)  {
         HashMap<String, Integer> map = new HashMap<>();
         logger.info("기준상품명 수집 시작. - ");
 
@@ -502,9 +486,12 @@ public class AcKeywordPreProcess implements PreProcess {
             rs.close();
         } catch (SQLException e) {
             logger.error("", e);
-            logger.info(URLDecoder.decode(e.getMessage(), "MS949"));
+            try{
+                logger.info(URLDecoder.decode(e.getMessage(), "MS949"));
+            }catch (UnsupportedEncodingException e1){
+                logger.error("UnsupportedEncodingException: {}", e1.getMessage());
+            }
 //            sms.sendSMS(volumeName + " 수집 실패");
-            throw e;
         }
         logger.info("ProductKeyword 수집 완료.");
 
@@ -516,7 +503,7 @@ public class AcKeywordPreProcess implements PreProcess {
      * 제거되도록 한다 누적키워드 생성시 키워드별 카운트5개 이상인 항목만 생성한다. 기준상품은 MAP에 있는 모든데이타 생성 정렬에 필요한
      * RANGE는 누적키워드 카운트에 20만점을 더 부여하여 기준상품 보다상위에 나오게 한다
      */
-    public void makeDumpFileList(String savePath, Double standardCount, Map<String, String[]> accKeywordMap, Map<String, Integer> productNameMap) throws IOException {
+    public void makeDumpFileList(String savePath, Double standardCount, Map<String, String[]> accKeywordMap, Map<String, Integer> productNameMap)  {
         File exportFile = new File(savePath);
 
         try {
@@ -606,89 +593,85 @@ public class AcKeywordPreProcess implements PreProcess {
         } catch (IOException e) {
             logger.error("", e);
 //            sms.sendSMS(e.getMessage());
-            throw e;
         }
     }
 
     // dump 파일을 json 파일로 변환
-    private void dumpToJson(String inpuFilePath, String outputFilePath) throws IOException {
-
+    private void dumpToJson(String inpuFilePath, String outputFilePath) {
         logger.info(inpuFilePath + " : " + outputFilePath);
 
         File file = new File(outputFilePath);
-        FileWriter fw = new FileWriter(file);
 
-        Scanner scanner = null;
-        try {
-            scanner = new Scanner(new File(inpuFilePath));
-        } catch (FileNotFoundException e) {
-            throw e;
-        }
+        try (FileWriter fw = new FileWriter(file)) {
+            Scanner scanner = new Scanner(new File(inpuFilePath));
 
-        boolean flag = false;
-        boolean keywordFlag = false;
-        boolean hitFlag = false;
-        boolean rangeFlag = false;
+            boolean flag = false;
+            boolean keywordFlag = false;
+            boolean hitFlag = false;
+            boolean rangeFlag = false;
 
-        String keyword = null;
-        String hit = null;
-        String range = null;
+            String keyword = null;
+            String hit = null;
+            String range = null;
 
-        long count = 0;
-        while (scanner.hasNext()) {
+            long count = 0;
+            while (scanner.hasNext()) {
 
-            try {
-                String line = scanner.nextLine();
-                if("<doc>".equals(line)){
-                    flag = true;
-                }else if("</doc>".equals(line)){
-                    keyword = keyword.replace("\"", "").replace("\\", "");
-                    String search = makeSearchKeyword(keyword).replace("\"", "").replace("\\", "");
+                try {
+                    String line = scanner.nextLine();
+                    if("<doc>".equals(line)){
+                        flag = true;
+                    }else if("</doc>".equals(line)){
+                        keyword = keyword.replace("\"", "").replace("\\", "");
+                        String search = makeSearchKeyword(keyword).replace("\"", "").replace("\\", "");
 //                    fw.write("{\"index\": {}}\n");
-                    fw.write("{\"keyword\": \""+ keyword+ "\", \"hit\": "+ hit + ", \"range\": " + range + ", \"search\": \"" + search + "\"}\n");
-                    count++;
-                    if(count % 10000 == 0) logger.info(count + "개 완료 되었습니다");
-                    flag = false;
-                }else if("<KEYWORD>".equals(line)){
-                    keywordFlag = true;
-                }else if("</KEYWORD>".equals(line)){
-                    keywordFlag = false;
-                }else if("<HIT>".equals(line)){
-                    hitFlag = true;
-                }else if("</HIT>".equals(line)){
-                    hitFlag = false;
-                }else if("<RANGE>".equals(line)){
-                    rangeFlag = true;
-                }else if("</RANGE>".equals(line)){
-                    rangeFlag = false;
-                } else {
-                    if(flag){
-                        if(keywordFlag){
-                            keyword = line;
-                        }else if(hitFlag){
-                            hit = line;
-                        }else if(rangeFlag){
-                            range = line;
+                        fw.write("{\"keyword\": \""+ keyword+ "\", \"hit\": "+ hit + ", \"range\": " + range + ", \"search\": \"" + search + "\"}\n");
+                        count++;
+                        if(count % 10000 == 0) logger.info(count + "개 완료 되었습니다");
+                        flag = false;
+                    }else if("<KEYWORD>".equals(line)){
+                        keywordFlag = true;
+                    }else if("</KEYWORD>".equals(line)){
+                        keywordFlag = false;
+                    }else if("<HIT>".equals(line)){
+                        hitFlag = true;
+                    }else if("</HIT>".equals(line)){
+                        hitFlag = false;
+                    }else if("<RANGE>".equals(line)){
+                        rangeFlag = true;
+                    }else if("</RANGE>".equals(line)){
+                        rangeFlag = false;
+                    } else {
+                        if(flag){
+                            if(keywordFlag){
+                                keyword = line;
+                            }else if(hitFlag){
+                                hit = line;
+                            }else if(rangeFlag){
+                                range = line;
+                            }
+                        }else{
+                            // do nothing...
                         }
-                    }else{
-                        // do nothing...
                     }
+
+                } catch (Exception e) {
+                    logger.error("ERR : " + e.getMessage());
+                    throw e;
                 }
-
-            } catch (Exception e) {
-                logger.error("ERR : " + e.getMessage());
-                throw e;
             }
+
+            if(flag){
+                keyword = keyword.replace("\"", "").replace("\\", "");
+                String search = makeSearchKeyword(keyword).replace("\"", "").replace("\\", "");
+                fw.write("{\"keyword\": \""+ keyword+ "\", \"hit\": "+ hit + ", \"range\": " + range + ", \"search\": \"" + search + "\"}\n");
+            }
+
+        } catch (FileNotFoundException e) {
+            logger.error("{}", e.getMessage());
+        }catch (IOException e){
+
         }
-
-        if(flag){
-            keyword = keyword.replace("\"", "").replace("\\", "");
-            String search = makeSearchKeyword(keyword).replace("\"", "").replace("\\", "");
-            fw.write("{\"keyword\": \""+ keyword+ "\", \"hit\": "+ hit + ", \"range\": " + range + ", \"search\": \"" + search + "\"}\n");
-        }
-
-        fw.close();
-
     }
 
     public String makeSearchKeyword(String keyword){

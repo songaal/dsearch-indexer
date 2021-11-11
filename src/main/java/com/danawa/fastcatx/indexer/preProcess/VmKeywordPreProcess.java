@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.Utils;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
@@ -61,6 +62,17 @@ public class VmKeywordPreProcess {
              ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? selectSlaveConnection : masterConnection, selectSql);
         )
         {
+            // Connection이 정상적으로 이루어지지 않음.
+            if(masterConnection == null
+                    || (altibaseSlaveEnable && selectSlaveConnection == null)
+                    || (altibaseSlaveEnable && slaveConnection == null)
+                    || (altibaseRescueEnable && rescueConnection == null)){
+                logger.error("masterConnection: {}, selectSlaveConnection: {}, slaveConnection: {}, rescueConnection: {}",
+                        masterConnection, selectSlaveConnection, slaveConnection, rescueConnection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
             int tprodCount = 0;
             if (tProdCountSet.next()) {
                 tprodCount = tProdCountSet.getInt(1);
@@ -131,5 +143,7 @@ public class VmKeywordPreProcess {
             logger.info("INSERT {}", Utils.calcSpendTime(insertStart, insertEnd));
             logger.info("키워드 갱신 완료! count : {}", addCount);
         }
+
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
     }
 }

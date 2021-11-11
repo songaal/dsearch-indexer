@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.Utils;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
@@ -44,15 +45,21 @@ public class NTourPreProcess implements PreProcess {
 
         try (Connection connection = databaseHandler.getConn(DATABASE_ALIAS);
              ResultSet resultSet = databaseQueryHelper.simpleSelect(connection, selectSql);
-        )
-        {
+             ) {
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
 //            갯수 로그 표시용
             int count = databaseQueryHelper.getRowCount(connection, tableName);
             logger.info("여행대표상품 갯수: {}", count);
 
             int deleteCount = databaseQueryHelper.delete(connection, tableName);
             logger.info("여행대표상품 데이터 삭제: {}", deleteCount);
-
 
             int rowCount = resultSet.getRow();
             logger.info("여행대표상품 데이터 조회: {}", rowCount);
@@ -131,5 +138,7 @@ public class NTourPreProcess implements PreProcess {
             logger.info("여행 대표 상품 갯수(갱신 후) : " + afterCount);
 
         }
+
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
     }
 }

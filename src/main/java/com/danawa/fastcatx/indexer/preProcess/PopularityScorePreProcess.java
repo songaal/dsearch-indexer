@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,14 @@ public class PopularityScorePreProcess implements PreProcess {
         Map<String, Integer> mapPopularityScore = new HashMap<>();
 
         try (Connection connection = databaseConnector.getConn("logDB")) {
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             logger.debug("mysql tPVShopItemBuyClick 수집 시작.");
 
             long queryStartTime = System.currentTimeMillis(); // 쿼리 시작 시간
@@ -99,6 +108,14 @@ public class PopularityScorePreProcess implements PreProcess {
         }
 
         try (Connection connection = databaseConnector.getConn("master")) {
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             logger.debug("TCMPNY_LINK_POPULARITY_SCORE 삭제 시작.");
             String deleteQuery = "DELETE FROM TCMPNY_LINK_POPULARITY_SCORE";
             long queryStartTime = System.currentTimeMillis(); // 쿼리 시작 시간
@@ -118,6 +135,14 @@ public class PopularityScorePreProcess implements PreProcess {
 
         int totalCount = 0;
         try (Connection connection = databaseConnector.getConn("master")) {
+            // Connection이 정상적으로 이루어지지 않음.
+            if(connection == null){
+                logger.error("connection: {}", connection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
             logger.debug("TCMPNY_LINK_POPULARITY_SCORE 갱신 시작.");
             long queryStartTime = System.currentTimeMillis(); // 쿼리 시작 시간
             String insertQuery = "INSERT INTO TCMPNY_LINK_POPULARITY_SCORE (CMPNY_C, LINK_PROD_C, NPOPULARITY_SCORE) VALUES (?,?,?)";
@@ -155,6 +180,7 @@ public class PopularityScorePreProcess implements PreProcess {
             throw e;
         }
 
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("인기점수 전처리 완료하였습니다.");
     }
 }

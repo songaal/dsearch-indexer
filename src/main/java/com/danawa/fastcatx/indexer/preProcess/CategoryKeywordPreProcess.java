@@ -1,5 +1,6 @@
 package com.danawa.fastcatx.indexer.preProcess;
 
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,6 @@ public class CategoryKeywordPreProcess implements PreProcess {
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn(DB_TYPE.master.name(), altibaseDriver, altibaseMasterAddress, altibaseMasterUsername, altibaseMasterPassword);
-        DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
 
         if (altibaseSlaveEnable) {
             databaseConnector.addConn(DB_TYPE.slave.name(), altibaseDriver, altibaseSlaveAddress, altibaseSlaveUsername, altibaseSlavePassword);
@@ -60,9 +60,23 @@ public class CategoryKeywordPreProcess implements PreProcess {
                 Connection masterConnection = databaseConnector.getConn(DB_TYPE.master.name());
                 Connection slaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
                 Connection rescueConnection = databaseConnector.getConn(DB_TYPE.rescue.name());
-                ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
         ) {
+
+            // Connection 정상적으로 이루어지지 않음.
+            if(masterConnection == null ||
+                    (altibaseSlaveEnable && slaveConnection == null) ||
+                    (altibaseRescueEnable && rescueConnection == null)){
+                logger.error("masterConnection: {}\naltibaseSlaveEnable: {}, slaveConnection: {}\naltibaseRescueEnable: {}, rescueConnection: {}",
+                        masterConnection, altibaseSlaveEnable, slaveConnection, altibaseRescueEnable, rescueConnection);
+                // 따라서 Error status 부여
+                job.setStatus(IndexJobRunner.STATUS.ERROR.name());
+                return;
+            }
+
+            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
+
 //            현재 테이블 조회
+            ResultSet resultSet = databaseQueryHelper.simpleSelect(altibaseSlaveEnable ? slaveConnection : masterConnection, selectSql);
             int rowCount = 0;
             if (resultSet.last()) {
                 rowCount = resultSet.getRow();
@@ -164,6 +178,7 @@ public class CategoryKeywordPreProcess implements PreProcess {
             logger.info("데이터를 추가하였습니다. {} / {}", addCount, rowCount);
         }
 
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
         logger.info("카테고리키워드 전처리를 완료하였습니다.");
     }
 
