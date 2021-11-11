@@ -1,33 +1,76 @@
 package com.danawa.fastcatx.indexer.ingester;
 
-import com.danawa.fastcatx.indexer.Ingester;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
-import java.io.*;
-import java.sql.*;
-import java.util.*;
+import com.danawa.fastcatx.indexer.Ingester;
+import com.danawa.fastcatx.indexer.model.JdbcMetaData;
 
-public class JDBCIngester implements Ingester {
 
+public class MultipleJDBCIngester implements Ingester {
     private static final String LOB_BINARY = "LOB_BINARY";
     private static final String LOB_STRING = "LOB_STRING";
 
     private int bulkSize;
     private Connection connection;
+
+    private Connection mainConnection;
+    private Connection subConnection;
+
     private PreparedStatement pstmt;
+
+    private PreparedStatement mainPstmt;
+    private PreparedStatement subPstmt;
+
     private ResultSet r;
+
+    private ResultSet mainRs;
+    private ResultSet subRs;
+
     private int lastQueryListCount;
     private int currentQueryListCount;
+
+    private int mainQueryListCount;
+    private int subQueryListCount;
 
     private int columnCount;
     private String[] columnName;
     private String[] columnType;
+
     private Map<String, Object>[] dataSet;
+    private Map<String, Object>[] subDataSet;
+
     private List<File> tmpFile;
     private ArrayList<String> sqlList;
 
+    private ArrayList<String> mainSqlList;
+    private ArrayList<String> subSqlList;
+
     private int bulkCount;
+    private int subBulkCount;
     private int readCount;
 
     private boolean useBlobFile;
@@ -40,14 +83,19 @@ public class JDBCIngester implements Ingester {
     private String user;
     private String password;
 
+    private String subDriverClassName;
+    private String subUrl;
+    private String subUser;
+    private String subPassword;
+
+    private String subSqlwhereclauseData;
 
     private boolean isClosed;
 
     private byte[] data = new byte[16 * 1024];
     private int totalCnt;
 
-
-    public JDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
+    public MultipleJDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
 
         this.driverClassName = driverClassName;
         this.user = user;
@@ -73,6 +121,111 @@ public class JDBCIngester implements Ingester {
         logger.info("dataSQL total_Count : {}", sqlList.size());
         executeQuery(currentQueryListCount);
 
+    }
+
+    public MultipleJDBCIngester(Map<String, JdbcMetaData> jdbcMetaDataMap, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, Map<String, ArrayList<String>> sqlListMap, String subSqlwhereclauseData) throws IOException {
+        if (jdbcMetaDataMap.containsKey("mainJDBC")) {
+            JdbcMetaData mainJDBC = jdbcMetaDataMap.get("mainJDBC");
+
+            this.driverClassName = mainJDBC.getDriverClassName();
+            this.url = mainJDBC.getUrl();
+            this.user = mainJDBC.getUser();
+            this.password = mainJDBC.getPassword();
+
+            this.mainSqlList = sqlListMap.get("mainSqlList");
+        }
+
+        if (jdbcMetaDataMap.containsKey("subJDBC")) { // 서브쿼리가 존재한다면..
+            JdbcMetaData subJDBC = jdbcMetaDataMap.get("subJDBC");
+
+            this.subDriverClassName = subJDBC.getDriverClassName();
+            this.subUrl = subJDBC.getUrl();
+            this.subUser = subJDBC.getUser();
+            this.subPassword = subJDBC.getPassword();
+
+            this.subSqlList = sqlListMap.get("subSqlList");
+
+            this.subSqlwhereclauseData = subSqlwhereclauseData;
+        }
+
+        mainQueryListCount = 0;
+        subQueryListCount = 0;
+
+        //SQL 실행
+        logger.info("dataSQL total_Count : {}", mainSqlList.size());
+
+        executeQuery(mainQueryListCount, subQueryListCount);
+    }
+
+    public void executeQuery(int mainQueryListCount, int subQueryListCount) throws IOException {
+
+        try {
+            if (mainQueryListCount > 0) {
+                mainConnection = getConnection(driverClassName, url, user, password);
+            }
+
+            if (mainPstmt != null) {
+                mainPstmt.close();
+            }
+
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+
+            if (subQueryListCount > 0) {
+                subConnection = getConnection(subDriverClassName, subUrl, subUser, subPassword);
+            }
+
+
+            logger.info("Num-{} mainQuery Start", mainQueryListCount);
+            if (fetchSize < 0) {
+                //in mysql, fetch data row by row
+                mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                mainPstmt.setFetchSize(Integer.MIN_VALUE);
+
+                subPstmt = mainConnection.prepareStatement(subSqlList.get(subQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                subPstmt.setFetchSize(Integer.MIN_VALUE);
+
+            } else {
+                mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount));
+                subPstmt = mainConnection.prepareStatement(subSqlList.get(subQueryListCount));
+
+                if (fetchSize > 0) {
+                    // 인출할 행 수를 나타냅니다.
+                    mainPstmt.setFetchSize(fetchSize);
+                    subPstmt.setFetchSize(fetchSize);
+                }
+            }
+
+            if (maxRows > 0) {
+                // 최대 행 수를 나타내며, 제한이 없는 경우에는 0입니다.
+                mainPstmt.setMaxRows(maxRows);
+                subPstmt.setMaxRows(maxRows);
+            }
+
+            mainRs = mainPstmt.executeQuery(); // 메인색인쿼리 실행.
+
+            //			ResultSetMetaData mainRsmd = mainRs.getMetaData();
+            //
+            //			int columCount = mainRsmd.getColumnCount(); // 컬럼의 갯수를 반환한다.
+            //			int columIdx = 0;
+            //			for (int idx = 0; idx < columCount; idx++) {
+            //				String columnName =mainRsmd.getColumnName(idx);
+            //				if (subSqlwhereclauseData.equals(columnName)){
+            //					logger.info("columnName : {}", columnName);
+            //					columIdx = idx;
+            //				}
+            //			}
+            //
+            //			mainRs.getString(columIdx);
+            //
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+        } catch (Exception e) {
+            closeConnection();
+            throw new IOException(e);
+        }
     }
 
     public void executeQuery(int currentQueryListCount) throws IOException {
@@ -142,7 +295,8 @@ public class JDBCIngester implements Ingester {
     @Override
     public boolean hasNext() throws IOException {
         if (readCount >= bulkCount) {
-            fill();
+//            fill();
+            fill2();
             if (bulkCount == 0) {
                 //다음 쿼리 실행
                 currentQueryListCount++;
@@ -216,6 +370,80 @@ public class JDBCIngester implements Ingester {
                 connection.close();
             }
         } catch (SQLException ignore) {
+        }
+    }
+
+    private void fill2() throws IOException {
+        bulkCount = 0;
+        ArrayList<String> whereclauseList = new ArrayList<>();
+        try {
+            ResultSetMetaData mainRsmd = mainRs.getMetaData();
+
+            int mainColumCount = mainRsmd.getColumnCount(); // 메인쿼리 컬럼의 갯수를 반환한다.
+
+            Map<String, Object> mainKeyValue = new HashMap<>();
+            Map<String, Object> subKeyValue = new HashMap<>();
+
+            while (mainRs.next()) {
+                for (int idx = 0; idx < mainColumCount; idx++) {
+                    String mainColumnName = mainRsmd.getColumnName(idx);
+                    if (subSqlwhereclauseData.equals(mainColumnName)) {
+                        whereclauseList.add(String.valueOf(mainRs.getObject(idx))); // 써브쿼리 where 데이터
+                    }
+
+                    mainKeyValue.put(mainColumnName, mainRs.getObject(idx));
+                }
+
+                dataSet[bulkCount] = mainKeyValue;
+                bulkCount++;
+
+                if (bulkCount >= bulkSize) {
+                    break;
+                }
+            }
+
+            String whereclause = String.join(",", whereclauseList);
+            subPstmt.setString(1, whereclause);
+
+            subRs = subPstmt.executeQuery(); // 서브색인쿼리 실행.
+
+            ResultSetMetaData subRsmd = mainRs.getMetaData();
+
+            int subColumCount = subRsmd.getColumnCount(); // 서브쿼리 컬럼의 갯수를 반환한다.
+
+            subBulkCount = 0;
+            if (subRs.next()) {
+                for (int idx = 0; idx < subColumCount; idx++) {
+                    String subColumnName = subRsmd.getColumnName(idx);
+                    subKeyValue.put(subColumnName, subRs.getObject(idx));
+                }
+                subDataSet[subBulkCount] = subKeyValue;
+                subBulkCount++;
+            }
+
+            int logShowCnt = 0;
+            for (Map<String, Object> mainData : dataSet) {
+                if (mainData.containsKey(subSqlwhereclauseData)) {
+                    String compareData = String.valueOf(mainData.get(subSqlwhereclauseData));
+
+                    for (Map<String, Object> subData : subDataSet) {
+                        String compareSubData = String.valueOf(subData.get(subSqlwhereclauseData));
+                        if (compareData.equals(compareSubData)) {
+                            mainData.put("productName", subData.get("productName"));
+                        }
+                    }
+                }
+
+                if (logShowCnt % 10 == 0) {
+                    logger.info("productName : {}", mainData.get("productName"));
+                }
+
+                logShowCnt++;
+
+            }
+
+        } catch (Exception e) {
+            logger.error("", e);
         }
     }
 
