@@ -596,6 +596,11 @@ public class IndexJobRunner implements Runnable {
                                 logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
                                 break;
                             }
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            }
                             Thread.sleep(60 * 1000);
                         } catch (Exception e) {
                             logger.error("", e);
