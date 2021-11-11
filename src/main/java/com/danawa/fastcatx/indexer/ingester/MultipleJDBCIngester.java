@@ -35,23 +35,23 @@ public class MultipleJDBCIngester implements Ingester {
     private static final String LOB_STRING = "LOB_STRING";
 
     private int bulkSize;
-    private Connection connection;
+//    private Connection connection;
 
     private Connection mainConnection;
     private Connection subConnection;
 
-    private PreparedStatement pstmt;
+//    private PreparedStatement pstmt;
 
     private PreparedStatement mainPstmt;
     private PreparedStatement subPstmt;
 
-    private ResultSet r;
+//    private ResultSet r;
 
     private ResultSet mainRs;
     private ResultSet subRs;
 
     private int lastQueryListCount;
-    private int currentQueryListCount;
+//    private int currentQueryListCount;
 
     private int mainQueryListCount;
     private int subQueryListCount;
@@ -95,33 +95,33 @@ public class MultipleJDBCIngester implements Ingester {
     private byte[] data = new byte[16 * 1024];
     private int totalCnt;
 
-    public MultipleJDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
-
-        this.driverClassName = driverClassName;
-        this.user = user;
-        this.url = url;
-        this.password = password;
-
-
-        this.bulkSize = bulkSize;
-        this.useBlobFile = useBlobFile;
-        this.fetchSize = fetchSize;
-        this.maxRows = maxRows;
-        this.sqlList = sqlList;
-
-        tmpFile = new ArrayList<>();
-        dataSet = new Map[bulkSize];
-        connection = getConnection(driverClassName, url, user, password);
-
-        //쿼리 갯수 체크용 카운트
-        lastQueryListCount = sqlList.size();
-        currentQueryListCount = 0;
-
-        //SQL 실행
-        logger.info("dataSQL total_Count : {}", sqlList.size());
-        executeQuery(currentQueryListCount);
-
-    }
+//    public MultipleJDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
+//
+//        this.driverClassName = driverClassName;
+//        this.user = user;
+//        this.url = url;
+//        this.password = password;
+//
+//
+//        this.bulkSize = bulkSize;
+//        this.useBlobFile = useBlobFile;
+//        this.fetchSize = fetchSize;
+//        this.maxRows = maxRows;
+//        this.sqlList = sqlList;
+//
+//        tmpFile = new ArrayList<>();
+//        dataSet = new Map[bulkSize];
+//        connection = getConnection(driverClassName, url, user, password);
+//
+//        //쿼리 갯수 체크용 카운트
+//        lastQueryListCount = sqlList.size();
+//        currentQueryListCount = 0;
+//
+//        //SQL 실행
+//        logger.info("dataSQL total_Count : {}", sqlList.size());
+//        executeQuery(currentQueryListCount);
+//
+//    }
 
     public MultipleJDBCIngester(Map<String, JdbcMetaData> jdbcMetaDataMap, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, Map<String, ArrayList<String>> sqlListMap, String subSqlwhereclauseData) throws IOException {
         if (jdbcMetaDataMap.containsKey("mainJDBC")) {
@@ -228,51 +228,51 @@ public class MultipleJDBCIngester implements Ingester {
         }
     }
 
-    public void executeQuery(int currentQueryListCount) throws IOException {
-
-        try {
-            if (currentQueryListCount > 0) {
-                connection = getConnection(driverClassName, url, user, password);
-            }
-
-            if (pstmt != null) {
-                pstmt.close();
-            }
-            logger.info("Num-{} QUERY Start", currentQueryListCount);
-            if (fetchSize < 0) {
-                //in mysql, fetch data row by row
-                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-                pstmt.setFetchSize(Integer.MIN_VALUE);
-            } else {
-                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount));
-                if (fetchSize > 0) {
-                    pstmt.setFetchSize(fetchSize);
-                }
-            }
-
-            if (maxRows > 0) {
-                pstmt.setMaxRows(maxRows);
-            }
-
-            r = pstmt.executeQuery();
-
-            ResultSetMetaData rsMetadata = r.getMetaData();
-            columnCount = rsMetadata.getColumnCount();
-            columnName = new String[columnCount];
-            columnType = new String[columnCount];
-
-            for (int i = 0; i < columnCount; i++) {
-                columnName[i] = rsMetadata.getColumnLabel(i + 1);
-                String typeName = rsMetadata.getColumnTypeName(i + 1);
-                columnType[i] = typeName;
-                logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
-            }
-
-        } catch (Exception e) {
-            closeConnection();
-            throw new IOException(e);
-        }
-    }
+//    public void executeQuery(int currentQueryListCount) throws IOException {
+//
+//        try {
+//            if (currentQueryListCount > 0) {
+//                connection = getConnection(driverClassName, url, user, password);
+//            }
+//
+//            if (pstmt != null) {
+//                pstmt.close();
+//            }
+//            logger.info("Num-{} QUERY Start", currentQueryListCount);
+//            if (fetchSize < 0) {
+//                //in mysql, fetch data row by row
+//                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+//                pstmt.setFetchSize(Integer.MIN_VALUE);
+//            } else {
+//                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount));
+//                if (fetchSize > 0) {
+//                    pstmt.setFetchSize(fetchSize);
+//                }
+//            }
+//
+//            if (maxRows > 0) {
+//                pstmt.setMaxRows(maxRows);
+//            }
+//
+//            r = pstmt.executeQuery();
+//
+//            ResultSetMetaData rsMetadata = r.getMetaData();
+//            columnCount = rsMetadata.getColumnCount();
+//            columnName = new String[columnCount];
+//            columnType = new String[columnCount];
+//
+//            for (int i = 0; i < columnCount; i++) {
+//                columnName[i] = rsMetadata.getColumnLabel(i + 1);
+//                String typeName = rsMetadata.getColumnTypeName(i + 1);
+//                columnType[i] = typeName;
+//                logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
+//            }
+//
+//        } catch (Exception e) {
+//            closeConnection();
+//            throw new IOException(e);
+//        }
+//    }
 
     //다음 쿼리가 있는지 체크
     public boolean hasNextQuery(int currentQueryListCount, int lastQueryListCount) {
@@ -299,10 +299,17 @@ public class MultipleJDBCIngester implements Ingester {
             fill2();
             if (bulkCount == 0) {
                 //다음 쿼리 실행
-                currentQueryListCount++;
-                if (hasNextQuery(currentQueryListCount, lastQueryListCount)) {
-                    logger.info("next Query Start : {}", currentQueryListCount);
-                    executeQuery(currentQueryListCount);
+//                currentQueryListCount++;
+//                if (hasNextQuery(currentQueryListCount, lastQueryListCount)) {
+//                    logger.info("next Query Start : {}", currentQueryListCount);
+//                    executeQuery(currentQueryListCount);
+//                } else {
+//                    return false;
+//                }
+                mainQueryListCount++;
+                if (hasNextQuery(mainQueryListCount, lastQueryListCount)) {
+                    logger.info("next Query Start : {}", mainQueryListCount);
+                    executeQuery(mainQueryListCount,subQueryListCount);
                 } else {
                     return false;
                 }
@@ -315,7 +322,7 @@ public class MultipleJDBCIngester implements Ingester {
     @Override
     public Map<String, Object> next() throws IOException {
         if (readCount >= bulkCount) {
-            fill();
+            fill2();
             if (bulkCount == 0)
                 return null;
             readCount = 0;
@@ -335,16 +342,25 @@ public class MultipleJDBCIngester implements Ingester {
 
     private void closePstmt() {
         try {
-            if (r != null) {
-                r.close();
+            if (mainRs != null) {
+                mainRs.close();
+            }
+
+            if (subRs != null) {
+                subRs.close();
             }
         } catch (SQLException ignore) {
         }
 
         try {
-            if (pstmt != null) {
-                pstmt.close();
+            if (mainPstmt != null) {
+                mainPstmt.close();
             }
+
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+
         } catch (SQLException ignore) {
         }
     }
@@ -352,22 +368,35 @@ public class MultipleJDBCIngester implements Ingester {
     private void closeConnection() {
 
         try {
-            if (r != null) {
-                r.close();
+            if (mainRs != null) {
+                mainRs.close();
+            }
+
+            if (subRs != null) {
+                subRs.close();
             }
         } catch (SQLException ignore) {
         }
 
         try {
-            if (pstmt != null) {
-                pstmt.close();
+            if (mainPstmt != null) {
+                mainPstmt.close();
             }
+
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+
         } catch (SQLException ignore) {
         }
 
         try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            if (mainConnection != null && !mainConnection.isClosed()) {
+                mainConnection.close();
+            }
+
+            if (subConnection != null && !subConnection.isClosed()) {
+                subConnection.close();
             }
         } catch (SQLException ignore) {
         }
@@ -447,220 +476,220 @@ public class MultipleJDBCIngester implements Ingester {
         }
     }
 
-    private void fill() throws IOException {
+//    private void fill() throws IOException {
+//
+//        bulkCount = 0;
+//        try {
+//            ResultSetMetaData rsMeta = null;
+//            //이전 Tmp 데이터들을 지워준다.
+//            deleteTmpLob();
+//
+//            try {
+//                rsMeta = r.getMetaData();
+//            } catch (SQLException e) {
+//                return;
+//            }
+//            while (r.next()) {
+//
+//                Map<String, Object> keyValueMap = new HashMap<String, Object>();
+//
+//                for (int i = 0; i < columnCount; i++) {
+//                    int columnIdx = i + 1;
+//                    int type = rsMeta.getColumnType(columnIdx);
+//
+//                    String str = "";
+//
+//                    String lobType = null;
+//                    if (type == Types.BLOB || type == Types.BINARY || type == Types.LONGVARBINARY || type == Types.VARBINARY
+//                            || type == Types.JAVA_OBJECT) {
+//                        lobType = LOB_BINARY;
+//                    } else if (type == Types.CLOB || type == Types.NCLOB || type == Types.SQLXML || type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR) {
+//                        lobType = LOB_STRING;
+//                    }
+//
+//                    if (lobType == null) {
+//                        str = r.getString(columnIdx);
+//
+//                        if (str != null) {
+//                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
+//                        } else {
+//                            // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
+//                            keyValueMap.put(columnName[i], "");
+//                        }
+//                    } else {
+//                        File file = null;
+//
+//                        if (lobType == LOB_BINARY) {
+//                            // logger.debug("Column-"+columnIdx+" is BLOB!");
+//                            // BLOB일 경우 스트림으로 받는다.
+//                            ByteArrayOutputStream buffer = null;
+//                            try {
+//                                if (!useBlobFile) {
+//                                    buffer = new ByteArrayOutputStream();
+//                                }
+//                                file = readTmpBlob(i, columnIdx, rsMeta, buffer);
+//                                if (useBlobFile) {
+//                                    keyValueMap.put(columnName[i], file);
+//                                } else {
+//                                    keyValueMap.put(columnName[i], buffer.toByteArray());
+//                                }
+//                            } finally {
+//                                if (buffer != null) {
+//                                    try {
+//                                        buffer.close();
+//                                    } catch (IOException ignore) {
+//
+//                                    }
+//                                }
+//                            }
+//                        } else if (lobType == LOB_STRING) {
+//                            StringBuilder sb = null;
+//                            if (!useBlobFile) {
+//                                sb = new StringBuilder();
+//                            }
+//                            file = readTmpClob(i, columnIdx, rsMeta, sb);
+//                            if (useBlobFile) {
+//                                keyValueMap.put(columnName[i], file);
+//                            } else {
+//                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(sb.toString()));
+//                            }
+//                        }
+//
+//                        //다음 레코드 진행시 지우도록 한다.
+//                        if (file != null) {
+//                            tmpFile.add(file);
+//                        }
+//                    }
+//                }
+//
+//                dataSet[bulkCount] = keyValueMap;
+//                bulkCount++;
+//                totalCnt++;
+//
+//                if (bulkCount >= bulkSize) {
+//                    break;
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//
+//            logger.debug("", e);
+//
+//            try {
+//                if (r != null) {
+//                    r.close();
+//                }
+//            } catch (SQLException ignore) {
+//            }
+//
+//            try {
+//                if (pstmt != null) {
+//                    pstmt.close();
+//                }
+//            } catch (SQLException ignore) {
+//            }
+//
+//            try {
+//                if (connection != null && !connection.isClosed()) {
+//                    connection.close();
+//                }
+//            } catch (SQLException ignore) {
+//            }
+//
+//            throw new IOException(e);
+//        }
+//    }
 
-        bulkCount = 0;
-        try {
-            ResultSetMetaData rsMeta = null;
-            //이전 Tmp 데이터들을 지워준다.
-            deleteTmpLob();
-
-            try {
-                rsMeta = r.getMetaData();
-            } catch (SQLException e) {
-                return;
-            }
-            while (r.next()) {
-
-                Map<String, Object> keyValueMap = new HashMap<String, Object>();
-
-                for (int i = 0; i < columnCount; i++) {
-                    int columnIdx = i + 1;
-                    int type = rsMeta.getColumnType(columnIdx);
-
-                    String str = "";
-
-                    String lobType = null;
-                    if (type == Types.BLOB || type == Types.BINARY || type == Types.LONGVARBINARY || type == Types.VARBINARY
-                            || type == Types.JAVA_OBJECT) {
-                        lobType = LOB_BINARY;
-                    } else if (type == Types.CLOB || type == Types.NCLOB || type == Types.SQLXML || type == Types.LONGVARCHAR || type == Types.LONGNVARCHAR) {
-                        lobType = LOB_STRING;
-                    }
-
-                    if (lobType == null) {
-                        str = r.getString(columnIdx);
-
-                        if (str != null) {
-                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
-                        } else {
-                            // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
-                            keyValueMap.put(columnName[i], "");
-                        }
-                    } else {
-                        File file = null;
-
-                        if (lobType == LOB_BINARY) {
-                            // logger.debug("Column-"+columnIdx+" is BLOB!");
-                            // BLOB일 경우 스트림으로 받는다.
-                            ByteArrayOutputStream buffer = null;
-                            try {
-                                if (!useBlobFile) {
-                                    buffer = new ByteArrayOutputStream();
-                                }
-                                file = readTmpBlob(i, columnIdx, rsMeta, buffer);
-                                if (useBlobFile) {
-                                    keyValueMap.put(columnName[i], file);
-                                } else {
-                                    keyValueMap.put(columnName[i], buffer.toByteArray());
-                                }
-                            } finally {
-                                if (buffer != null) {
-                                    try {
-                                        buffer.close();
-                                    } catch (IOException ignore) {
-
-                                    }
-                                }
-                            }
-                        } else if (lobType == LOB_STRING) {
-                            StringBuilder sb = null;
-                            if (!useBlobFile) {
-                                sb = new StringBuilder();
-                            }
-                            file = readTmpClob(i, columnIdx, rsMeta, sb);
-                            if (useBlobFile) {
-                                keyValueMap.put(columnName[i], file);
-                            } else {
-                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(sb.toString()));
-                            }
-                        }
-
-                        //다음 레코드 진행시 지우도록 한다.
-                        if (file != null) {
-                            tmpFile.add(file);
-                        }
-                    }
-                }
-
-                dataSet[bulkCount] = keyValueMap;
-                bulkCount++;
-                totalCnt++;
-
-                if (bulkCount >= bulkSize) {
-                    break;
-                }
-            }
-
-        } catch (Exception e) {
-
-            logger.debug("", e);
-
-            try {
-                if (r != null) {
-                    r.close();
-                }
-            } catch (SQLException ignore) {
-            }
-
-            try {
-                if (pstmt != null) {
-                    pstmt.close();
-                }
-            } catch (SQLException ignore) {
-            }
-
-            try {
-                if (connection != null && !connection.isClosed()) {
-                    connection.close();
-                }
-            } catch (SQLException ignore) {
-            }
-
-            throw new IOException(e);
-        }
-    }
-
-    private File readTmpBlob(int columnInx, int columnNo, ResultSetMetaData rsMeta, OutputStream buffer) throws IOException, SQLException {
-        File file = null;
-        FileOutputStream os = null;
-        InputStream is = null;
-        try {
-            is = r.getBinaryStream(columnNo);
-            if (is != null) {
-                if (buffer == null) {
-                    file = File.createTempFile("blob." + columnNo, ".tmp");
-                    os = new FileOutputStream(file);
-                    // logger.debug("tmp file = "+f.getAbsolutePath());
-                }
-                for (int rlen = 0; (rlen = is.read(data, 0, data.length)) != -1; ) {
-                    if (buffer != null) {
-                        buffer.write(data, 0, rlen);
-                    } else {
-                        os.write(data, 0, rlen);
-                    }
-                }
-            }
-
-        } catch (IOException e) {
-            throw new IOException("Error while writing Blob field. column => " + rsMeta.getColumnName(columnNo));
-        } finally {
-            IOException ex = null;
-            if (os != null)
-                try {
-                    os.close();
-                } catch (IOException e) {
-                    ex = e;
-                }
-            if (is != null)
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    ex = e;
-                }
-            if (ex != null) {
-                logger.error("Error while close LOB field and output file stream.", ex);
-            }
-        }
-        return file;
-    }
-
-    private File readTmpClob(int columnInx, int columnNo, ResultSetMetaData rsMeta, StringBuilder buffer) throws IOException, SQLException {
-        File file = null;
-        BufferedWriter os = null;
-        BufferedReader is = null;
-        try {
-            Reader reader = r.getCharacterStream(columnNo);
-            if (reader != null) {
-                //buffer is null when using File
-                if (buffer == null) {
-                    file = File.createTempFile("clob." + columnNo, ".tmp");
-                    os = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
-                }
-                is = new BufferedReader(reader);
-                for (String rline = ""; (rline = is.readLine()) != null; ) {
-                    if (buffer != null) {
-                        buffer.append(rline).append("\n");
-                    } else {
-                        os.write(rline);
-                        os.write("\n");
-                    }
-                }
-            }
-        } catch (IOException e) {
-            throw new IOException("Error while writing Clob field. column => " + rsMeta.getColumnName(columnNo));
-        } finally {
-            IOException ex = null;
-            if (os != null) {
-                try {
-                    os.close();
-                } catch (IOException e) {
-                    ex = e;
-                }
-            }
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    ex = e;
-                }
-            }
-            if (ex != null) {
-                logger.error("Error while close clob field and output file stream.", ex);
-            }
-        }
-        return file;
-    }
+//    private File readTmpBlob(int columnInx, int columnNo, ResultSetMetaData rsMeta, OutputStream buffer) throws IOException, SQLException {
+//        File file = null;
+//        FileOutputStream os = null;
+//        InputStream is = null;
+//        try {
+//            is = r.getBinaryStream(columnNo);
+//            if (is != null) {
+//                if (buffer == null) {
+//                    file = File.createTempFile("blob." + columnNo, ".tmp");
+//                    os = new FileOutputStream(file);
+//                    // logger.debug("tmp file = "+f.getAbsolutePath());
+//                }
+//                for (int rlen = 0; (rlen = is.read(data, 0, data.length)) != -1; ) {
+//                    if (buffer != null) {
+//                        buffer.write(data, 0, rlen);
+//                    } else {
+//                        os.write(data, 0, rlen);
+//                    }
+//                }
+//            }
+//
+//        } catch (IOException e) {
+//            throw new IOException("Error while writing Blob field. column => " + rsMeta.getColumnName(columnNo));
+//        } finally {
+//            IOException ex = null;
+//            if (os != null)
+//                try {
+//                    os.close();
+//                } catch (IOException e) {
+//                    ex = e;
+//                }
+//            if (is != null)
+//                try {
+//                    is.close();
+//                } catch (IOException e) {
+//                    ex = e;
+//                }
+//            if (ex != null) {
+//                logger.error("Error while close LOB field and output file stream.", ex);
+//            }
+//        }
+//        return file;
+//    }
+//
+//    private File readTmpClob(int columnInx, int columnNo, ResultSetMetaData rsMeta, StringBuilder buffer) throws IOException, SQLException {
+//        File file = null;
+//        BufferedWriter os = null;
+//        BufferedReader is = null;
+//        try {
+//            Reader reader = r.getCharacterStream(columnNo);
+//            if (reader != null) {
+//                //buffer is null when using File
+//                if (buffer == null) {
+//                    file = File.createTempFile("clob." + columnNo, ".tmp");
+//                    os = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
+//                }
+//                is = new BufferedReader(reader);
+//                for (String rline = ""; (rline = is.readLine()) != null; ) {
+//                    if (buffer != null) {
+//                        buffer.append(rline).append("\n");
+//                    } else {
+//                        os.write(rline);
+//                        os.write("\n");
+//                    }
+//                }
+//            }
+//        } catch (IOException e) {
+//            throw new IOException("Error while writing Clob field. column => " + rsMeta.getColumnName(columnNo));
+//        } finally {
+//            IOException ex = null;
+//            if (os != null) {
+//                try {
+//                    os.close();
+//                } catch (IOException e) {
+//                    ex = e;
+//                }
+//            }
+//            if (is != null) {
+//                try {
+//                    is.close();
+//                } catch (IOException e) {
+//                    ex = e;
+//                }
+//            }
+//            if (ex != null) {
+//                logger.error("Error while close clob field and output file stream.", ex);
+//            }
+//        }
+//        return file;
+//    }
 
     private void deleteTmpLob() {
         while (tmpFile.size() > 0) {
