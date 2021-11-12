@@ -167,7 +167,9 @@ public class MultipleJDBCIngester implements Ingester {
 
             logger.info("Num-{} mainQuery Start", mainQueryListCount);
 
+            logger.info("a");
             if (fetchSize < 0) {
+                logger.info("b");
                 //in mysql, fetch data row by row
                 mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
                 mainPstmt.setFetchSize(Integer.MIN_VALUE);
@@ -176,22 +178,24 @@ public class MultipleJDBCIngester implements Ingester {
                 subPstmt.setFetchSize(Integer.MIN_VALUE);
 
             } else {
+                logger.info("c");
                 mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount));
                 subPstmt = mainConnection.prepareStatement(subSqlList.get(subQueryListCount));
 
                 if (fetchSize > 0) {
+                    logger.info("d");
                     // 인출할 행 수를 나타냅니다.
                     mainPstmt.setFetchSize(fetchSize);
                     subPstmt.setFetchSize(fetchSize);
                 }
             }
-
+            logger.info("e");
             if (maxRows > 0) {
+                logger.info("f");
                 // 최대 행 수를 나타내며, 제한이 없는 경우에는 0입니다.
                 mainPstmt.setMaxRows(maxRows);
                 subPstmt.setMaxRows(maxRows);
             }
-
             logger.info("메인색인쿼리 실행.");
             mainRs = mainPstmt.executeQuery(); // 메인색인쿼리 실행.
 

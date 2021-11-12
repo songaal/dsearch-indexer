@@ -255,23 +255,25 @@ public class IndexJobRunner implements Runnable {
 					mainMetaData.setPassword(password);
 					
 					jdbcMetaDataMap.put("mainJDBC", mainMetaData);
-					
+
+					logger.info("mainSqlList COUNT : {}", sqlList.size());
+
 					sqlQueryMap.put("mainSqlList", sqlList);
 					
 					
 					if ((boolean) payload.get("isMultipleJDBC")) { // 사용 유무
+						ArrayList<String> subSqlList = new ArrayList<String>();
 						// 서브 Query 및  JDBC 메타데이터 정보 저장
 						driverClassName = (String) payload.get("subDriverClassName");
 						url =  (String) payload.get("subUrl");
 						user =(String) payload.get("subUser");
 						password = (String) payload.get("subPassword");
-						
-						sqlList.clear();
-						sqlList.add(dataSubSQL);
-						
-						sqlQueryMap.put("subSqlList", sqlList);
 
-						
+						subSqlList.add(dataSubSQL);
+
+						logger.info("subSqlList COUNT : {}", subSqlList.size());
+						sqlQueryMap.put("subSqlList", subSqlList);
+
 						JdbcMetaData  subMetaData = new JdbcMetaData();
 						subMetaData.setDriverClassName(driverClassName);
 						subMetaData.setUrl(url);
