@@ -43,7 +43,9 @@ public class NTourPreProcess implements PreProcess {
         DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
         databaseHandler.addConn(DATABASE_ALIAS, altibaseDriver, altibaseAddress, altibaseUsername, altibasePassword);
 
-        try (Connection connection = databaseHandler.getConn(DATABASE_ALIAS)) {
+        try (Connection connection = databaseHandler.getConn(DATABASE_ALIAS);
+             ResultSet resultSet = databaseQueryHelper.simpleSelect(connection, selectSql);
+             ) {
             // Connection이 정상적으로 이루어지지 않음.
             if(connection == null){
                 logger.error("connection: {}", connection);
@@ -59,7 +61,6 @@ public class NTourPreProcess implements PreProcess {
             int deleteCount = databaseQueryHelper.delete(connection, tableName);
             logger.info("여행대표상품 데이터 삭제: {}", deleteCount);
 
-            ResultSet resultSet = databaseQueryHelper.simpleSelect(connection, selectSql);
             int rowCount = resultSet.getRow();
             logger.info("여행대표상품 데이터 조회: {}", rowCount);
 

@@ -323,6 +323,10 @@ public class IndexJobRunner implements Runnable {
 //            원격 호출 URL (패스트캣 임시로직)
                 remoteCmdUrl = (String) payload.getOrDefault("remoteCmdUrl","");
 
+                // 오피스es 링크상품 전체색인 전파
+                boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob", false);
+                String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
+
                 String[] groupSeqLists = groupSeqs.split(",");
 
                 // 1. groupSeqLists 수 만큼 프로시저 호출
@@ -331,7 +335,9 @@ public class IndexJobRunner implements Runnable {
                 StringBuffer sb = new StringBuffer();
                 Map<String, Boolean> procedureMap = new HashMap<>();
 
-                remoteCmd("CLOSE", 10);
+                if (enableRemoteCmd) {
+                    remoteCmd("CLOSE", 10);
+                }
 
                 if(procedureSkip == false) {
                     logger.info("Call Procedure");
@@ -369,7 +375,13 @@ public class IndexJobRunner implements Runnable {
 
 //                프로시저 -> multiThread
 //                rsync ->  singleThread -> 1개 씩
-                remoteCmd("INDEX", 10);
+                if (enableRemoteCmd) {
+                    remoteCmd("INDEX", 10);
+                }
+
+                if (enableOfficeIndexingJob) {
+                    officeLinkIndexing(officeFullIndexUrl, groupSeqs);
+                }
 
                 if(rsyncSkip == false){
                     ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
@@ -584,6 +596,11 @@ public class IndexJobRunner implements Runnable {
                                 logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
                                 break;
                             }
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            }
                             Thread.sleep(60 * 1000);
                         } catch (Exception e) {
                             logger.error("", e);
@@ -637,6 +654,18 @@ public class IndexJobRunner implements Runnable {
             logger.error("", e);
             Utils.sleep(3000);
             remoteCmd(action, retry - 1);
+        }
+    }
+
+    private void officeLinkIndexing(String url, String groupSeqStr) {
+        logger.info("office-link indexing start");
+        url += "&action=all";
+        url += "&groupSeq=" + groupSeqStr;
+        try {
+            logger.info("office-link indexing start - {}", url);
+            restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
+        } catch (Exception e) {
+            logger.error("", e);
         }
     }
 
