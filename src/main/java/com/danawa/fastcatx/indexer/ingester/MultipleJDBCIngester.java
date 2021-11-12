@@ -1,33 +1,13 @@
 package com.danawa.fastcatx.indexer.ingester;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-
-import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.tomcat.util.http.fileupload.FileUtils;
-
 import com.danawa.fastcatx.indexer.Ingester;
 import com.danawa.fastcatx.indexer.model.JdbcMetaData;
+import org.apache.tomcat.util.http.fileupload.FileUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.*;
+import java.util.*;
 
 
 public class MultipleJDBCIngester implements Ingester {
@@ -124,6 +104,10 @@ public class MultipleJDBCIngester implements Ingester {
 //    }
 
     public MultipleJDBCIngester(Map<String, JdbcMetaData> jdbcMetaDataMap, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, Map<String, ArrayList<String>> sqlListMap, String subSqlwhereclauseData) throws IOException {
+        this.bulkSize = bulkSize;
+        this.fetchSize = fetchSize;
+        this.maxRows = maxRows;
+        this.useBlobFile = useBlobFile;
         if (jdbcMetaDataMap.containsKey("mainJDBC")) {
             JdbcMetaData mainJDBC = jdbcMetaDataMap.get("mainJDBC");
 
@@ -148,6 +132,11 @@ public class MultipleJDBCIngester implements Ingester {
             this.subSqlwhereclauseData = subSqlwhereclauseData;
         }
 
+        logger.info("{}", jdbcMetaDataMap);
+        logger.info("{}, {}, {}, {}", bulkSize, fetchSize, maxRows, useBlobFile);
+        logger.info("{}", sqlListMap);
+        logger.info("{}", subSqlwhereclauseData);
+
         mainQueryListCount = 0;
         subQueryListCount = 0;
 
@@ -168,16 +157,16 @@ public class MultipleJDBCIngester implements Ingester {
                 mainPstmt.close();
             }
 
-            if (subPstmt != null) {
-                subPstmt.close();
-            }
-
             if (subQueryListCount > 0) {
                 subConnection = getConnection(subDriverClassName, subUrl, subUser, subPassword);
             }
 
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
 
             logger.info("Num-{} mainQuery Start", mainQueryListCount);
+
             if (fetchSize < 0) {
                 //in mysql, fetch data row by row
                 mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
@@ -203,6 +192,7 @@ public class MultipleJDBCIngester implements Ingester {
                 subPstmt.setMaxRows(maxRows);
             }
 
+            logger.info("메인색인쿼리 실행.");
             mainRs = mainPstmt.executeQuery(); // 메인색인쿼리 실행.
 
             //			ResultSetMetaData mainRsmd = mainRs.getMetaData();
@@ -309,7 +299,7 @@ public class MultipleJDBCIngester implements Ingester {
                 mainQueryListCount++;
                 if (hasNextQuery(mainQueryListCount, lastQueryListCount)) {
                     logger.info("next Query Start : {}", mainQueryListCount);
-                    executeQuery(mainQueryListCount,subQueryListCount);
+                    executeQuery(mainQueryListCount, subQueryListCount);
                 } else {
                     return false;
                 }
@@ -403,7 +393,9 @@ public class MultipleJDBCIngester implements Ingester {
     }
 
     private void fill2() throws IOException {
+        logger.info("fill2 start!!");
         bulkCount = 0;
+
         ArrayList<String> whereclauseList = new ArrayList<>();
         try {
             ResultSetMetaData mainRsmd = mainRs.getMetaData();
