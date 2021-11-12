@@ -228,8 +228,7 @@ public class MultipleDumpFile {
                                     if (execProdure) {
 //                                      그룹시퀀스를 추가할때마다 오피스 색인 작업 시작
                                         startedProcedureGroupSeq.add(groupSeq);
-                                        //실제 프로시저가 실패 일 때만 추가
-                                    } else if(!execProdure && !procedureSkip) {
+                                    } else {
 //                                        프로시저 실패
                                         failedProcedureGroupSeq.add(groupSeq);
                                     }
