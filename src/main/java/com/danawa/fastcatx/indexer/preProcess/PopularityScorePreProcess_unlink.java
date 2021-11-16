@@ -115,6 +115,9 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
 
 
 
+        //임시..
+        index = "s-prod";
+
         ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
         IndexService service = new IndexService(host,port,scheme,username,password);
         builder = service.getRestClientBuilder();
