@@ -33,10 +33,13 @@ public class IndexJobManager {
 
     public Job stop(UUID id) {
         Job job = jobs.get(id);
+
         if (job != null && "RUNNING".equalsIgnoreCase(job.getStatus())) {
             job.setStopSignal(true);
+
+            job.setStatus("STOP");
         }
-        job.setStatus("STOP");
+
         return job;
     }
 
@@ -51,7 +54,7 @@ public class IndexJobManager {
         job.setRequest(payload);
         job.setAction(action);
         jobs.put(id, job);
-        logger.info("job ID: {}", id.toString());
+        logger.info("job ID: {}, {}", id.toString(), action);
         if ("FULL_INDEX".equalsIgnoreCase(action)) {
             new Thread(new IndexJobRunner(job)).start();
         }

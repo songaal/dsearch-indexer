@@ -283,7 +283,7 @@ public class IndexJobRunner implements Runnable {
 						jdbcMetaDataMap.put("subJDBC", subMetaData);
 					}
 
-					new MultipleJDBCIngester(jdbcMetaDataMap, bulkSize, fetchSize, maxRows, useBlobFile,sqlQueryMap, subSqlwhereclauseData);
+					ingester = new MultipleJDBCIngester(jdbcMetaDataMap, bulkSize, fetchSize, maxRows, useBlobFile,sqlQueryMap, subSqlwhereclauseData);
 				} else {
 					throw new IllegalArgumentException("jdbc argument");
 				}
