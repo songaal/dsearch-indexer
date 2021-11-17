@@ -213,6 +213,7 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
         long totalTime = System.currentTimeMillis() - start;
 
         logger.info("인기점수 전처리 완료하였습니다. 총 {} - 소요시간 {}m ", count, totalTime / 1000/ 60);
+        job.setStatus("SUCCESS");
 
 //        try{
 //            //String host, Integer port, String scheme, String esUsername, String esPassword
