@@ -52,10 +52,14 @@ public class VmKeywordPreProcess {
             databaseConnector.addConn(DB_TYPE.rescue.name(), altibaseDriver, altibaseRescueAddress, altibaseRescueUsername, altibaseRescuePassword);
         }
 
+        DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
+
         try (Connection masterConnection = databaseConnector.getConn(DB_TYPE.master.name());
              Connection selectSlaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
              Connection slaveConnection = databaseConnector.getConn(DB_TYPE.slave.name());
              Connection rescueConnection = databaseConnector.getConn(DB_TYPE.slave.name());
+             ResultSet tProdCountSet = databaseQueryHelper.simpleSelect(selectSlaveConnection, countSql);
+             ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? selectSlaveConnection : masterConnection, selectSql);
         )
         {
             // Connection이 정상적으로 이루어지지 않음.
@@ -69,14 +73,10 @@ public class VmKeywordPreProcess {
                 job.setStatus(IndexJobRunner.STATUS.ERROR.name());
                 return;
             }
-
-            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
-            ResultSet tProdCountSet = databaseQueryHelper.simpleSelect(selectSlaveConnection, countSql);
             int tprodCount = 0;
             if (tProdCountSet.next()) {
                 tprodCount = tProdCountSet.getInt(1);
             }
-            tProdCountSet.close();
             // 카운트가 1보다 작으면 상품이 없으므로 종료.
             if (tprodCount < 1) {
                 logger.error("no prod in tProd table"); // 상품갯수가 존재하지 않아 에러
@@ -85,7 +85,6 @@ public class VmKeywordPreProcess {
 
             // 1. select
             long selectStart = System.currentTimeMillis(); // SELETE TIME 시작
-            ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? selectSlaveConnection : masterConnection, selectSql);
             int rowCount = resultSet.getRow();
             logger.info("조회 Row 갯수: {}, SQL: {}", rowCount, selectSql.substring(0, 100));
             long selectEnd = System.currentTimeMillis(); // SELETE TIME 끝

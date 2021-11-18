@@ -49,10 +49,13 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
             databaseConnector.addConn(VmFirstMakeDatePreProcess.DB_TYPE.rescue.name(), altibaseDriver, altibaseRescueAddress, altibaseRescueUsername, altibaseRescuePassword);
         }
 
+        DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
+
         try (AltibaseConnection masterConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.master.name());
              AltibaseConnection selectSlaveConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.slave.name());
              AltibaseConnection slaveConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.slave.name());
              AltibaseConnection rescueConnection = databaseConnector.getConnAlti(VmFirstMakeDatePreProcess.DB_TYPE.rescue.name());
+             ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? selectSlaveConnection : masterConnection, selectSql);
         )
         {
             // Connection이 정상적으로 이루어지지 않음.
@@ -67,10 +70,8 @@ public class VmFirstMakeDatePreProcess implements PreProcess {
                 return;
             }
 
-            DatabaseQueryHelper databaseQueryHelper = new DatabaseQueryHelper();
             // 1. select
             long selectStart = System.currentTimeMillis(); // SELETE TIME 시작
-            ResultSet resultSet = databaseQueryHelper.simpleSelectForwadOnly(altibaseSlaveEnable ? selectSlaveConnection : masterConnection, selectSql);
             int rowCount = resultSet.getRow();
             logger.info("조회 Row 갯수: {}, SQL: {}", rowCount, selectSql.substring(0, 100));
             long selectEnd = System.currentTimeMillis(); // SELETE TIME 끝

@@ -97,6 +97,7 @@ public class PopularityScorePreProcess implements PreProcess {
                     }
                 }
             }
+            resultSet.close();
             logger.info("제휴상품 인기점수 갱신 전 개수:" + recodeCount);
             logger.info("제휴상품 인기점수 갱신 후 개수:" + mapPopularityScore.size());
             logger.debug("mysql tPVShopItemBuyClick 수집 종료.");

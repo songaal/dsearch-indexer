@@ -255,7 +255,7 @@ public class CommandController {
 
                 status = STATUS_SUCCESS;
 
-                service.getStorageSize(index);
+                service.getStorageSize();
 
             } catch (Exception e) {
                 status = STATUS_ERROR;

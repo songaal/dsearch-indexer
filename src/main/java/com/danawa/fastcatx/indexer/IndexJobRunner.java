@@ -221,19 +221,19 @@ public class IndexJobRunner implements Runnable {
 			} else if (type.equals("multipleJdbc")) {
 				String dataSQL = (String) payload.get("dataSQL"); // 주 색인쿼리
 				String dataSubSQL = (String) payload.get("dataSubSQL"); // 서브 색인 쿼리
-				
+
 				Integer fetchSize = (Integer) payload.get("fetchSize");
 				Integer maxRows = (Integer) payload.getOrDefault("maxRows", 0);
 				Boolean useBlobFile = (Boolean) payload.getOrDefault("useBlobFile", false);
-				
+
 				String subSqlwhereclauseData = (String) payload.getOrDefault("subSqlwhereclauseData", "");
-				
+
 				if (payload.get("_jdbc") != null) {
 					Map<String, Object> jdbcMap = (Map<String, Object>) payload.get("_jdbc");
 					Map<String, JdbcMetaData> jdbcMetaDataMap = new HashMap<>();
 					Map<String, ArrayList<String>> sqlQueryMap = new HashMap<>();
-					
-					// 메인 Query 및  JDBC 메타데이터 정보 저장  
+
+					// 메인 Query 및  JDBC 메타데이터 정보 저장
 					int sqlCount = 2;
 					ArrayList<String> sqlList = new ArrayList<String>();
 
@@ -247,20 +247,20 @@ public class IndexJobRunner implements Runnable {
 						sqlList.add((String) payload.get("dataSQL" + sqlCount));
 						sqlCount++;
 					}
-										
+
 					JdbcMetaData  mainMetaData = new JdbcMetaData();
 					mainMetaData.setDriverClassName(driverClassName);
 					mainMetaData.setUrl(url);
 					mainMetaData.setUser(user);
 					mainMetaData.setPassword(password);
-					
+
 					jdbcMetaDataMap.put("mainJDBC", mainMetaData);
 
 					logger.info("mainSqlList COUNT : {}", sqlList.size());
 
 					sqlQueryMap.put("mainSqlList", sqlList);
-					
-					
+
+
 					if ((boolean) payload.get("isMultipleJDBC")) { // 사용 유무
 						ArrayList<String> subSqlList = new ArrayList<String>();
 						// 서브 Query 및  JDBC 메타데이터 정보 저장
@@ -279,7 +279,7 @@ public class IndexJobRunner implements Runnable {
 						subMetaData.setUrl(url);
 						subMetaData.setUser(user);
 						subMetaData.setPassword(password);
-						
+
 						jdbcMetaDataMap.put("subJDBC", subMetaData);
 					}
 
@@ -289,7 +289,7 @@ public class IndexJobRunner implements Runnable {
 				}
 
 
-				
+
 
 			}
 			else if (type.equals("multipleDumpFile")) {
@@ -398,7 +398,11 @@ public class IndexJobRunner implements Runnable {
 				//            원격 호출 URL (패스트캣 임시로직)
 				remoteCmdUrl = (String) payload.getOrDefault("remoteCmdUrl","");
 
-				String[] groupSeqLists = groupSeqs.split(",");
+                // 오피스es 링크상품 전체색인 전파
+                boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob", false);
+                String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
+
+                String[] groupSeqLists = groupSeqs.split(",");
 
 				// 1. groupSeqLists 수 만큼 프로시저 호출
 				// 2. 체크
@@ -406,7 +410,9 @@ public class IndexJobRunner implements Runnable {
 				StringBuffer sb = new StringBuffer();
 				Map<String, Boolean> procedureMap = new HashMap<>();
 
-				remoteCmd("CLOSE", 10);
+                if (enableRemoteCmd) {
+                    remoteCmd("CLOSE", 10);
+                }
 
 				if(procedureSkip == false) {
 					logger.info("Call Procedure");
@@ -442,9 +448,15 @@ public class IndexJobRunner implements Runnable {
 					threadPool.shutdown();
 				}
 
-				//                프로시저 -> multiThread
-				//                rsync ->  singleThread -> 1개 씩
-				remoteCmd("INDEX", 10);
+//                프로시저 -> multiThread
+//                rsync ->  singleThread -> 1개 씩
+                if (enableRemoteCmd) {
+                    remoteCmd("INDEX", 10);
+                }
+
+                if (enableOfficeIndexingJob) {
+                    officeLinkIndexing(officeFullIndexUrl, groupSeqs);
+                }
 
 				if(rsyncSkip == false){
 					ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
@@ -587,97 +599,102 @@ public class IndexJobRunner implements Runnable {
 				service.index(finalIngester, index, bulkSize, filter, job, pipeLine);
 			}
 
-			job.setStatus(STATUS.SUCCESS.name());
-		} catch (StopSignalException e) {
-			job.setStatus(STATUS.STOP.name());
-		}catch (FileNotFoundException e){
-			job.setStatus(STATUS.STOP.name());
-			job.setError(e.getMessage());
-			logger.error("error .... ", e);
-		} catch (Exception e) {
-			job.setStatus(STATUS.ERROR.name());
-			job.setError(e.getMessage());
-			logger.error("error .... ", e);
-		} finally {
-			job.setEndTime(System.currentTimeMillis() / 1000);
-			if (autoDynamic) {
-				new Thread(() -> {
-					int r = 20;
-					logger.info("create success check thread");
-					while (true) {
-						try {
-							//                            색인 취소 체크. 동적색인 on
-							if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-								logger.info("STOP SIGNAL");
-								if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-									// 멀티 MQ
-									for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-										String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-										String queueName = autoDynamicQueueNames.get(i);
-										updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-										Thread.sleep(1000);
-									}
-								} else {
-									// 싱글 MQ
-									for (String autoDynamicQueueName : autoDynamicQueueNames) {
-										updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-										Thread.sleep(1000);
-									}
-								}
-								break;
-							}
-							//                            색인 완료 여부 체크
-							logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
-							ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
-									HttpMethod.GET,
-									new HttpEntity(new HashMap<String, Object>()),
-									String.class
-									);
-							String status = null;
-							try {
-								Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
-								Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
-								status = String.valueOf(info.get("status"));
-							}catch (Exception ignore) {}
-							//                            색인이 완료라면 동적색인 ON
-							if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-								if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-									// 멀티 MQ
-									for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-										String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-										String queueName = autoDynamicQueueNames.get(i);
-										updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-										Thread.sleep(1000);
-									}
-								} else {
-									// 싱글 MQ
-									for (String autoDynamicQueueName : autoDynamicQueueNames) {
-										updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-										Thread.sleep(1000);
-									}
-								}
-								logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
-								break;
-							}
-							Thread.sleep(60 * 1000);
-						} catch (Exception e) {
-							logger.error("", e);
-							r --;
-							if (r == 0) {
-								logger.warn("max retry!!!!");
-								break;
-							} else {
-								try {
-									Thread.sleep(1000);
-								} catch (InterruptedException ignore) {}
-							}
-						}
-					}
-					logger.info("success check Thread terminate");
-				}).start();
-			}
-		}
-	}
+            job.setStatus(STATUS.SUCCESS.name());
+        } catch (StopSignalException e) {
+            job.setStatus(STATUS.STOP.name());
+        }catch (FileNotFoundException e){
+            job.setStatus(STATUS.STOP.name());
+            job.setError(e.getMessage());
+            logger.error("error .... ", e);
+        } catch (Exception e) {
+            job.setStatus(STATUS.ERROR.name());
+            job.setError(e.getMessage());
+            logger.error("error .... ", e);
+        } finally {
+            job.setEndTime(System.currentTimeMillis() / 1000);
+            if (autoDynamic) {
+                new Thread(() -> {
+                    int r = 20;
+                    logger.info("create success check thread");
+                    while (true) {
+                        try {
+//                            색인 취소 체크. 동적색인 on
+                            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                                logger.info("STOP SIGNAL");
+                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                                    // 멀티 MQ
+                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                        String queueName = autoDynamicQueueNames.get(i);
+                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                } else {
+                                    // 싱글 MQ
+                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                }
+                                break;
+                            }
+//                            색인 완료 여부 체크
+                            logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
+                            ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
+                                    HttpMethod.GET,
+                                    new HttpEntity(new HashMap<String, Object>()),
+                                    String.class
+                            );
+                            String status = null;
+                            try {
+                                Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
+                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+                                status = String.valueOf(info.get("status"));
+                            }catch (Exception ignore) {}
+//                            색인이 완료라면 동적색인 ON
+                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                                    // 멀티 MQ
+                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                        String queueName = autoDynamicQueueNames.get(i);
+                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                } else {
+                                    // 싱글 MQ
+                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                        Thread.sleep(1000);
+                                    }
+                                }
+                                logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+                                break;
+                            }
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            }
+                            Thread.sleep(60 * 1000);
+                        } catch (Exception e) {
+                            logger.error("", e);
+                            r --;
+                            if (r == 0) {
+                                logger.warn("max retry!!!!");
+                                break;
+                            } else {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException ignore) {}
+                            }
+                        }
+                    }
+                    logger.info("success check Thread terminate");
+                }).start();
+            }
+        }
+    }
 
 	public void updateQueueIndexerConsume(boolean dryRun, String queueIndexerUrl, String queueName, int consumeCount) {
 		Map<String, Object> body = new HashMap<>();
@@ -714,5 +731,17 @@ public class IndexJobRunner implements Runnable {
 			remoteCmd(action, retry - 1);
 		}
 	}
+
+    private void officeLinkIndexing(String url, String groupSeqStr) {
+        logger.info("office-link indexing start");
+        url += "&action=all";
+        url += "&groupSeq=" + groupSeqStr;
+        try {
+            logger.info("office-link indexing start - {}", url);
+            restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+    }
 
 }

@@ -50,6 +50,9 @@ public class MobilePreProcess implements PreProcess {
         String categorySearchBody = (String) payload.getOrDefault("categorySearchBody", "");
         String categoryXmlFilePath = (String) payload.getOrDefault("categoryXmlFilePath", "");
         String refreshApiUri = (String) payload.getOrDefault("refreshApiUri", "");
+        boolean esAuthEnable = (boolean) payload.getOrDefault("esAuthEnable", false);
+        String esUserName = (String) payload.getOrDefault("esUserName", "");
+        String esPassword = (String) payload.getOrDefault("esPassword", "");
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
@@ -61,6 +64,9 @@ public class MobilePreProcess implements PreProcess {
             httpEntity = new HttpEntity<>(headers);
         } else {
             method = HttpMethod.POST;
+            if (esAuthEnable) {
+                headers.setBasicAuth(esUserName, esPassword);
+            }
             httpEntity = new HttpEntity<>(categorySearchBody, headers);
         }
         ResponseEntity<String> response = restTemplate.exchange(categorySearchUrl, method, httpEntity, String.class);
