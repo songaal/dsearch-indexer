@@ -22,6 +22,7 @@ public class IndexJobManager {
         }
         return job;
     }
+
     public List<UUID> getIds() {
         List<UUID> ids = new ArrayList<>();
         Iterator<UUID> iterator = jobs.keySet().iterator();
@@ -34,11 +35,18 @@ public class IndexJobManager {
     public Job stop(UUID id) {
         Job job = jobs.get(id);
 
-        if (job != null && "RUNNING".equalsIgnoreCase(job.getStatus())) {
-            job.setStopSignal(true);
-
-            job.setStatus("STOP");
+        if (job == null) {
+            job = new Job();
+            job.setId(id);
+            job.setError("존재하지 않는 ID 입니다.");
+        } else if (job != null && "RUNNING".equalsIgnoreCase(job.getStatus())) {
+            logger.info("현재 색인 중인 잡을 종료합니다.");
+        } else {
+            job.setError("JOB의 현재 상태를 알 수 없습니다. 종료합니다.");
         }
+
+        job.setStopSignal(true);
+        job.setStatus("STOP");
 
         return job;
     }
