@@ -119,7 +119,7 @@ public class CommandController {
         // ES bulk API 사용시 벌크갯수.
         Integer bulkSize = (Integer) payload.get("bulkSize");
         Integer threadSize = (Integer) payload.getOrDefault("threadSize", 1);
-        String pipeLine = (String) payload.getOrDefault("pipeLine","");
+        String pipeLine = (String) payload.getOrDefault("pipeLine", "");
 
         /**
          * file기반 인제스터 설정
@@ -149,8 +149,8 @@ public class CommandController {
 
                 String headerText = (String) payload.get("headerText");
                 String delimiter = (String) payload.get("delimiter");
-                ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText,delimiter);
-            }else if (type.equals("jdbc")) {
+                ingester = new DelimiterFileIngester(path, encoding, 1000, limitSize, headerText, delimiter);
+            } else if (type.equals("jdbc")) {
 
                 int sqlCount = 2;
                 ArrayList<String> sqlList = new ArrayList<String>();
@@ -163,7 +163,7 @@ public class CommandController {
 
                 sqlList.add(dataSQL);
                 //dataSQL, dataSQL2, dataSQL3.. 있을 경우
-                while ( payload.get("dataSQL" + String.valueOf(sqlCount)) != null ) {
+                while (payload.get("dataSQL" + String.valueOf(sqlCount)) != null) {
                     sqlList.add((String) payload.get("dataSQL" + String.valueOf(sqlCount)));
                     sqlCount++;
                 }
@@ -179,47 +179,47 @@ public class CommandController {
                 String url = (String) payload.get("url");
                 String user = (String) payload.get("user");
                 String password = (String) payload.get("password");
-                String procedureName = (String) payload.getOrDefault("procedureName","PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
+                String procedureName = (String) payload.getOrDefault("procedureName", "PRSEARCHPRODUCT"); //PRSEARCHPRODUCT
                 Integer groupSeq = (Integer) payload.get("groupSeq");
                 String dumpFormat = (String) payload.get("dumpFormat"); //ndjson, konan
                 String rsyncIp = (String) payload.get("rsyncIp"); // rsync IP
-                String bwlimit = (String) payload.getOrDefault("bwlimit","0"); // rsync 전송속도 - 1024 = 1m/s
-                boolean procedureSkip  = (Boolean) payload.getOrDefault("procedureSkip",false); // 프로시저 스킵 여부
-                boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip",false); // rsync 스킵 여부
+                String bwlimit = (String) payload.getOrDefault("bwlimit", "0"); // rsync 전송속도 - 1024 = 1m/s
+                boolean procedureSkip = (Boolean) payload.getOrDefault("procedureSkip", false); // 프로시저 스킵 여부
+                boolean rsyncSkip = (Boolean) payload.getOrDefault("rsyncSkip", false); // rsync 스킵 여부
                 String rsyncPath = (String) payload.getOrDefault("rsyncPath", "search_data_alti");
                 //String rsyncCommand = (String) payload.getOrDefault("rsyncCommand","rsync -av --inplace --progress --bwlimit=1000 --progress 192.168.4.198::search_data_alti/prodExt_0 /home/danawa/temp/");
 
 
                 //프로시져
-                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName,groupSeq,path);
+                CallProcedure procedure = new CallProcedure(driverClassName, url, user, password, procedureName, groupSeq, path);
                 //RSNYC
-                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp,rsyncPath,path,bwlimit,groupSeq);
+                RsyncCopy rsyncCopy = new RsyncCopy(rsyncIp, rsyncPath, path, bwlimit, groupSeq);
 
                 boolean execProdure = false;
                 boolean rsyncStarted = false;
                 //덤프파일 이름
-                String dumpFileName = "prodExt_"+groupSeq;
+                String dumpFileName = "prodExt_" + groupSeq;
 
                 //SKIP 여부에 따라 프로시저 호출
-                if(procedureSkip == false) {
+                if (procedureSkip == false) {
                     execProdure = procedure.callSearchProcedure();
                 }
 //                logger.info("execProdure : {}",execProdure);
 
                 //프로시저 결과 True, R 스킵X or 프로시저 스킵 and rsync 스킵X
-                if((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
+                if ((execProdure && rsyncSkip == false) || (procedureSkip && rsyncSkip == false)) {
                     rsyncCopy.start();
                     Thread.sleep(3000);
                     rsyncStarted = rsyncCopy.copyAsync();
                 }
-                logger.info("rsyncStarted : {}", rsyncStarted );
+                logger.info("rsyncStarted : {}", rsyncStarted);
 
-                if(rsyncStarted || rsyncSkip) {
-                    if(rsyncSkip) {
-                        logger.info("rsyncSkip : {}" , rsyncSkip);
+                if (rsyncStarted || rsyncSkip) {
+                    if (rsyncSkip) {
+                        logger.info("rsyncSkip : {}", rsyncSkip);
                     }
                     //GroupSeq당 하나의 덤프파일이므로 경로+파일이름으로 인제스터 생성
-                    path += "/"+dumpFileName;
+                    path += "/" + dumpFileName;
                     logger.info("file Path - Name  : {} - {}", path, dumpFileName);
                     ingester = new ProcedureIngester(path, dumpFormat, encoding, 1000, limitSize);
                 }
@@ -240,7 +240,7 @@ public class CommandController {
             try {
 
                 //프로시저 ingester의 경우...
-                service = new IndexService(host, port, scheme,esUsername,esPassword);
+                service = new IndexService(host, port, scheme, esUsername, esPassword);
                 // 인덱스를 초기화하고 0건부터 색인이라면.
                 if (reset) {
                     if (service.existsIndex(index)) {
@@ -263,6 +263,16 @@ public class CommandController {
                 error = e.toString();
             } finally {
                 endTime = System.currentTimeMillis() / 1000;
+                try {
+                    if (finalIngester != null) {
+                        finalIngester.close();
+                    }
+                    logger.info("ingester closed.");
+                } catch (Exception err) {
+                    logger.info("ingester closed error.");
+                    logger.error("", err);
+
+                }
             }
         });
         t.start();

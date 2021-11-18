@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="debug" monitorInterval="30">
     <Properties>
-        <Property name="LOG_FORMAT">%d{yyyy-MM-dd HH:mm:ss.SSS} [%p] %m%n</Property>
+        <Property name="LOG_FORMAT">%d{yyyy-MM-dd HH:mm:ss.SSS} [%c:%L] [%p] %m%n</Property>
     </Properties>
 
     <Appenders>

@@ -1,6 +1,7 @@
 package com.danawa.fastcatx.indexer.ingester;
 
 import com.danawa.fastcatx.indexer.Ingester;
+import com.danawa.fastcatx.indexer.model.JdbcMetaData;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
@@ -8,26 +9,42 @@ import java.io.*;
 import java.sql.*;
 import java.util.*;
 
-public class JDBCIngester implements Ingester {
 
+public class MultipleJDBCIngester implements Ingester {
     private static final String LOB_BINARY = "LOB_BINARY";
     private static final String LOB_STRING = "LOB_STRING";
 
     private int bulkSize;
-    private Connection connection;
-    private PreparedStatement pstmt;
-    private ResultSet r;
+
+    private Connection mainConnection;
+    private Connection subConnection;
+
+    private PreparedStatement mainPstmt;
+    private PreparedStatement subPstmt;
+
+    private ResultSet mainRs;
+    private ResultSet subRs;
+
     private int lastQueryListCount;
-    private int currentQueryListCount;
+
+    private int mainQueryListCount;
+    private int subQueryListCount;
 
     private int columnCount;
     private String[] columnName;
     private String[] columnType;
+
     private Map<String, Object>[] dataSet;
+    private List<Map<String, String[]>> subDataSet;
+
+
     private List<File> tmpFile;
-    private ArrayList<String> sqlList;
+
+    private ArrayList<String> mainSqlList;
+    private ArrayList<String> subSqlList;
 
     private int bulkCount;
+    private int subBulkCount;
     private int readCount;
 
     private boolean useBlobFile;
@@ -40,80 +57,121 @@ public class JDBCIngester implements Ingester {
     private String user;
     private String password;
 
+    private String subDriverClassName;
+    private String subUrl;
+    private String subUser;
+    private String subPassword;
+
+    private String subSqlwhereclauseData;
 
     private boolean isClosed;
 
     private byte[] data = new byte[16 * 1024];
     private int totalCnt;
 
-
-    public JDBCIngester(String driverClassName, String url, String user, String password, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, ArrayList<String> sqlList) throws IOException {
-
-        this.driverClassName = driverClassName;
-        this.user = user;
-        this.url = url;
-        this.password = password;
-
-
+    public MultipleJDBCIngester(Map<String, JdbcMetaData> jdbcMetaDataMap, int bulkSize, int fetchSize, int maxRows, boolean useBlobFile, Map<String, ArrayList<String>> sqlListMap, String subSqlwhereclauseData) throws IOException {
         this.bulkSize = bulkSize;
-        this.useBlobFile = useBlobFile;
         this.fetchSize = fetchSize;
         this.maxRows = maxRows;
-        this.sqlList = sqlList;
+        this.useBlobFile = useBlobFile;
 
-        tmpFile = new ArrayList<>();
-        dataSet = new Map[bulkSize];
-        connection = getConnection(driverClassName, url, user, password);
+
+        if (jdbcMetaDataMap.containsKey("mainJDBC")) {
+            JdbcMetaData mainJDBC = jdbcMetaDataMap.get("mainJDBC");
+
+            this.driverClassName = mainJDBC.getDriverClassName();
+            this.url = mainJDBC.getUrl();
+            this.user = mainJDBC.getUser();
+            this.password = mainJDBC.getPassword();
+
+            this.mainSqlList = sqlListMap.get("mainSqlList");
+
+
+            logger.info("{}, {}, {}, {}", driverClassName, url, user, password);
+
+            mainConnection = getConnection(driverClassName, url, user, password);
+        }
 
         //쿼리 갯수 체크용 카운트
-        lastQueryListCount = sqlList.size();
-        currentQueryListCount = 0;
+        lastQueryListCount = this.mainSqlList.size();
+
+        if (jdbcMetaDataMap.containsKey("subJDBC")) { // 서브쿼리가 존재한다면..
+            JdbcMetaData subJDBC = jdbcMetaDataMap.get("subJDBC");
+
+            this.subDriverClassName = subJDBC.getDriverClassName();
+            this.subUrl = subJDBC.getUrl();
+            this.subUser = subJDBC.getUser();
+            this.subPassword = subJDBC.getPassword();
+
+            logger.info("{}, {}, {}, {}", subDriverClassName, subUrl, subUser, subPassword);
+
+            subConnection = getConnection(subDriverClassName, subUrl, subUser, subPassword);
+
+            this.subSqlList = sqlListMap.get("subSqlList");
+            this.subSqlwhereclauseData = subSqlwhereclauseData;
+        }
+
+        dataSet = new Map[bulkSize];
+
+        mainQueryListCount = 0;
+        subQueryListCount = 0;
 
         //SQL 실행
-        logger.info("dataSQL total_Count : {}", sqlList.size());
-        executeQuery(currentQueryListCount);
+        logger.info("dataSQL total_Count : {}", mainSqlList.size());
 
+        executeQuery(mainQueryListCount);
     }
 
-    public void executeQuery(int currentQueryListCount) throws IOException {
-
+    public void executeQuery(int mainQueryListCount) throws IOException {
         try {
-            if (currentQueryListCount > 0) {
-                connection = getConnection(driverClassName, url, user, password);
+            if (mainQueryListCount > 0) {
+                mainConnection = getConnection(driverClassName, url, user, password);
+                subConnection = getConnection(subDriverClassName, subUrl, subUser, subPassword);
             }
 
-            if (pstmt != null) {
-                pstmt.close();
+            if (mainPstmt != null) {
+                mainPstmt.close();
             }
-            logger.info("Num-{} QUERY Start", currentQueryListCount);
+
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+
+            logger.info("Num-{} mainQuery Start", mainQueryListCount);
+
             if (fetchSize < 0) {
                 //in mysql, fetch data row by row
-                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-                pstmt.setFetchSize(Integer.MIN_VALUE);
+                mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount), ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                mainPstmt.setFetchSize(Integer.MIN_VALUE);
             } else {
-                pstmt = connection.prepareStatement(sqlList.get(currentQueryListCount));
+                mainPstmt = mainConnection.prepareStatement(mainSqlList.get(mainQueryListCount));
+
                 if (fetchSize > 0) {
-                    pstmt.setFetchSize(fetchSize);
+                    // 인출할 행 수를 나타냅니다.
+                    mainPstmt.setFetchSize(fetchSize);
                 }
             }
 
             if (maxRows > 0) {
-                pstmt.setMaxRows(maxRows);
+                // 최대 행 수를 나타내며, 제한이 없는 경우에는 0입니다.
+                mainPstmt.setMaxRows(maxRows);
+                subPstmt.setMaxRows(maxRows);
             }
+            logger.info("메인색인쿼리 실행.");
+            mainRs = mainPstmt.executeQuery(); // 메인색인쿼리 실행.
 
-            r = pstmt.executeQuery();
-
-            ResultSetMetaData rsMetadata = r.getMetaData();
-            columnCount = rsMetadata.getColumnCount();
+            ResultSetMetaData mainRsmd = mainRs.getMetaData();
+            columnCount = mainRsmd.getColumnCount();
             columnName = new String[columnCount];
             columnType = new String[columnCount];
 
             for (int i = 0; i < columnCount; i++) {
-                columnName[i] = rsMetadata.getColumnLabel(i + 1);
-                String typeName = rsMetadata.getColumnTypeName(i + 1);
+                columnName[i] = mainRsmd.getColumnLabel(i + 1);
+                String typeName = mainRsmd.getColumnTypeName(i + 1);
                 columnType[i] = typeName;
                 logger.info("Column-{} [{}]:[{}]", new Object[]{i + 1, columnName[i], typeName});
             }
+
 
         } catch (Exception e) {
             closeConnection();
@@ -145,10 +203,11 @@ public class JDBCIngester implements Ingester {
             fill();
             if (bulkCount == 0) {
                 //다음 쿼리 실행
-                currentQueryListCount++;
-                if (hasNextQuery(currentQueryListCount, lastQueryListCount)) {
-                    logger.info("next Query Start : {}", currentQueryListCount);
-                    executeQuery(currentQueryListCount);
+                mainQueryListCount++;
+
+                if (hasNextQuery(mainQueryListCount, lastQueryListCount)) {
+                    logger.info("next Query Start : {}", mainQueryListCount);
+                    executeQuery(mainQueryListCount);
                 } else {
                     return false;
                 }
@@ -179,66 +238,56 @@ public class JDBCIngester implements Ingester {
         }
     }
 
-    private void closePstmt() {
-        try {
-            if (r != null) {
-                r.close();
-            }
-        } catch (SQLException ignore) {
-        }
-
-        try {
-            if (pstmt != null) {
-                pstmt.close();
-            }
-        } catch (SQLException ignore) {
-        }
-    }
-
     private void closeConnection() {
-
         try {
-            if (r != null) {
-                r.close();
+            if (mainRs != null) {
+                mainRs.close();
+            }
+
+            if (subRs != null) {
+                subRs.close();
             }
         } catch (SQLException ignore) {
         }
 
         try {
-            if (pstmt != null) {
-                pstmt.close();
+            if (mainPstmt != null) {
+                mainPstmt.close();
             }
+
+            if (subPstmt != null) {
+                subPstmt.close();
+            }
+
         } catch (SQLException ignore) {
         }
 
         try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
+            if (mainConnection != null && !mainConnection.isClosed()) {
+                mainConnection.close();
+            }
+
+            if (subConnection != null && !subConnection.isClosed()) {
+                subConnection.close();
             }
         } catch (SQLException ignore) {
         }
     }
 
     private void fill() throws IOException {
-
         bulkCount = 0;
+
+        List<String> whereclauseList = new ArrayList<>();
+
         try {
-            ResultSetMetaData rsMeta = null;
-            //이전 Tmp 데이터들을 지워준다.
-            deleteTmpLob();
+            ResultSetMetaData mainRsmd = mainRs.getMetaData();
 
-            try {
-                rsMeta = r.getMetaData();
-            } catch (SQLException e) {
-                return;
-            }
-            while (r.next()) {
+            while (mainRs.next()) {
+                Map<String, Object> mainKeyValue = new HashMap<String, Object>();
 
-                Map<String, Object> keyValueMap = new HashMap<String, Object>();
-
-                for (int i = 0; i < columnCount; i++) {
-                    int columnIdx = i + 1;
-                    int type = rsMeta.getColumnType(columnIdx);
+                for (int idx = 0; idx < columnCount; idx++) {
+                    int columnIdx = idx + 1;
+                    int type = mainRsmd.getColumnType(columnIdx);
 
                     String str = "";
 
@@ -251,13 +300,13 @@ public class JDBCIngester implements Ingester {
                     }
 
                     if (lobType == null) {
-                        str = r.getString(columnIdx);
+                        str = mainRs.getString(columnIdx);
 
                         if (str != null) {
-                            keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(str));
+                            mainKeyValue.put(columnName[idx], StringEscapeUtils.unescapeHtml(str));
                         } else {
                             // 파싱할 수 없는 자료형 이거나 정말 NULL 값인 경우
-                            keyValueMap.put(columnName[i], "");
+                            mainKeyValue.put(columnName[idx], "");
                         }
                     } else {
                         File file = null;
@@ -270,11 +319,11 @@ public class JDBCIngester implements Ingester {
                                 if (!useBlobFile) {
                                     buffer = new ByteArrayOutputStream();
                                 }
-                                file = readTmpBlob(i, columnIdx, rsMeta, buffer);
+                                file = readTmpBlob(idx, columnIdx, mainRsmd, buffer);
                                 if (useBlobFile) {
-                                    keyValueMap.put(columnName[i], file);
+                                    mainKeyValue.put(columnName[idx], file);
                                 } else {
-                                    keyValueMap.put(columnName[i], buffer.toByteArray());
+                                    mainKeyValue.put(columnName[idx], buffer.toByteArray());
                                 }
                             } finally {
                                 if (buffer != null) {
@@ -290,11 +339,11 @@ public class JDBCIngester implements Ingester {
                             if (!useBlobFile) {
                                 sb = new StringBuilder();
                             }
-                            file = readTmpClob(i, columnIdx, rsMeta, sb);
+                            file = readTmpClob(idx, columnIdx, mainRsmd, sb);
                             if (useBlobFile) {
-                                keyValueMap.put(columnName[i], file);
+                                mainKeyValue.put(columnName[idx], file);
                             } else {
-                                keyValueMap.put(columnName[i], StringEscapeUtils.unescapeHtml(sb.toString()));
+                                mainKeyValue.put(columnName[idx], StringEscapeUtils.unescapeHtml(sb.toString()));
                             }
                         }
 
@@ -302,40 +351,133 @@ public class JDBCIngester implements Ingester {
                         if (file != null) {
                             tmpFile.add(file);
                         }
+
+                    }
+                    String mainColumnLabel = mainRsmd.getColumnLabel(columnIdx);
+                    if (subSqlwhereclauseData.equals(mainColumnLabel)) {
+                        if (mainRs.getObject(columnIdx) != null) {
+                            whereclauseList.add(String.valueOf(mainRs.getObject(columnIdx))); // 써브쿼리 where 데이터
+                        }
+
                     }
                 }
-
-                dataSet[bulkCount] = keyValueMap;
+                dataSet[bulkCount] = mainKeyValue;
                 bulkCount++;
                 totalCnt++;
-
                 if (bulkCount >= bulkSize) {
                     break;
                 }
             }
 
-        } catch (Exception e) {
+            if (whereclauseList.size() > 0) {
+                String subQuery = subSqlList.get(subQueryListCount);
+                subQuery = subQuery.replace("?", String.join(",", whereclauseList));
 
+                fetchSize = whereclauseList.size();
+
+                if (fetchSize < 0) {
+                    subPstmt = subConnection.prepareStatement(subQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+                    subPstmt.setFetchSize(Integer.MIN_VALUE);
+
+                } else {
+                    subPstmt = subConnection.prepareStatement(subQuery);
+
+                    if (fetchSize > 0) {
+                        subPstmt.setFetchSize(fetchSize);
+                    }
+                }
+
+                subRs = subPstmt.executeQuery(); // 서브색인쿼리 실행.
+
+                ResultSetMetaData subRsmd = subRs.getMetaData();
+                int subColumCount = subRsmd.getColumnCount(); // 서브쿼리 컬럼의 갯수를 반환한다.
+
+                subBulkCount = 0;
+                subDataSet = new ArrayList<>();
+
+                while (subRs.next()) {
+                    String subQueryProdCode = "";
+                    String subQueryProdName = "";
+                    String subQueryLowPrice = "";
+                    String [] subData = new String[2];
+                    for (int jdx = 1; jdx <= subColumCount; jdx++) {
+                        String subColumnLabel = subRsmd.getColumnLabel(jdx);
+
+                        if ("PRODUCTSEQ".equals(subColumnLabel)) {
+                            subQueryProdCode = String.valueOf(subRs.getObject(jdx));
+                        } else if ("PRODUCTNAME".equals(subColumnLabel)) {
+                            subQueryProdName = String.valueOf(subRs.getObject(jdx));
+                        } else if ("LOWPRICE".equals(subColumnLabel)) {
+                            subQueryLowPrice = String.valueOf(subRs.getObject(jdx));
+                        }
+                    }
+
+
+                    if (subQueryProdCode.length() > 0 && subQueryProdName.length() > 0) {
+                        Map<String, String[]> subKeyValue = new HashMap<>();
+
+                        subData[0] = subQueryProdName;
+                        subData[1] = subQueryLowPrice;
+
+                        subKeyValue.put(subQueryProdCode, subData);
+
+                        subDataSet.add(subKeyValue);
+
+                    }
+
+                }
+            }
+            for (Map<String, Object> mainData : dataSet) {
+                if (mainData.containsKey(subSqlwhereclauseData)) {
+                    String compareData = String.valueOf(mainData.get(subSqlwhereclauseData));
+
+                    if (!compareData.equals("")) {
+                        for (Map<String, String[]> subData : subDataSet) {
+
+                            if (subData.containsKey(compareData)) {
+                                mainData.put("productName", subData.get(compareData)[0]);
+                                mainData.put("lowPrice", subData.get(compareData)[1]);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
             logger.debug("", e);
 
             try {
-                if (r != null) {
-                    r.close();
+                if (mainRs != null) {
+                    mainRs.close();
                 }
+
+                if (subRs != null) {
+                    subRs.close();
+                }
+
             } catch (SQLException ignore) {
             }
 
             try {
-                if (pstmt != null) {
-                    pstmt.close();
+                if (mainPstmt != null) {
+                    mainPstmt.close();
                 }
+
+                if (subPstmt != null) {
+                    subPstmt.close();
+                }
+
             } catch (SQLException ignore) {
             }
 
             try {
-                if (connection != null && !connection.isClosed()) {
-                    connection.close();
+                if (mainConnection != null && !mainConnection.isClosed()) {
+                    mainConnection.close();
                 }
+
+                if (subConnection != null && !subConnection.isClosed()) {
+                    subConnection.close();
+                }
+
             } catch (SQLException ignore) {
             }
 
@@ -348,12 +490,11 @@ public class JDBCIngester implements Ingester {
         FileOutputStream os = null;
         InputStream is = null;
         try {
-            is = r.getBinaryStream(columnNo);
+            is = mainRs.getBinaryStream(columnNo);
             if (is != null) {
                 if (buffer == null) {
                     file = File.createTempFile("blob." + columnNo, ".tmp");
                     os = new FileOutputStream(file);
-                    // logger.debug("tmp file = "+f.getAbsolutePath());
                 }
                 for (int rlen = 0; (rlen = is.read(data, 0, data.length)) != -1; ) {
                     if (buffer != null) {
@@ -392,7 +533,7 @@ public class JDBCIngester implements Ingester {
         BufferedWriter os = null;
         BufferedReader is = null;
         try {
-            Reader reader = r.getCharacterStream(columnNo);
+            Reader reader = mainRs.getCharacterStream(columnNo);
             if (reader != null) {
                 //buffer is null when using File
                 if (buffer == null) {
