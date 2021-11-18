@@ -35,7 +35,7 @@ public class MultipleJDBCIngester implements Ingester {
     private String[] columnType;
 
     private Map<String, Object>[] dataSet;
-    private List<Map<String, Object>> subDataSet;
+    private List<Map<String, String[]>> subDataSet;
 
 
     private List<File> tmpFile;
@@ -394,27 +394,37 @@ public class MultipleJDBCIngester implements Ingester {
 
                 subBulkCount = 0;
                 subDataSet = new ArrayList<>();
+
                 while (subRs.next()) {
                     String subQueryProdCode = "";
                     String subQueryProdName = "";
+                    String subQueryLowPrice = "";
+                    String [] subData = new String[2];
                     for (int jdx = 1; jdx <= subColumCount; jdx++) {
                         String subColumnLabel = subRsmd.getColumnLabel(jdx);
 
-                        if ("PRODUCTCODE".equals(subColumnLabel)) {
+                        if ("PRODUCTSEQ".equals(subColumnLabel)) {
                             subQueryProdCode = String.valueOf(subRs.getObject(jdx));
                         } else if ("PRODUCTNAME".equals(subColumnLabel)) {
                             subQueryProdName = String.valueOf(subRs.getObject(jdx));
+                        } else if ("LOWPRICE".equals(subColumnLabel)) {
+                            subQueryLowPrice = String.valueOf(subRs.getObject(jdx));
                         }
                     }
 
 
                     if (subQueryProdCode.length() > 0 && subQueryProdName.length() > 0) {
-                        Map<String, Object> subKeyValue = new HashMap<>();
-                        subKeyValue.put(subQueryProdCode, subQueryProdName);
+                        Map<String, String[]> subKeyValue = new HashMap<>();
+
+                        subData[0] = subQueryProdName;
+                        subData[1] = subQueryLowPrice;
+
+                        subKeyValue.put(subQueryProdCode, subData);
 
                         subDataSet.add(subKeyValue);
 
                     }
+
                 }
             }
             for (Map<String, Object> mainData : dataSet) {
@@ -422,10 +432,11 @@ public class MultipleJDBCIngester implements Ingester {
                     String compareData = String.valueOf(mainData.get(subSqlwhereclauseData));
 
                     if (!compareData.equals("")) {
-                        for (Map<String, Object> subData : subDataSet) {
+                        for (Map<String, String[]> subData : subDataSet) {
 
                             if (subData.containsKey(compareData)) {
-                                mainData.put("productName", subData.get(compareData));
+                                mainData.put("productName", subData.get(compareData)[0]);
+                                mainData.put("lowPrice", subData.get(compareData)[1]);
                             }
                         }
                     }
