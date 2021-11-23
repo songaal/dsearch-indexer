@@ -18,6 +18,7 @@ import org.elasticsearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -25,12 +26,15 @@ import java.sql.Statement;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Pattern;
+import com.danawa.fastcatx.indexer.IndexJobRunner;
 
 public class PopularityScorePreProcess_unlink implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(PopularityScorePreProcess_unlink.class);
     private Job job;
     private Map<String, Object> payload;
     private RestClientBuilder builder;
+
+    private String filePath;
 
     public PopularityScorePreProcess_unlink(Job job) {
         this.job = job;
@@ -104,6 +108,16 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
         }
 
 
+        /**
+         * 제휴상품 인기점수 전처리
+         *  1) 쿼리를 통해 제휴상품별 인기점수 조회
+         *  2) 전날 생성된 파일과 비교하여 초기화할 상품을 필터링한다.
+         *        - 파일이 없을 경우 select 된 결과를 바로 es에 업데이트 후 파일 생성
+         *  3) 필터링된 상품은 금일 조회되지 않는 상품이므로 0점으로 업데이트 한다
+         *  4) 조회된 결과로 상품점수를 업데이트 한 후 파일로 생성한다.
+         *  5) 매 스케쥴마다 위 내용을 반복
+         */
+
         int threadSize = Integer.parseInt(payload.get("threadSize").toString());
         String host = payload.get("host").toString();
         Integer port = (int) payload.get("port");
@@ -112,15 +126,142 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
         String index = payload.get("index").toString();
         String username = payload.get("username").toString();
         String password = payload.get("password").toString();
+        filePath = payload.get("path").toString();
 
 
-
-        //임시..
+        /**
+         *  관리도구에서 index를 지정하여도 해당 컬랙션에 해당하는 index로 dserch-indexer를 호출하여 하드코딩
+         *  제휴 상품 인덱스 네임을 지정
+         */
         index = "s-prod";
-
-        ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
         IndexService service = new IndexService(host,port,scheme,username,password);
         builder = service.getRestClientBuilder();
+
+        /**
+         * 기존에 제휴상품 인기점수 파일이 있을 경우
+         * 파일을 읽어 어제 배치로 수행된 검색상품들의 점수를 0점으로 초기화 한다.
+         */
+        File popularityScoreFile = new File(filePath+"scoreData.txt");
+        if(popularityScoreFile.exists()) {
+            logger.info("전날 제휴상품 인기점수 데이터 로드");
+
+            //어제와 오늘 모두 조회된 검색상품의 경우 초기화 할 필요가 없으므로 select한 결과와 어제 파일에서 읽어온 상품을 비교
+            //초기화 대상만 map에 적재한다.
+            Map<String,Integer> map = loadScoreData(popularityScoreFile, mapPopularityScore);
+            logger.info("init Map size {}", map.size());
+            logger.info("제휴상품 인기점수 초기화 시작");
+            scoreDataBulkUpdate("init",map,threadSize,index,bulkSize);
+            logger.info("제휴상품 인기점수 초기화 종료");
+        }
+
+        logger.info("제휴상품 인기점수 갱신 시작");
+        scoreDataBulkUpdate("",mapPopularityScore,threadSize,index,bulkSize);
+        logger.info("제휴상품 인기점수 갱신 종료");
+
+        logger.info("제휴상품 인기점수 파일생성 시작");
+        writeScoreData(mapPopularityScore, popularityScoreFile);
+        logger.info("제휴상품 인기점수 파일생성 종료");
+
+//        ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
+//
+//        BlockingQueue queue = new LinkedBlockingQueue(threadSize * 10);
+//        //여러 쓰레드가 작업큐를 공유한다.
+//        List<Future> list = new ArrayList<>();
+//        for (int i = 0; i < threadSize; i++) {
+//            PopularityScorePreProcess_unlink.Worker w = new Worker(queue, index, job);
+//            list.add(executorService.submit(w));
+//        }
+//
+//        int count = 0;
+//
+//        long start = System.currentTimeMillis();
+//        BulkRequest request = new BulkRequest();
+//        long time = System.nanoTime();
+//        try {
+//            for(Map.Entry scoreSet : mapPopularityScore.entrySet()) {
+//                if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+//                    logger.info("Stop Signal");
+//                    throw new StopSignalException();
+//                }
+//
+//                Map doc = new HashMap();
+//                doc.put("popularityScore", scoreSet.getValue());
+//
+//                UpdateRequest updateRequest = new UpdateRequest().index(index);
+//                updateRequest.id(scoreSet.getKey().toString()).doc(doc);
+//                request.add(updateRequest);
+//
+//                count++;
+//
+//                if (count % bulkSize == 0) {
+//                    queue.put(request);
+//                    request = new BulkRequest();
+//                }
+//
+//                if (count % 100000 == 0) {
+//                    logger.info("index: [{}] {} ROWS FLUSHED! in {}ms", index, count, (System.nanoTime() - time) / 1000000);
+//                }
+//            }
+//
+//            if (request.estimatedSizeInBytes() > 0) {
+//                //나머지..
+//                queue.put(request);
+//                logger.info("Final bulk! {}", count);
+//            }
+//
+//
+//        } catch (InterruptedException e) {
+//            logger.error("interrupted! ", e);
+//        } catch (Exception e) {
+//            logger.error("[Exception] ", e);
+//        } finally {
+//            try {
+//                for (int i = 0; i < list.size(); i++) {
+//                    // 쓰레드 갯수만큼 종료시그널 전달.
+//                    queue.put("<END>");
+//                }
+//
+//            } catch (InterruptedException e) {
+//                logger.error("", e);
+//                //ignore
+//            }
+//
+//            try {
+//                for (int i = 0; i < list.size(); i++) {
+//                    Future f = list.get(i);
+//                    f.get();
+//                }
+//            } catch (Exception e) {
+//                logger.error("", e);
+//                //ignore
+//            }
+//
+//            // 큐 안의 내용 제거
+//            logger.info("queue clear");
+//            queue.clear();
+//
+//            // 쓰레드 종료
+//            logger.info("{} thread shutdown", index);
+//            executorService.shutdown();
+//
+//            // 만약, 쓰레드가 정상적으로 종료 되지 않는다면,
+//            if (!executorService.isShutdown()) {
+//                // 쓰레드 강제 종료
+//                logger.info("{} thread shutdown now!", index);
+//                executorService.shutdownNow();
+//            }
+//        }
+//
+//        long totalTime = System.currentTimeMillis() - start;
+//
+//        logger.info("인기점수 전처리 완료하였습니다. 총 {} - 소요시간 {}m ", count, totalTime / 1000/ 60);
+        job.setStatus(IndexJobRunner.STATUS.SUCCESS.name());
+
+    }
+
+    void scoreDataBulkUpdate(String type, Map<String, Integer> mapPopularityScore, int threadSize, String index, int bulkSize) {
+
+        ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
 
         BlockingQueue queue = new LinkedBlockingQueue(threadSize * 10);
         //여러 쓰레드가 작업큐를 공유한다.
@@ -143,7 +284,14 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
                 }
 
                 Map doc = new HashMap();
-                doc.put("popularityScore", scoreSet.getValue());
+                /**
+                 * 초기화면 0점으로 업데이트
+                 */
+                if(type.equals("init")) {
+                    doc.put("popularityScore", 0);
+                }else{
+                    doc.put("popularityScore", scoreSet.getValue());
+                }
 
                 UpdateRequest updateRequest = new UpdateRequest().index(index);
                 updateRequest.id(scoreSet.getKey().toString()).doc(doc);
@@ -212,65 +360,73 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
 
         long totalTime = System.currentTimeMillis() - start;
 
-        logger.info("인기점수 전처리 완료하였습니다. 총 {} - 소요시간 {}m ", count, totalTime / 1000/ 60);
-        job.setStatus("SUCCESS");
-
-//        try{
-//            //String host, Integer port, String scheme, String esUsername, String esPassword
-//            String host = payload.get("host").toString();
-//            Integer port = (int) payload.get("port");
-//            String scheme = payload.get("scheme").toString();
-//           // String esUsername = payload.get("esUsername").toString();
-//           // String esPassword = payload.get("esPassword").toString();
-//
-//            RestHighLevelClient client = new IndexService(host,port,scheme).getClient();
-//
-//            BulkRequest bulkRequest = new BulkRequest();
-//
-//            int count = 0;
-//            for(Map.Entry scoreSet : mapPopularityScore.entrySet()) {
-//
-//                UpdateRequest request = new UpdateRequest().index(payload.get("index").toString());
-//                if(count == 0) {
-//                    logger.info("{}", scoreSet.getKey());
-//                    logger.info("{}", scoreSet.getValue());
-//                }
-//                Map doc = new HashMap();
-//                doc.put("popularityScore", scoreSet.getValue());
-//                request.id(scoreSet.getKey().toString());
-//                request.doc(doc);
-//                bulkRequest.add(request);
-//                totalcount++;
-//                count++;
-//
-//                if(count % 1000 == 0) {
-//                    logger.info("count : {}" ,count);
-//                    BulkResponse response = client.bulk(bulkRequest, RequestOptions.DEFAULT);
-//                    if(!response.hasFailures()) {
-//                        logger.info("update {} - {}ms", count, response.getTook());
-//                        bulkRequest = new BulkRequest();
-//                        count = 0;
-//                    }else{
-//                        logger.error("error : {}", response.status());
-//                    }
-//                }
-//            }
-//
-//            if(count > 0) {
-//                BulkResponse response = client.bulk(bulkRequest, RequestOptions.DEFAULT);
-//                if(!response.hasFailures()) {
-//                    logger.info("update {} - {}ms", count, response.getTook());
-//                }else{
-//                    logger.error("error : {}",response.buildFailureMessage());
-//                }
-//            }
-//
-//        }catch(Exception e) {
-//            logger.error("", e);
-//            throw e;
-//        }
+        if (type.equals("init")) {
+            logger.info("인기점수 초기화 완료하였습니다. 총 {} - 소요시간 {}m ", count, totalTime / 1000/ 60);
+        }else{
+            logger.info("인기점수 전처리 완료하였습니다. 총 {} - 소요시간 {}m ", count, totalTime / 1000/ 60);
+        }
 
 
+    }
+
+    public Map<String, Integer> loadScoreData(File file, Map<String,Integer> mapPopularityScore) {
+
+        try {
+            logger.info("file : {} - {}", file.getPath(), file.getName());
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            Map<String, Integer> scoreMap = new HashMap<>();
+
+            int exsistCount = 0;
+            String rline = null;
+            while((rline = br.readLine()) != null) {
+
+                //ob[0] = 검색상품 키
+                //ob[1] = 제휴상품 인기점수
+                String[] scoreArr = rline.split("\t");
+
+                //전날 데이터와 금일 데이터에 모두 있는 상품은 초기화 할 필요가 없으므로 scoreMap에 담지 않는다.
+                if(scoreArr.length == 2 && mapPopularityScore.get(scoreArr[0]) == null) {
+                    scoreMap.put(scoreArr[0], Integer.parseInt(scoreArr[1]));
+                }else if (mapPopularityScore.get(scoreArr[0]) != null) {
+                    exsistCount++;
+                }
+            }
+            br.close();
+            logger.info("제휴상품이 어제와 동일하게 존재하는 사움 개수 : {}", exsistCount);
+            return scoreMap;
+
+        } catch (FileNotFoundException e) {
+            logger.error("file not found : {}" ,e.getMessage());
+        } catch (IOException e) {
+            logger.error("load score file error : {}" ,e.getMessage());
+        }
+
+        return null;
+    }
+
+    void writeScoreData(Map<String,Integer> mapPopularityScore, File file) {
+
+        try {
+            /**
+             *  기존파일 있을 경우 지우고 새로 생성
+             */
+            if(file.exists()) {
+                file.delete();
+            }
+            file.createNewFile();
+            BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+
+            logger.info("scoreMap Size : {}", mapPopularityScore.size());
+            for(Map.Entry entry : mapPopularityScore.entrySet()) {
+                bw.write(entry.getKey()+"\t"+entry.getValue());
+                bw.newLine();
+            }
+
+            bw.close();
+
+        } catch (IOException e) {
+            logger.error("write score file error : {}" ,e.getMessage());
+        }
     }
 
     class Worker implements Callable {
