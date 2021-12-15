@@ -201,12 +201,19 @@ public class IndexService {
                                             logger.error("write queue rejected!! >> {}", failure);
                                             isCircuitBreakerException = true;
                                         } else {
+                                            // 색인 시 형태소 분석 에러나 디스크 용량이 꽉 찼을 경우 에러 발생
                                             logger.error("Doc index error >> {}", failure);
+
+                                            // bulk request 에서 지워준다
+                                            request.requests().remove(i);
                                         }
                                     }else{
                                         request.requests().remove(i);
                                     }
                                 }
+                            } else {
+                                // bulk request에 대한 실패가 없음
+                                request.requests().clear();
                             }
 
                             if(isCircuitBreakerException){
@@ -222,8 +229,6 @@ public class IndexService {
                             if (job.getStopSignal()) {
                                 throw new StopSignalException();
                             }
-
-                            Thread.sleep(30000);
                         }
                     }
 
@@ -311,13 +316,20 @@ public class IndexService {
                                     logger.error("write queue rejected!! >> {}", failure);
                                     isCircuitBreakerException = true;
                                 } else {
+                                    // 색인 시 형태소 분석 에러나 디스크 용량이 꽉 찼을 경우 에러 발생
                                     logger.error("Doc index error >> {}", failure);
+
+                                    // bulk request 에서 지워준다
+                                    bulkRequest.requests().remove(i);
                                 }
                             }else{
                                 // 실제로 색인이 된 리퀘스트는 제외 한다.
                                 bulkRequest.requests().remove(i);
                             }
                         }
+                    }else{
+                        // 정상적으로 성공됨
+                        bulkRequest.requests().clear();
                     }
 
                     if(isCircuitBreakerException){
