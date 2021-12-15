@@ -1,6 +1,9 @@
 server:
   port: 9350
 
+logging:
+  config: classpath:logback-local.xml
+
 elasticsearch:
   thread: 50
   username: fastcatx
@@ -14,3 +17,6 @@ elasticsearch:
     - host: localhost
       port: 9200
       scheme: http
+spring:
+  profiles:
+    active: local

@@ -126,12 +126,11 @@ public class IndexService {
         }
     }
 
-
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, String pipeLine) throws IOException, StopSignalException {
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, String pipeLine) throws CircuitBreakerException, Exception, StopSignalException {
         index(ingester, index, bulkSize, filter, null, pipeLine);
     }
 
-    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws IOException, StopSignalException {
+    public void index(Ingester ingester, String index, Integer bulkSize, Filter filter, Job job, String pipeLine) throws CircuitBreakerException, Exception, StopSignalException {
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             count = 0;
 
@@ -140,7 +139,6 @@ public class IndexService {
             BulkRequest request = new BulkRequest();
             long time = System.nanoTime();
             try {
-
                 logger.info("index start!");
 
                 while (ingester.hasNext()) {
@@ -148,7 +146,6 @@ public class IndexService {
                         logger.info("Stop Signal");
                         throw new StopSignalException();
                     }
-
 
                     Map<String, Object> record = ingester.next();
                     if (filter != null && record != null && record.size() > 0) {
@@ -179,61 +176,55 @@ public class IndexService {
                     }
 
                     if (count % bulkSize == 0) {
-                        // 기존 소스
-//                        BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-//                        checkResponse(bulkResponse);
+                        int waitCount = 10;
+                        int sleepTime = 30000;
 
-                        // 동기 방식
-//                        boolean doRetry = false;
-
-                        // 문서 손실 방지. es rejected 에러시 무한 색인 요청
+                        // 문서 손실 방지. es rejected 에러시 무한 색인 요청 -> 무한 색인에서 총 10회, 30초 대기로 변경(circuit breaker exception 오류)
                         while (true) {
+                            if(waitCount == 0){
+                                throw new CircuitBreakerException("서킷 브레이커 익셉션이 발생 하였습니다.");
+                            }
+
                             BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-                            BulkRequest retryBulkRequest = new BulkRequest();
+                            boolean isCircuitBreakerException = false; // 서킷 브레이커 익셉션 발생 판단
+
                             if (bulkResponse.hasFailures()) {
-                                // bulkResponse에 에러가 있다면
-                                // retry 1회 시도
-//                                doRetry = true;
                                 BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
-                                List<DocWriteRequest<?>> requestList = request.requests();
-                                for (int i = 0; i < bulkItemResponses.length; i++) {
+                                for (int i = bulkItemResponses.length - 1; i >= 0; i--) {
                                     BulkItemResponse bulkItemResponse = bulkItemResponses[i];
 
                                     if (bulkItemResponse.isFailed()) {
                                         BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-
                                         // write queue reject 이슈 코드 = ( 429 )
+                                        // 서킷 브레이커 익셉션 발생으로 판단
                                         if (failure.getStatus() == RestStatus.fromCode(429)) {
                                             logger.error("write queue rejected!! >> {}", failure);
-
-                                            // retry bulk request에 추가
-                                            // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
-                                            // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
-                                            retryBulkRequest.add(requestList.get(i));
-//                                        logger.debug("retryBulkRequest add : {}", requestList.get(i));
+                                            isCircuitBreakerException = true;
                                         } else {
                                             logger.error("Doc index error >> {}", failure);
                                         }
+                                    }else{
+                                        request.requests().remove(i);
                                     }
                                 }
                             }
 
-                            if (retryBulkRequest.requests().size() == 0) {
-                                break;
-                            } else {
-                                request = retryBulkRequest;
-                                logger.info("Retry Bulk Size {}", retryBulkRequest.requests().size());
+                            if(isCircuitBreakerException){
+                                // 서킷 브레이커 익셉션이 발생했을 경우
+                                // 30초 대기, 10회
+                                Thread.sleep(sleepTime);
+                                waitCount--;
+                                continue;
                             }
+
+                            if(request.requests().size() == 0) break;
 
                             if (job.getStopSignal()) {
                                 throw new StopSignalException();
                             }
+
+                            Thread.sleep(30000);
                         }
-
-
-
-//                        logger.debug("bulk! {}", count);
-                        request = new BulkRequest();
                     }
 
                     if (count != 0 && count % 10000 == 0) {
@@ -255,6 +246,8 @@ public class IndexService {
 
             } catch (StopSignalException e) {
                 throw e;
+            } catch (CircuitBreakerException e){
+                throw e;
             } catch (Exception e) {
                 logger.info("{}", e);
                 StackTraceElement[] exception = e.getStackTrace();
@@ -263,6 +256,8 @@ public class IndexService {
                     e.printStackTrace();
                     logger.error("[Exception] : " + element.toString());
                 }
+
+                throw e;
             }
 
             long totalTime = System.currentTimeMillis() - start;
@@ -276,9 +271,7 @@ public class IndexService {
 
     class Worker implements Callable {
         private BlockingQueue queue;
-//        private RestHighLevelClient client;
-        private int sleepTime = 1000;
-        private boolean isStop = false;
+        private int sleepTime = 30000;
         private String index;
         private Job job;
 
@@ -293,50 +286,54 @@ public class IndexService {
             BulkResponse bulkResponse = null;
 
             try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
-                // 문서 손실 방지. es rejected 에러시 무한 색인 요청
-                while (true) {
-                    bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
-                    BulkRequest retryBulkRequest = new BulkRequest();
-                    if (bulkResponse.hasFailures()) {
-                        // bulkResponse에 에러가 있다면
-                        // retry 1회 시도
-                        //                    logger.error("BulkRequest Error : {}", bulkResponse.buildFailureMessage());
-                        BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
-                        List<DocWriteRequest<?>> requests = bulkRequest.requests();
-                        for (int i = 0; i < bulkItemResponses.length; i++) {
-                            BulkItemResponse bulkItemResponse = bulkItemResponses[i];
+                // 문서 손실 방지. es rejected 에러시 무한 색인 요청 -> 무한 색인에서 총 10회, 30초 대기로 변경(circuit breaker exception 오류)
+                int waitCount = 10;
 
+                while (true) {
+                    if(waitCount == 0){
+                        throw new CircuitBreakerException("서킷 브레이커 익셉션이 발생했습니다.");
+                    }
+
+                    bulkResponse = client.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    boolean isCircuitBreakerException = false; // 서킷 브레이커 익셉션 발생 판단
+
+                    if (bulkResponse.hasFailures()) {
+                        BulkItemResponse[] bulkItemResponses = bulkResponse.getItems();
+                        // 각 인덱스 리퀘스트 별 리스폰스 분석
+                        for (int i = bulkItemResponses.length - 1; i >= 0 ; i--) {
+                            BulkItemResponse bulkItemResponse = bulkItemResponses[i];
                             if (bulkItemResponse.isFailed()) {
                                 BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
 
                                 // write queue reject 이슈 코드 = ( 429 )
-                                if ("429".equals(failure.getStatus().name())) {
-
-                                    //                                logger.error("write queue rejected!! >> {}", failure);
-
-                                    // retry bulk request에 추가
-                                    // bulkRequest에 대한 response의 순서가 동일한 샤드에 있다면 보장.
-                                    // https://discuss.elastic.co/t/is-the-execution-order-guaranteed-in-a-single-bulk-request/100412
-                                    retryBulkRequest.add(requests.get(i));
+                                // 서킷 브레이커 익셉션 발생으로 판단
+                                if (failure.getStatus() == RestStatus.fromCode(429)) {
+                                    logger.error("write queue rejected!! >> {}", failure);
+                                    isCircuitBreakerException = true;
                                 } else {
                                     logger.error("Doc index error >> {}", failure);
                                 }
+                            }else{
+                                // 실제로 색인이 된 리퀘스트는 제외 한다.
+                                bulkRequest.requests().remove(i);
                             }
                         }
                     }
 
-                    if (retryBulkRequest.requests().size() == 0) {
-                        break;
-                    } else {
-                        logger.info("Retry Bulk Size {}", bulkRequest.requests().size());
-                        bulkRequest = retryBulkRequest;
+                    if(isCircuitBreakerException){
+                        // 서킷 브레이커 익셉션이 발생했을 경우
+                        // 30초 대기, 10회
+                        Thread.sleep(sleepTime);
+                        waitCount--;
+                        continue;
                     }
+
+                    if(bulkRequest.requests().size() == 0) break;
 
                     if (job.getStopSignal()) {
                         throw new StopSignalException();
                     }
                 }
-
             } catch (Exception e) {
                 // exception 발생 시 무한 색인 요청(while)을 빠져나간다.
                 logger.error(e.getMessage());
@@ -347,7 +344,6 @@ public class IndexService {
 
         @Override
         public Object call() {
-
             try {
                 while (true) {
                     Object o = queue.take();
@@ -357,30 +353,12 @@ public class IndexService {
                         break;
                     }
                     BulkRequest request = (BulkRequest) o;
-//                    BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-//                    checkResponse(bulkResponse);
                     retry(request);
                     logger.debug("remained queue : {}", queue.size());
-//                logger.debug("bulk! {}", count);
                 }
             } catch (Throwable e) {
                 logger.error("indexParallel : {}", e);
             }
-
-            // 기존 소스
-//            while(true) {
-//                Object o = queue.take();
-//                if (o instanceof String) {
-//                    //종료.
-//                    logger.info("Indexing Worker-{} got {}", Thread.currentThread().getId(), o);
-//                    break;
-//                }
-//
-//                BulkRequest request = (BulkRequest) o;
-//                BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
-//                checkResponse(bulkResponse);
-////                logger.debug("bulk! {}", count);
-//            }
             return null;
         }
     }
@@ -441,7 +419,6 @@ public class IndexService {
                     }
 
                     request.add(indexRequest);
-
                 }
 
                 if (count % bulkSize == 0) {
