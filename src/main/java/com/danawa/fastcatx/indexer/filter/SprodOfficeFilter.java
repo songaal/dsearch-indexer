@@ -28,7 +28,7 @@ public class SprodOfficeFilter implements Filter {
         set.add("productImageUrl");
         set.add("popularityScore");
 
-
+        set.add("minabYN");
         set.add("dataStat");
         set.add("model");
         set.add("orderDateYN");

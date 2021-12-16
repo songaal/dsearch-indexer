@@ -27,7 +27,7 @@ public class SprodFilter implements Filter {
         set.add("mobilePrice");
         set.add("productImageUrl");
         set.add("popularityScore");
-
+        set.add("minabYN");
 
 
 
