@@ -221,6 +221,7 @@ public class IndexService {
                                 // 30초 대기, 10회
                                 Thread.sleep(sleepTime);
                                 waitCount--;
+                                logger.info("Circuit Breaker Exception Count... {}", waitCount);
                                 continue;
                             }
 
@@ -337,6 +338,7 @@ public class IndexService {
                         // 30초 대기, 10회
                         Thread.sleep(sleepTime);
                         waitCount--;
+                        logger.info("Circuit Breaker Exception Count... {}", waitCount);
                         continue;
                     }
 
