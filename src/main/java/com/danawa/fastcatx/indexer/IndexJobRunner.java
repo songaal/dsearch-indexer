@@ -142,36 +142,36 @@ public class IndexJobRunner implements Runnable {
 
 			// 자동으로 동적색인 on/off
 			autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
-//
-//			if (autoDynamic) {
-//				//                    자동으로 동적색인 필수 파라미터
-//				autoDynamicIndex = index;
-//				autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
-//				autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
-//				autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
-//				try {
-//					autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
-//				} catch (Exception ignore) {
-//					autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
-//				}
-//				// 큐 이름이 여러개 일 경우.
-//				if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-//					// 멀티 MQ
-//					for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-//						String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-//						String queueName = autoDynamicQueueNames.get(i);
-//						updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
-//						Thread.sleep(1000);
-//					}
-//				} else {
-//					// 싱글 MQ
-//					for (String autoDynamicQueueName : autoDynamicQueueNames) {
-//						updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
-//						Thread.sleep(1000);
-//					}
-//				}
-//				logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
-//			}
+
+			if (autoDynamic) {
+				//                    자동으로 동적색인 필수 파라미터
+				autoDynamicIndex = index;
+				autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+				autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
+				autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+				try {
+					autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+				} catch (Exception ignore) {
+					autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+				}
+				// 큐 이름이 여러개 일 경우.
+				if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+					// 멀티 MQ
+					for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+						String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+						String queueName = autoDynamicQueueNames.get(i);
+						updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
+						Thread.sleep(1000);
+					}
+				} else {
+					// 싱글 MQ
+					for (String autoDynamicQueueName : autoDynamicQueueNames) {
+						updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+						Thread.sleep(1000);
+					}
+				}
+				logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
+			}
 
 			boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
 			if (dryRun) {
