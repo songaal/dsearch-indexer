@@ -255,14 +255,7 @@ public class IndexService {
             } catch (CircuitBreakerException e){
                 throw e;
             } catch (Exception e) {
-                logger.info("{}", e);
-                StackTraceElement[] exception = e.getStackTrace();
-                logger.error("[Exception] : request id : {}", id);
-                for (StackTraceElement element : exception) {
-                    e.printStackTrace();
-                    logger.error("[Exception] : " + element.toString());
-                }
-
+                logger.error("Error occur! => ", e);
                 throw e;
             }
 
