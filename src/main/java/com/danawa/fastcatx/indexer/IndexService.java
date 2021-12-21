@@ -243,11 +243,11 @@ public class IndexService {
                     //logger.info("{}",count);
                 }
 
-                if (request.estimatedSizeInBytes() > 0) {
+                if (request.requests().size() > 0) {
                     //나머지..
                     BulkResponse bulkResponse = client.bulk(request, RequestOptions.DEFAULT);
                     checkResponse(bulkResponse);
-                    logger.debug("Final bulk! {}", count);
+                    logger.info("Final bulk! {}", count);
                 }
 
             } catch (StopSignalException e) {
@@ -256,6 +256,10 @@ public class IndexService {
                 throw e;
             } catch (Exception e) {
                 logger.error("Error occur! => ", e);
+                List<DocWriteRequest<?>> list = request.requests();
+                for(DocWriteRequest docWriteRequest : list){
+                    logger.info(docWriteRequest.id(), docWriteRequest.type());
+                }
                 throw e;
             }
 
