@@ -256,9 +256,13 @@ public class IndexService {
                 throw e;
             } catch (Exception e) {
                 logger.error("Error occur! => ", e);
+
+                // 에러가 났을 경우 request 안의 id와 type을 10 개만 찍는다
                 List<DocWriteRequest<?>> list = request.requests();
-                for(DocWriteRequest docWriteRequest : list){
-                    logger.info(docWriteRequest.id(), docWriteRequest.type());
+                int errorCount = list.size() < 10 ? list.size() : 10;
+                for(int i = 0 ;i < errorCount; i++){
+                    DocWriteRequest docWriteRequest = list.get(i);
+                    logger.error("request => ", docWriteRequest.id(), docWriteRequest.type());
                 }
                 throw e;
             }
