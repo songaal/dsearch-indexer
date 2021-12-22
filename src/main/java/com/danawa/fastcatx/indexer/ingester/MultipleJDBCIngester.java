@@ -35,7 +35,7 @@ public class MultipleJDBCIngester implements Ingester {
     private String[] columnType;
 
     private Map<String, Object>[] dataSet;
-    private List<Map<String, String[]>> subDataSet;
+    private List<Map<String, Object[]>> subDataSet;
 
 
     private List<File> tmpFile;
@@ -399,7 +399,12 @@ public class MultipleJDBCIngester implements Ingester {
                     String subQueryProdCode = "";
                     String subQueryProdName = "";
                     String subQueryLowPrice = "";
-                    String [] subData = new String[2];
+                    int subQueryCategorySeq1 = 0;
+                    int subQueryCategorySeq2 = 0;
+                    int subQueryCategorySeq3 = 0;
+                    int subQueryCategorySeq4 = 0;
+                    //String [] subData = new String[6];
+                    Object [] subData = new Object[6];
                     for (int jdx = 1; jdx <= subColumCount; jdx++) {
                         String subColumnLabel = subRsmd.getColumnLabel(jdx);
 
@@ -409,15 +414,27 @@ public class MultipleJDBCIngester implements Ingester {
                             subQueryProdName = String.valueOf(subRs.getObject(jdx));
                         } else if ("LOWPRICE".equals(subColumnLabel)) {
                             subQueryLowPrice = String.valueOf(subRs.getObject(jdx));
+                        } else if ("CATEGORYSEQ1".equals(subColumnLabel)) {
+                            subQueryCategorySeq1 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                        } else if ("CATEGORYSEQ2".equals(subColumnLabel)) {
+                            subQueryCategorySeq2 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                        } else if ("CATEGORYSEQ3".equals(subColumnLabel)) {
+                            subQueryCategorySeq3 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                        } else if ("CATEGORYSEQ4".equals(subColumnLabel)) {
+                            subQueryCategorySeq4 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
                         }
                     }
 
 
                     if (subQueryProdCode.length() > 0 && subQueryProdName.length() > 0) {
-                        Map<String, String[]> subKeyValue = new HashMap<>();
+                        Map<String, Object[]> subKeyValue = new HashMap<>();
 
                         subData[0] = subQueryProdName;
                         subData[1] = subQueryLowPrice;
+                        subData[2] = subQueryCategorySeq1;
+                        subData[3] = subQueryCategorySeq2;
+                        subData[4] = subQueryCategorySeq3;
+                        subData[5] = subQueryCategorySeq4;
 
                         subKeyValue.put(subQueryProdCode, subData);
 
@@ -432,11 +449,15 @@ public class MultipleJDBCIngester implements Ingester {
                     String compareData = String.valueOf(mainData.get(subSqlwhereclauseData));
 
                     if (!compareData.equals("")) {
-                        for (Map<String, String[]> subData : subDataSet) {
+                        for (Map<String, Object[]> subData : subDataSet) {
 
                             if (subData.containsKey(compareData)) {
                                 mainData.put("productName", subData.get(compareData)[0]);
                                 mainData.put("lowPrice", subData.get(compareData)[1]);
+                                mainData.put("categorySeq1", subData.get(compareData)[2]);
+                                mainData.put("categorySeq2", subData.get(compareData)[3]);
+                                mainData.put("categorySeq3", subData.get(compareData)[4]);
+                                mainData.put("categorySeq4", subData.get(compareData)[5]);
                             }
                         }
                     }
