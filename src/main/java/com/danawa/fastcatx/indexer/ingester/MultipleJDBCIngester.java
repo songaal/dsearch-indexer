@@ -399,10 +399,10 @@ public class MultipleJDBCIngester implements Ingester {
                     String subQueryProdCode = "";
                     String subQueryProdName = "";
                     String subQueryLowPrice = "";
-                    int subQueryCategorySeq1 = 0;
-                    int subQueryCategorySeq2 = 0;
-                    int subQueryCategorySeq3 = 0;
-                    int subQueryCategorySeq4 = 0;
+                    Integer subQueryCategorySeq1 = null;
+                    Integer subQueryCategorySeq2 = null;
+                    Integer subQueryCategorySeq3 = null;
+                    Integer subQueryCategorySeq4 = null;
                     //String [] subData = new String[6];
                     Object [] subData = new Object[6];
                     for (int jdx = 1; jdx <= subColumCount; jdx++) {
