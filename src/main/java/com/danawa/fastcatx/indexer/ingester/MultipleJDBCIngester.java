@@ -399,11 +399,10 @@ public class MultipleJDBCIngester implements Ingester {
                     String subQueryProdCode = "";
                     String subQueryProdName = "";
                     String subQueryLowPrice = "";
-                    Integer subQueryCategorySeq1 = null;
-                    Integer subQueryCategorySeq2 = null;
-                    Integer subQueryCategorySeq3 = null;
-                    Integer subQueryCategorySeq4 = null;
-                    //String [] subData = new String[6];
+                    int subQueryCategorySeq1 = 0;
+                    int subQueryCategorySeq2 = 0;
+                    int subQueryCategorySeq3 = 0;
+                    int subQueryCategorySeq4 = 0;
                     Object [] subData = new Object[6];
                     for (int jdx = 1; jdx <= subColumCount; jdx++) {
                         String subColumnLabel = subRsmd.getColumnLabel(jdx);
@@ -454,10 +453,18 @@ public class MultipleJDBCIngester implements Ingester {
                             if (subData.containsKey(compareData)) {
                                 mainData.put("productName", subData.get(compareData)[0]);
                                 mainData.put("lowPrice", subData.get(compareData)[1]);
-                                mainData.put("categorySeq1", subData.get(compareData)[2]);
-                                mainData.put("categorySeq2", subData.get(compareData)[3]);
-                                mainData.put("categorySeq3", subData.get(compareData)[4]);
-                                mainData.put("categorySeq4", subData.get(compareData)[5]);
+                                if (mainData.get("categorySeq1") == null) {
+                                    mainData.put("categorySeq1", subData.get(compareData)[2]);
+                                }
+                                if (mainData.get("categorySeq2") == null) {
+                                    mainData.put("categorySeq2", subData.get(compareData)[3]);
+                                }
+                                if (mainData.get("categorySeq3") == null) {
+                                    mainData.put("categorySeq3", subData.get(compareData)[4]);
+                                }
+                                if (mainData.get("categorySeq4") == null) {
+                                    mainData.put("categorySeq4", subData.get(compareData)[5]);
+                                }
                             }
                         }
                     }
