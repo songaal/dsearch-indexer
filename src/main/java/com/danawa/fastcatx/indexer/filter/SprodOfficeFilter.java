@@ -24,8 +24,8 @@ public class SprodOfficeFilter implements Filter {
         set.add("modifyDate");
         set.add("productMaker");
         set.add("mobilePrice");
-        set.add("productImageUrl");
-        set.add("popularityScore");
+        //set.add("productImageUrl");
+        //set.add("popularityScore");
 
         set.add("dataStat");
         set.add("model");
