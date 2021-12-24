@@ -10,7 +10,6 @@ public class SprodFilter implements Filter {
     HashSet set = new HashSet();
     public SprodFilter() {
 
-
         set.add("shopCode");
         set.add("shopProductCode");
         set.add("groupSeq");
@@ -28,8 +27,7 @@ public class SprodFilter implements Filter {
         set.add("productImageUrl");
         set.add("popularityScore");
         set.add("minabYN");
-
-
+        set.add("dataStat");
 
     };
 

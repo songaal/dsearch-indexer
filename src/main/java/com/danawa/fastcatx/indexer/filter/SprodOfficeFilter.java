@@ -10,7 +10,6 @@ public class SprodOfficeFilter implements Filter {
     HashSet set = new HashSet();
     public SprodOfficeFilter() {
 
-
         set.add("shopCode");
         set.add("shopProductCode");
         set.add("groupSeq");
@@ -38,8 +37,6 @@ public class SprodOfficeFilter implements Filter {
         set.add("orderCount");
         set.add("totalOrderPrice");
         set.add("promotionName");
-        set.add("bestGoodsSort");
-        set.add("totalOrderPrice");
 
     };
 
