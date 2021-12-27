@@ -505,7 +505,7 @@ public class AcKeywordPreProcess implements PreProcess {
     public boolean findAtBlacklist(String keyword){
         boolean isBlacklisted = false;
         for(String containItem : containBlackList){
-            if (containItem.contains(keyword)) {
+            if (keyword.contains(containItem)) {
                 isBlacklisted = true;
                 break;
             }
