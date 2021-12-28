@@ -794,6 +794,8 @@ public class AcKeywordPreProcess implements PreProcess {
         blackList.add("출장마사지");
         blackList.add("출장안마");
         blackList.add("재팬섹스");
+        blackList.add("제펜섹스");
+        blackList.add("섹시vr");
         return blackList;
     }
 
@@ -804,6 +806,10 @@ public class AcKeywordPreProcess implements PreProcess {
         blackList.add("보지");
         blackList.add("섹스리스");
         blackList.add("섹스 여성");
+        blackList.add("강간");
+        blackList.add("윤간");
+        blackList.add("성추행");
+        blackList.add("성폭행");
         return blackList;
     }
 
