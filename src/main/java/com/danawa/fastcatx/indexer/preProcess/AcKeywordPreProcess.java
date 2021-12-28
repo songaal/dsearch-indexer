@@ -796,6 +796,7 @@ public class AcKeywordPreProcess implements PreProcess {
         blackList.add("재팬섹스");
         blackList.add("제펜섹스");
         blackList.add("섹시vr");
+        blackList.add("성인vr");
         return blackList;
     }
 
@@ -810,6 +811,10 @@ public class AcKeywordPreProcess implements PreProcess {
         blackList.add("윤간");
         blackList.add("성추행");
         blackList.add("성폭행");
+        blackList.add("비트카지노");
+        blackList.add("mini✌✌카지노");
+        blackList.add("m카지노 【");
+        blackList.add("온라인카지노게임");
         return blackList;
     }
 
