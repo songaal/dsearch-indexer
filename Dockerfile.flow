@@ -1,0 +1,34 @@
+FROM openjdk:8
+
+RUN yum -y update && yum install -y wget rsync
+
+RUN useradd danawa
+RUN usermod -aG wheel danawa
+
+# 로그 폴더 생성
+RUN mkdir -p /data/indexerLog
+
+RUN chmod 777 /data
+RUN chmod 777 /data/indexerLog
+RUN chown danawa /data
+RUN chown danawa /data/indexerLog
+RUN chgrp users /data
+RUN chgrp users /data/indexerLog
+
+WORKDIR /app
+
+#ENV PATH=$PATH:${JAVA_HOME}/bin
+ENV spring_logging_level=debug
+ENV LANG=ko_KR.euckr
+
+ARG VERSION
+
+COPY lib/Altibase.jar .
+COPY target .
+
+EXPOSE 9350
+EXPOSE 8080
+EXPOSE 9100
+
+CMD ["java", "-Dlogback.configurationFile=logback-prod.xml", "-Dfile.encoding=utf-8", "-classpath", "indexer-${VERSION}.jar:Altibase.jar", "org.springframework.boot.loader.JarLauncher"]
+
