@@ -11,17 +11,18 @@
 #
 ##################################################################################
 
-name: docker-ci-workflow
+name: docker-release-ci
 
 on:
   push:
-    branches: [ release/**, hotfix/**, develop, feature/**, bugfix/** ]
+    branches: [ release/**, hotfix/** ]
   pull_request:
-    branches: [ release/**, hotfix/**, develop, feature/**, bugfix/** ]
+    branches: [ release/**, hotfix/** ]
 
 env:
   CONTAINER_REGISTRY: ghcr.io
   DOCKER_FILE: Dockerfile.flow
+  TAG_SUFFIX: -rc
 
 jobs:
   build:
@@ -36,7 +37,7 @@ jobs:
 
 #     브랜치 추출
     - name: BRANCH_VERSION Exctract
-      run: echo "BRANCH_VERSION=$(echo $GITHUB_REF_NAME|cut -d '/' -f 2)" >> $GITHUB_ENV
+      run: echo "BRANCH_VERSION=$(echo $GITHUB_REF_NAME|cut -d '/' -f 2)$TAG_SUFFIX" >> $GITHUB_ENV
 
 #     소스 버전 추출
     - name: SOURCE_VERSION Exctract
