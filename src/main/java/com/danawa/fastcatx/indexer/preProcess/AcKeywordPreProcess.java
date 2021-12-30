@@ -17,10 +17,14 @@ public class AcKeywordPreProcess implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(AcKeywordPreProcess.class);
     private Job job;
     private Map<String, Object> payload;
+    private ArrayList<String> containBlackList;
+    private ArrayList<String> equalBlackList;
 
     public AcKeywordPreProcess(Job job) {
         this.job = job;
         this.payload = job.getRequest();
+        this.containBlackList = getContainBlackList();
+        this.equalBlackList = getEqualBlackList();
     }
 
     @Override
@@ -52,11 +56,11 @@ public class AcKeywordPreProcess implements PreProcess {
         databaseConnector.addConn(searchDBDriver, searchDBAddress, searchDBUsername, searchDBPassword);
 
         try (Connection connection = databaseConnector.getConn()) {
-            
+
             // Connection이 정상적으로 이루어지지 않음.
             if(connection == null){
                 logger.error("connection: {}", connection);
-                // 따라서 Error status 부여 
+                // 따라서 Error status 부여
                 job.setStatus(IndexJobRunner.STATUS.ERROR.name());
                 return;
             }
@@ -497,7 +501,25 @@ public class AcKeywordPreProcess implements PreProcess {
 
         return map;
     }
-
+    // 제외 키워드 검사
+    public boolean findAtBlacklist(String keyword){
+        boolean isBlacklisted = false;
+        for(String containItem : containBlackList){
+            if (keyword.contains(containItem)) {
+                isBlacklisted = true;
+                break;
+            }
+        }
+        if(!isBlacklisted){
+            for(String equalItem : equalBlackList) {
+                if (equalItem.equalsIgnoreCase(keyword)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        return isBlacklisted;
+    }
     /*
      * 태그방식의 DUMP 파일 생성 기준상품명 부터 데이타 생성 누적키워드는 기준상품명 이후 생성되게 하여 색인시 PK 중복제거를 통해
      * 제거되도록 한다 누적키워드 생성시 키워드별 카운트5개 이상인 항목만 생성한다. 기준상품은 MAP에 있는 모든데이타 생성 정렬에 필요한
@@ -517,7 +539,8 @@ public class AcKeywordPreProcess implements PreProcess {
                 Map.Entry<String, Integer> entry = product.next();
 
                 // 2019-09-20 - 식품의약품안저처 : 식품안전관리 강화 협조 요청 공문의 건으로 인한 자동완성에서의 특정 키워드포함 제외처리
-                if (!entry.getKey().contains("조개젓")) {
+                // 2021-12-24 - 성인키워드 제외처리
+                if (!findAtBlacklist(entry.getKey())) {
                     bw.write("<doc>");
                     bw.newLine();
                     bw.write("<KEYWORD>");
@@ -552,8 +575,9 @@ public class AcKeywordPreProcess implements PreProcess {
             while (acKeyword.hasNext()) {
                 Map.Entry<String, String[]> entry = acKeyword.next();
                 // 기준 갯수 이상 && 검색결과 N이 아닌것만 색인처리
-                // 2019-09-20 - 식품의약품안저처 : 식품안전관리 강화 협조 요청 공문의 건으로 인한 자동완성에서의 특정 키워드포함 제외처리
-                if (!entry.getValue()[2].contains("조개젓")) {
+                // 2019-09-20 - 식품의약품안전처 : 식품안전관리 강화 협조 요청 공문의 건으로 인한 자동완성에서의 특정 키워드포함 제외처리
+                // 2021-12-24 - 성인키워드 제외처리
+                if (!findAtBlacklist(entry.getValue()[2])) {
                     if (Double.parseDouble(entry.getValue()[0]) > standardCount && !entry.getValue()[1].equals("N") && !entry.getValue()[1].equals("T")) {
                         bw.write("<doc>");
                         bw.newLine();
@@ -756,5 +780,47 @@ public class AcKeywordPreProcess implements PreProcess {
             }
         }
         return candidate.toString();
+    }
+
+    // 자동완성키워드 제외 목록(포함조건)
+    public ArrayList<String> getContainBlackList(){
+        ArrayList<String> blackList = new ArrayList<>();
+        blackList.add("조개젓");
+        blackList.add("안동건마");
+        blackList.add("진주건마");
+        blackList.add("구리건마");
+        blackList.add("/건마");
+        blackList.add("출장맛사지");
+        blackList.add("출장마사지");
+        blackList.add("출장안마");
+        blackList.add("재팬섹스");
+        blackList.add("제펜섹스");
+        blackList.add("섹시vr");
+        blackList.add("성인vr");
+        return blackList;
+    }
+
+    // 자동완성키워드 제외 목록(일치조건)
+    public ArrayList<String> getEqualBlackList(){
+        ArrayList<String> blackList = new ArrayList<>();
+        blackList.add("성인용 전신인형 리얼돌 섹스돌");
+        blackList.add("보지");
+        blackList.add("섹스리스");
+        blackList.add("섹스 여성");
+        blackList.add("강간");
+        blackList.add("윤간");
+        blackList.add("성추행");
+        blackList.add("성폭행");
+        blackList.add("비트카지노");
+        blackList.add("mini✌✌카지노");
+        blackList.add("m카지노 【");
+        blackList.add("온라인카지노게임");
+        return blackList;
+    }
+
+    // 이모지 제거 처리
+    public String removeEmoji(String keyword){
+        String emojiFilter = "[^\\p{L}\\p{M}\\p{N}\\p{P}\\p{Z}\\p{Cf}\\p{Cs}\\s]";
+        return keyword.replaceAll(emojiFilter,"");
     }
 }
