@@ -453,10 +453,26 @@ public class MultipleJDBCIngester implements Ingester {
                             if (subData.containsKey(compareData)) {
                                 mainData.put("productName", subData.get(compareData)[0]);
                                 mainData.put("lowPrice", subData.get(compareData)[1]);
-                                mainData.put("categorySeq1", subData.get(compareData)[2]);
-                                mainData.put("categorySeq2", subData.get(compareData)[3]);
-                                mainData.put("categorySeq3", subData.get(compareData)[4]);
-                                mainData.put("categorySeq4", subData.get(compareData)[5]);
+                                if(subData.get(compareData)[2] == null) {
+                                    mainData.put("categorySeq1", 0);
+                                } else {
+                                    mainData.put("categorySeq1", subData.get(compareData)[2]);
+                                }
+                                if(subData.get(compareData)[3] == null) {
+                                    mainData.put("categorySeq2", 0);
+                                } else {
+                                    mainData.put("categorySeq2", subData.get(compareData)[3]);
+                                }
+                                if(subData.get(compareData)[4] == null) {
+                                    mainData.put("categorySeq3", 0);
+                                } else {
+                                    mainData.put("categorySeq3", subData.get(compareData)[4]);
+                                }
+                                if(subData.get(compareData)[5] == null) {
+                                    mainData.put("categorySeq4", 0);
+                                } else {
+                                    mainData.put("categorySeq4", subData.get(compareData)[5]);
+                                }
                             }
                         }
                     }
