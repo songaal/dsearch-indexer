@@ -84,8 +84,10 @@ public class PopularityScorePreProcess implements PreProcess {
                 if (cmpny_c.length() > 6) {
                     cmpny_c = cmpny_c.substring(0, 6);
                 }
-                boolean pattern_cmpny_c = Pattern.matches("^[a-zA-Z0-9]*$", cmpny_c);
-                boolean pattern_link_prod_c = Pattern.matches("^[a-zA-Z0-9]*$", link_prod_c);
+                // FASTCAT-1231
+                // 업체코드 및 상품코드에 특수문자 '-'는 필터링 제외
+                boolean pattern_cmpny_c = Pattern.matches("^[a-zA-Z0-9-]*$", cmpny_c);
+                boolean pattern_link_prod_c = Pattern.matches("^[a-zA-Z0-9-]*$", link_prod_c);
 
                 if (pattern_cmpny_c && pattern_link_prod_c) {
                     String key = cmpny_c + "_" + link_prod_c;
