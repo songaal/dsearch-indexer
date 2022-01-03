@@ -399,10 +399,10 @@ public class MultipleJDBCIngester implements Ingester {
                     String subQueryProdCode = "";
                     String subQueryProdName = "";
                     String subQueryLowPrice = "";
-                    int subQueryCategorySeq1 = 0;
-                    int subQueryCategorySeq2 = 0;
-                    int subQueryCategorySeq3 = 0;
-                    int subQueryCategorySeq4 = 0;
+                    String subQueryCategorySeq1 = "0";
+                    String subQueryCategorySeq2 = "0";
+                    String subQueryCategorySeq3 = "0";
+                    String subQueryCategorySeq4 = "0";
                     Object [] subData = new Object[6];
                     for (int jdx = 1; jdx <= subColumCount; jdx++) {
                         String subColumnLabel = subRsmd.getColumnLabel(jdx);
@@ -414,13 +414,13 @@ public class MultipleJDBCIngester implements Ingester {
                         } else if ("LOWPRICE".equals(subColumnLabel)) {
                             subQueryLowPrice = String.valueOf(subRs.getObject(jdx));
                         } else if ("CATEGORYSEQ1".equals(subColumnLabel)) {
-                            subQueryCategorySeq1 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                            subQueryCategorySeq1 = String.valueOf(subRs.getObject(jdx));
                         } else if ("CATEGORYSEQ2".equals(subColumnLabel)) {
-                            subQueryCategorySeq2 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                            subQueryCategorySeq2 = String.valueOf(subRs.getObject(jdx));
                         } else if ("CATEGORYSEQ3".equals(subColumnLabel)) {
-                            subQueryCategorySeq3 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                            subQueryCategorySeq3 = String.valueOf(subRs.getObject(jdx));
                         } else if ("CATEGORYSEQ4".equals(subColumnLabel)) {
-                            subQueryCategorySeq4 = Integer.parseInt(String.valueOf(subRs.getObject(jdx)));
+                            subQueryCategorySeq4 = String.valueOf(subRs.getObject(jdx));
                         }
                     }
 
@@ -453,26 +453,10 @@ public class MultipleJDBCIngester implements Ingester {
                             if (subData.containsKey(compareData)) {
                                 mainData.put("productName", subData.get(compareData)[0]);
                                 mainData.put("lowPrice", subData.get(compareData)[1]);
-                                if(subData.get(compareData)[2] == null) {
-                                    mainData.put("categorySeq1", 0);
-                                } else {
-                                    mainData.put("categorySeq1", subData.get(compareData)[2]);
-                                }
-                                if(subData.get(compareData)[3] == null) {
-                                    mainData.put("categorySeq2", 0);
-                                } else {
-                                    mainData.put("categorySeq2", subData.get(compareData)[3]);
-                                }
-                                if(subData.get(compareData)[4] == null) {
-                                    mainData.put("categorySeq3", 0);
-                                } else {
-                                    mainData.put("categorySeq3", subData.get(compareData)[4]);
-                                }
-                                if(subData.get(compareData)[5] == null) {
-                                    mainData.put("categorySeq4", 0);
-                                } else {
-                                    mainData.put("categorySeq4", subData.get(compareData)[5]);
-                                }
+                                mainData.put("categorySeq1", subData.get(compareData)[2]);
+                                mainData.put("categorySeq2", subData.get(compareData)[3]);
+                                mainData.put("categorySeq3", subData.get(compareData)[4]);
+                                mainData.put("categorySeq4", subData.get(compareData)[5]);
                             }
                         }
                     }
