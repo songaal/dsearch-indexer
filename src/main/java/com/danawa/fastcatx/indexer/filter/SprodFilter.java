@@ -29,6 +29,9 @@ public class SprodFilter implements Filter {
         set.add("minabYN");
         set.add("dataStat");
 
+        set.add("registerDateTime");
+        set.add("modifyDateTime");
+
     };
 
     @Override
