@@ -38,6 +38,9 @@ public class SprodOfficeFilter implements Filter {
         set.add("totalOrderPrice");
         set.add("promotionName");
 
+        set.add("registerDateTime");
+        set.add("modifyDateTime");
+
     };
 
     @Override
