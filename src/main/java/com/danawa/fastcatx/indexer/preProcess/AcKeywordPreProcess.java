@@ -503,16 +503,17 @@ public class AcKeywordPreProcess implements PreProcess {
     }
     // 제외 키워드 검사
     public boolean findAtBlacklist(String keyword){
+        String targetKeyword = removeEmoji(keyword);
         boolean isBlacklisted = false;
         for(String containItem : containBlackList){
-            if (keyword.contains(containItem)) {
+            if (targetKeyword.contains(containItem) || targetKeyword.endsWith("건마")) {
                 isBlacklisted = true;
                 break;
             }
         }
         if(!isBlacklisted){
             for(String equalItem : equalBlackList) {
-                if (equalItem.equalsIgnoreCase(keyword)) {
+                if (equalItem.equalsIgnoreCase(targetKeyword)) {
                     isBlacklisted = true;
                     break;
                 }
@@ -786,10 +787,6 @@ public class AcKeywordPreProcess implements PreProcess {
     public ArrayList<String> getContainBlackList(){
         ArrayList<String> blackList = new ArrayList<>();
         blackList.add("조개젓");
-        blackList.add("안동건마");
-        blackList.add("진주건마");
-        blackList.add("구리건마");
-        blackList.add("/건마");
         blackList.add("출장맛사지");
         blackList.add("출장마사지");
         blackList.add("출장안마");
@@ -818,9 +815,9 @@ public class AcKeywordPreProcess implements PreProcess {
         return blackList;
     }
 
-    // 이모지 제거 처리
+    // 이모지 제거 처리함수
     public String removeEmoji(String keyword){
-        String emojiFilter = "[^\\p{L}\\p{M}\\p{N}\\p{P}\\p{Z}\\p{Cf}\\p{Cs}\\s]";
+        String emojiFilter = "[^\\p{L}\\p{N}\\p{P}\\p{Z}]";
         return keyword.replaceAll(emojiFilter,"");
     }
 }
