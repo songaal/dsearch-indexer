@@ -509,12 +509,11 @@ public class AcKeywordPreProcess implements PreProcess {
     // 제외 키워드 검사
     // 각 단계에서 통과 못할경우 break & return
     public boolean findAtBlacklist(String keyword){
-        // 이모지 제거 후 검사를 수행한다.
-        String targetKeyword = removeEmoji(keyword);
         boolean isBlacklisted = false;
         // 1. 단어의 끝이 해당 제외 키워드로 끝나는 경우
+        // 이모지 제거 후 검사를 수행한다.
         for(String suffixItem : SUFFIX_CONTAIN_BLACKLIST){
-            if (targetKeyword.endsWith(suffixItem)) {
+            if (removeEmoji(keyword).endsWith(suffixItem)) {
                 isBlacklisted = true;
                 break;
             }
@@ -522,7 +521,7 @@ public class AcKeywordPreProcess implements PreProcess {
         // 2. 제외 키워드 포함 검사
         if(!isBlacklisted) {
             for (String containItem : INFIX_CONTAIN_BLACKLIST) {
-                if (targetKeyword.contains(containItem)) {
+                if (keyword.contains(containItem)) {
                     isBlacklisted = true;
                     break;
                 }
@@ -531,7 +530,7 @@ public class AcKeywordPreProcess implements PreProcess {
         // 3. 제외 키워드 완전일치 검사
         if(!isBlacklisted){
             for(String equalItem : INFIX_EQUALS_BLACKLIST) {
-                if (equalItem.equalsIgnoreCase(targetKeyword)) {
+                if (equalItem.equalsIgnoreCase(keyword)) {
                     isBlacklisted = true;
                     break;
                 }
