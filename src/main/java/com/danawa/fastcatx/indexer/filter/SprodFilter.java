@@ -32,6 +32,9 @@ public class SprodFilter implements Filter {
         set.add("registerDateTime");
         set.add("modifyDateTime");
 
+        // FASTCAT-1232 [조사] 통합검색 API 컬럼 제거 관련 사용처 조사
+        set.add("addDescription");
+
     };
 
     @Override
