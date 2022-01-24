@@ -378,11 +378,11 @@ public class IndexService {
         }
     }
 
-    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, String pipeLine) throws IOException, StopSignalException {
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, String pipeLine) throws IOException, StopSignalException, InterruptedException {
         indexParallel(ingester, index, bulkSize, filter, threadSize, null, pipeLine);
     }
 
-    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job, String pipeLine) throws IOException, StopSignalException {
+    public void indexParallel(Ingester ingester, String index, Integer bulkSize, Filter filter, int threadSize, Job job, String pipeLine) throws IOException, StopSignalException, InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(threadSize);
 
         BlockingQueue queue = new LinkedBlockingQueue(threadSize * 10);
@@ -465,8 +465,10 @@ public class IndexService {
 
         } catch (InterruptedException e) {
             logger.error("interrupted! ", e);
+            throw e;
         } catch (Exception e) {
             logger.error("[Exception] ", e);
+            throw e;
         } finally {
             try {
                 for (int i = 0; i < list.size(); i++) {
