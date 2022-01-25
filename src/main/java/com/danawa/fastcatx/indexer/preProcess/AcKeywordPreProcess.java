@@ -17,14 +17,19 @@ public class AcKeywordPreProcess implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(AcKeywordPreProcess.class);
     private Job job;
     private Map<String, Object> payload;
-    private ArrayList<String> containBlackList;
-    private ArrayList<String> equalBlackList;
+    private final String[] SUFFIX_CONTAIN_BLACKLIST = {
+        "건마"
+    };
+    private final String[] INFIX_CONTAIN_BLACKLIST = {
+        "조개젓","출장맛사지","출장마사지","출장안마","재팬섹스","제펜섹스","섹시vr","성인vr"
+    };
+    private final String[] INFIX_EQUALS_BLACKLIST = {
+        "성인용 전신인형 리얼돌 섹스돌", "보지", "섹스리스","섹스 여성","강간","윤간","성추행","성폭행","비트카지노","mini✌✌카지노","m카지노 【","온라인카지노게임"
+    };
 
     public AcKeywordPreProcess(Job job) {
         this.job = job;
         this.payload = job.getRequest();
-        this.containBlackList = getContainBlackList();
-        this.equalBlackList = getEqualBlackList();
     }
 
     @Override
@@ -502,16 +507,29 @@ public class AcKeywordPreProcess implements PreProcess {
         return map;
     }
     // 제외 키워드 검사
+    // 각 단계에서 통과 못할경우 break & return
     public boolean findAtBlacklist(String keyword){
         boolean isBlacklisted = false;
-        for(String containItem : containBlackList){
-            if (keyword.contains(containItem)) {
+        // 1. 단어의 끝이 해당 제외 키워드로 끝나는 경우
+        // 이모지 제거 후 검사를 수행한다.
+        for(String suffixItem : SUFFIX_CONTAIN_BLACKLIST){
+            if (removeEmoji(keyword).endsWith(suffixItem)) {
                 isBlacklisted = true;
                 break;
             }
         }
+        // 2. 제외 키워드 포함 검사
+        if(!isBlacklisted) {
+            for (String containItem : INFIX_CONTAIN_BLACKLIST) {
+                if (keyword.contains(containItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        // 3. 제외 키워드 완전일치 검사
         if(!isBlacklisted){
-            for(String equalItem : equalBlackList) {
+            for(String equalItem : INFIX_EQUALS_BLACKLIST) {
                 if (equalItem.equalsIgnoreCase(keyword)) {
                     isBlacklisted = true;
                     break;
@@ -782,45 +800,9 @@ public class AcKeywordPreProcess implements PreProcess {
         return candidate.toString();
     }
 
-    // 자동완성키워드 제외 목록(포함조건)
-    public ArrayList<String> getContainBlackList(){
-        ArrayList<String> blackList = new ArrayList<>();
-        blackList.add("조개젓");
-        blackList.add("안동건마");
-        blackList.add("진주건마");
-        blackList.add("구리건마");
-        blackList.add("/건마");
-        blackList.add("출장맛사지");
-        blackList.add("출장마사지");
-        blackList.add("출장안마");
-        blackList.add("재팬섹스");
-        blackList.add("제펜섹스");
-        blackList.add("섹시vr");
-        blackList.add("성인vr");
-        return blackList;
-    }
-
-    // 자동완성키워드 제외 목록(일치조건)
-    public ArrayList<String> getEqualBlackList(){
-        ArrayList<String> blackList = new ArrayList<>();
-        blackList.add("성인용 전신인형 리얼돌 섹스돌");
-        blackList.add("보지");
-        blackList.add("섹스리스");
-        blackList.add("섹스 여성");
-        blackList.add("강간");
-        blackList.add("윤간");
-        blackList.add("성추행");
-        blackList.add("성폭행");
-        blackList.add("비트카지노");
-        blackList.add("mini✌✌카지노");
-        blackList.add("m카지노 【");
-        blackList.add("온라인카지노게임");
-        return blackList;
-    }
-
-    // 이모지 제거 처리
+    // 이모지 제거 처리함수
     public String removeEmoji(String keyword){
-        String emojiFilter = "[^\\p{L}\\p{M}\\p{N}\\p{P}\\p{Z}\\p{Cf}\\p{Cs}\\s]";
+        String emojiFilter = "[^\\p{L}\\p{N}\\p{P}\\p{Z}]";
         return keyword.replaceAll(emojiFilter,"");
     }
 }
