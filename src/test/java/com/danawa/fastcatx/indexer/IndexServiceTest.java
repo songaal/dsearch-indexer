@@ -34,7 +34,7 @@ public class IndexServiceTest {
     }
 
     @Test
-    public void testJson2SearchMultiThreads() throws IOException, StopSignalException {
+    public void testJson2SearchMultiThreads() throws IOException, StopSignalException, InterruptedException {
         int threadSize = 20;
         String filePath = "C:\\Users\\admin\\data\\converted\\prodExt_6_all_utf8";
         NDJsonIngester ingester = new NDJsonIngester(filePath, "utf-8", 1000);
