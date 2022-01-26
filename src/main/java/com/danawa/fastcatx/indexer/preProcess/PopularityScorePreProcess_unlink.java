@@ -85,8 +85,8 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
                 if (cmpny_c.length() > 6) {
                     cmpny_c = cmpny_c.substring(0, 6);
                 }
-                boolean pattern_cmpny_c = Pattern.matches("^[a-zA-Z0-9]*$", cmpny_c);
-                boolean pattern_link_prod_c = Pattern.matches("^[a-zA-Z0-9]*$", link_prod_c);
+                boolean pattern_cmpny_c = Pattern.matches("^[a-zA-Z0-9-]*$", cmpny_c);
+                boolean pattern_link_prod_c = Pattern.matches("^[a-zA-Z0-9-]*$", link_prod_c);
 
                 if (pattern_cmpny_c && pattern_link_prod_c) {
                     String key = cmpny_c + "_" + link_prod_c;
