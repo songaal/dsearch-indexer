@@ -39,7 +39,7 @@ public class CallUrlPreProcess implements PreProcess {
         // 완료여부 조회 로직
         while(true){
             // 1분 간격 체크
-            Thread.sleep(600000);
+            Thread.sleep(60000);
             StringBuilder response = requestUrl("GET", statusURL, "");
 
             // 모든 큐 소진시 STOP이 됨
