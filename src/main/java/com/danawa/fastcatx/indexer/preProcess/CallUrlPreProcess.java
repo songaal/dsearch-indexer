@@ -25,7 +25,7 @@ public class CallUrlPreProcess implements PreProcess {
 
     @Override
     public void start() throws Exception {
-        logger.info("URL 호출 시작합니다");
+        logger.info("UPDATE URL 호출 시작합니다");
         // 업데이트 URL
         String updateURL = (String) payload.getOrDefault("updateURL", "");
         // 업데이트 호출 시 파라미터
@@ -38,10 +38,12 @@ public class CallUrlPreProcess implements PreProcess {
 
         // 완료여부 조회 로직
         while(true){
-            // 10초 간격 체크
-            Thread.sleep(10000);
+            // 1분 간격 체크
+            Thread.sleep(600000);
             StringBuilder response = requestUrl("GET", statusURL, "");
-            if("DONE".equals(response.toString())){
+
+            // 모든 큐 소진시 STOP이 됨
+            if("STOP".equals(response.toString())){
                 break;
             }
         }
