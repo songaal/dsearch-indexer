@@ -84,10 +84,18 @@ public class IndexJobRunner implements Runnable {
 
             // 전처리 컬렉션인지 체크
             Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
+            // 전처리 컬렉션 일때
             if (preProcess) {
-                // 전처리 컬렉션 일때
+                autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+                // 동적색인 ON/OFF 처리
+                if(autoDynamic){
+                    disableAutoDynamic(payload);
+                }
                 PreProcess process = new PreProcess.EmptyPreProcess();
                 process.starter(job);
+                if(autoDynamic){
+                    enableAutoDynamic();
+                }
                 return;
             }
 
@@ -619,6 +627,118 @@ public class IndexJobRunner implements Runnable {
                 }).start();
             }
         }
+    }
+
+    // 동적색인 OFF
+    public void disableAutoDynamic(Map<String, Object> payload) throws InterruptedException {
+        autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+        autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
+        autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+        try {
+            autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+        } catch (Exception ignore) {
+            autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+        }
+        // 큐 이름이 여러개 일 경우.
+        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+            // 멀티 MQ
+            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                String queueName = autoDynamicQueueNames.get(i);
+                updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
+                Thread.sleep(1000);
+            }
+        } else {
+            // 싱글 MQ
+            for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                Thread.sleep(1000);
+            }
+        }
+        logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicQueueNames);
+    }
+
+    // 동적색인 ON
+    public void enableAutoDynamic(){
+        new Thread(() -> {
+            int r = 20;
+            logger.info("create success check thread");
+            while (true) {
+                try {
+//                            색인 취소 체크. 동적색인 on
+                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                        logger.info("STOP SIGNAL");
+                        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                            // 멀티 MQ
+                            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                String queueName = autoDynamicQueueNames.get(i);
+                                updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                Thread.sleep(1000);
+                            }
+                        } else {
+                            // 싱글 MQ
+                            for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                Thread.sleep(1000);
+                            }
+                        }
+                        break;
+                    }
+//                            색인 완료 여부 체크
+                    logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
+                    ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
+                            HttpMethod.GET,
+                            new HttpEntity(new HashMap<String, Object>()),
+                            String.class
+                    );
+                    String status = null;
+                    try {
+                        Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
+                        Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+                        status = String.valueOf(info.get("status"));
+                    }catch (Exception ignore) {}
+//                            색인이 완료라면 동적색인 ON
+                    if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+                        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                            // 멀티 MQ
+                            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                                String queueName = autoDynamicQueueNames.get(i);
+                                updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                                Thread.sleep(1000);
+                            }
+                        } else {
+                            // 싱글 MQ
+                            for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                                Thread.sleep(1000);
+                            }
+                        }
+                        logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+                        break;
+                    }
+                    r --;
+                    if (r == 0) {
+                        logger.warn("max retry!!!!");
+                        break;
+                    }
+                    Thread.sleep(60 * 1000);
+                } catch (Exception e) {
+                    logger.error("", e);
+                    r --;
+                    if (r == 0) {
+                        logger.warn("max retry!!!!");
+                        break;
+                    } else {
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException ignore) {}
+                    }
+                }
+            }
+            logger.info("success check Thread terminate");
+        }).start();
     }
 
     public void updateQueueIndexerConsume(boolean dryRun, String queueIndexerUrl, String queueName, int consumeCount) {
