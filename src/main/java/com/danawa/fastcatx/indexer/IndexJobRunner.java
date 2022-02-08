@@ -572,7 +572,7 @@ public class IndexJobRunner implements Runnable {
                                 break;
                             }
 //                            색인 완료 여부 체크
-                            logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
+                            logger.info("상태 체크 URL: {}", autoDynamicCheckUrl);
                             ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
                                     HttpMethod.GET,
                                     new HttpEntity(new HashMap<String, Object>()),
@@ -661,83 +661,29 @@ public class IndexJobRunner implements Runnable {
     // 동적색인 ON
     public void enableAutoDynamic(){
         new Thread(() -> {
-            int r = 20;
-            logger.info("create success check thread");
             while (true) {
                 try {
-//                            색인 취소 체크. 동적색인 on
-                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                        logger.info("STOP SIGNAL");
-                        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-                            // 멀티 MQ
-                            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-                                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-                                String queueName = autoDynamicQueueNames.get(i);
-                                updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-                                Thread.sleep(1000);
-                            }
-                        } else {
-                            // 싱글 MQ
-                            for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-                                Thread.sleep(1000);
-                            }
-                        }
-                        break;
-                    }
-//                            색인 완료 여부 체크
-                    logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
-                    ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
-                            HttpMethod.GET,
-                            new HttpEntity(new HashMap<String, Object>()),
-                            String.class
-                    );
-                    String status = null;
-                    try {
-                        Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
-                        Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
-                        status = String.valueOf(info.get("status"));
-                    }catch (Exception ignore) {}
-//                            색인이 완료라면 동적색인 ON
-                    if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
-                        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-                            // 멀티 MQ
-                            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-                                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-                                String queueName = autoDynamicQueueNames.get(i);
-                                updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-                                Thread.sleep(1000);
-                            }
-                        } else {
-                            // 싱글 MQ
-                            for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-                                Thread.sleep(1000);
-                            }
-                        }
-                        logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
-                        break;
-                    }
-                    r --;
-                    if (r == 0) {
-                        logger.warn("max retry!!!!");
-                        break;
-                    }
-                    Thread.sleep(60 * 1000);
-                } catch (Exception e) {
-                    logger.error("", e);
-                    r --;
-                    if (r == 0) {
-                        logger.warn("max retry!!!!");
-                        break;
-                    } else {
-                        try {
+                    if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+                        // 멀티 MQ
+                        for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                            String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                            String queueName = autoDynamicQueueNames.get(i);
+                            updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
                             Thread.sleep(1000);
-                        } catch (InterruptedException ignore) {}
+                        }
+                    } else {
+                        // 싱글 MQ
+                        for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                            updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                            Thread.sleep(1000);
+                        }
                     }
+                    break;
+                } catch (InterruptedException e) {
+                    logger.error("InterruptedException : ", e);
                 }
             }
-            logger.info("success check Thread terminate");
+            logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicQueueNames);
         }).start();
     }
 
