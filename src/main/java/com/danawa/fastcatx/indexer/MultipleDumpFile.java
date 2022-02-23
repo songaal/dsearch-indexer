@@ -103,7 +103,8 @@ public class MultipleDumpFile {
                         groupSeqList,
                         procedureLimit,
                         enableRemoteCmd,
-                        remoteCmdUrl)
+                        remoteCmdUrl,
+                        procedureSkip)
                 ).start();
             }
 
@@ -383,8 +384,9 @@ public class MultipleDumpFile {
         private Integer procedureLimit;
         boolean enableRemoteCmd;
         private String remoteCmdUrl;
+        boolean procedureSkip;
 
-        public SelfStartRunner(Job job, Set<Integer> startedProcedureGroupSeqList, Set<Integer> failedProcedureGroupSeqList, Set<Integer> groupSeqList, Integer procedureLimit, boolean enableRemoteCmd, String remoteCmdUrl) {
+        public SelfStartRunner(Job job, Set<Integer> startedProcedureGroupSeqList, Set<Integer> failedProcedureGroupSeqList, Set<Integer> groupSeqList, Integer procedureLimit, boolean enableRemoteCmd, String remoteCmdUrl, boolean procedureSkip) {
             this.job = job;
             this.startedProcedureGroupSeqList = startedProcedureGroupSeqList;
             this.failedProcedureGroupSeqList = failedProcedureGroupSeqList;
@@ -392,6 +394,7 @@ public class MultipleDumpFile {
             this.enableRemoteCmd = enableRemoteCmd;
             this.remoteCmdUrl = remoteCmdUrl;
             this.groupSeqList = new ArrayList<>(groupSeqList);
+            this.procedureSkip = procedureSkip;
             logger.info("selfStartRunner init");
             logger.info("groupSeqList: {}, procedureLimit: {}", groupSeqList, procedureLimit);
         }
@@ -447,7 +450,7 @@ public class MultipleDumpFile {
                 }
 
                 // 프로시저 실패인 경우.
-                if (failedProcedureGroupSeqList.size() > 0) {
+                if (failedProcedureGroupSeqList.size() > 0 && !procedureSkip) {
                     logger.info("--------------------------------------------");
                     logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
                     logger.info(">>>>>>>> [프로시저 실패] 그룹시퀀스: {} <<<<<<<<", failedProcedureGroupSeqList);
