@@ -28,15 +28,16 @@ public class IndexJobRunner implements Runnable {
 	private IndexService service;
 	private Ingester ingester;
 
-	private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
-	private final Gson gson = new Gson();
+    private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
+    private final Gson gson = new Gson();
 
-	private boolean autoDynamic;
-	private String autoDynamicIndex;
-	private List<String> autoDynamicQueueNames;
-	private String autoDynamicCheckUrl;
-	private String autoDynamicQueueIndexUrl;
-	private int autoDynamicQueueIndexConsumeCount = 1;
+    private boolean autoDynamic;
+    private String autoDynamicIndex;
+    private List<String> autoDynamicQueueNames;
+    private String autoDynamicCheckUrl;
+    private String autoDynamicQueueIndexUrl;
+    private int autoDynamicQueueIndexConsumeCount = 1;
+    private boolean preProcess;
 
 	boolean enableRemoteCmd;
 	String remoteCmdUrl;
@@ -83,14 +84,19 @@ public class IndexJobRunner implements Runnable {
 			Map<String, Object> payload = job.getRequest();
 			logger.debug("{}", gson.toJson(payload));
 
-			// 전처리 컬렉션인지 체크
-			Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
-			if (preProcess) {
-				// 전처리 컬렉션 일때
-				PreProcess process = new PreProcess.EmptyPreProcess();
-				process.starter(job);
-				return;
-			}
+            // 전처리 컬렉션인지 체크
+            preProcess = (Boolean) payload.getOrDefault("preProcess", false);
+            // 전처리 컬렉션 일때
+            if (preProcess) {
+                // 전처리시 동적색인 ON/OFF 처리
+                autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+                if(autoDynamic) {
+                    disableAutoDynamic(payload);
+                }
+                PreProcess process = new PreProcess.EmptyPreProcess();
+                process.starter(job);
+                return;
+            }
 
 			logger.info("Started Indexing Job Runner");
 			// 공통
@@ -622,6 +628,11 @@ public class IndexJobRunner implements Runnable {
 //                            색인 취소 체크. 동적색인 on
 							logger.info("{}", job);
                             if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                                if (job != null && preProcess) {
+                                    logger.info(job != null && job.getStopSignal() != null && job.getStopSignal() ? "STOP SIGNAL" : "PREPROCESS DONE");
+                                    enableAutoDynamic();
+                                    break;
+                                }
                                 logger.info("STOP SIGNAL");
                                 if (autoDynamicQueueIndexUrl.split(",").length != 1) {
                                     // 멀티 MQ
@@ -641,7 +652,7 @@ public class IndexJobRunner implements Runnable {
                                 break;
                             }
 //                            색인 완료 여부 체크
-                            logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
+                            logger.info("상태 체크 URL: {}", autoDynamicCheckUrl);
                             ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
                                     HttpMethod.GET,
                                     new HttpEntity(new HashMap<String, Object>()),
@@ -714,6 +725,53 @@ public class IndexJobRunner implements Runnable {
 			logger.info("[DRY_RUN] queue indexer request skip");
 		}
 	}
+    // 동적색인 ON
+    public void enableAutoDynamic() throws InterruptedException {
+        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+            // 멀티 MQ
+            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                String queueName = autoDynamicQueueNames.get(i);
+                updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+                Thread.sleep(1000);
+            }
+        } else {
+            // 싱글 MQ
+            for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+                Thread.sleep(1000);
+            }
+        }
+    }
+
+    // 동적색인 OFF
+    public void disableAutoDynamic(Map<String, Object> payload) throws InterruptedException {
+        autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+        autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
+        autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+        try {
+            autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+        } catch (Exception ignore) {
+            autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+        }
+        // 큐 이름이 여러개 일 경우.
+        if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+            // 멀티 MQ
+            for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+                String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+                String queueName = autoDynamicQueueNames.get(i);
+                updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
+                Thread.sleep(1000);
+            }
+        } else {
+            // 싱글 MQ
+            for (String autoDynamicQueueName : autoDynamicQueueNames) {
+                updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+                Thread.sleep(1000);
+            }
+        }
+        logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicQueueNames);
+    }
 
 	//      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능 )
 	private void remoteCmd(String action, int retry) {

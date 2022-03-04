@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 
 public interface PreProcess {
-    enum TYPE { NTOUR, CATEGORY_KEYWORD, CATEGORY, VM_KEYWORD, VM_FIRSTMAKE_DATE, ACKEYWORD, SHOP_DNW_ACK, POPULARITY_SCORE, MOBILE }
+    enum TYPE { NTOUR, CATEGORY_KEYWORD, CATEGORY, VM_KEYWORD, VM_FIRSTMAKE_DATE, ACKEYWORD, SHOP_DNW_ACK, POPULARITY_SCORE, MOBILE, POPULARITY_SCORE_UNLINK, CALL_URL  }
 
     default void starter(Job job) throws Exception {
         Map<String, Object> payload = job.getRequest();
@@ -30,6 +30,10 @@ public interface PreProcess {
             new PopularityScorePreProcess(job).start();
         } else if (TYPE.MOBILE.name().equalsIgnoreCase(type)) {
             new MobilePreProcess(job).start();
+        } else if (TYPE.POPULARITY_SCORE_UNLINK.name().equalsIgnoreCase(type)) {
+            new PopularityScorePreProcess_unlink(job).start();
+        } else if (TYPE.CALL_URL.name().equalsIgnoreCase(type)) {
+            new CallUrlPreProcess(job).start();
         }
     }
 
