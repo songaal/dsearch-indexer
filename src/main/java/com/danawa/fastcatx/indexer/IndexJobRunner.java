@@ -28,8 +28,8 @@ public class IndexJobRunner implements Runnable {
 	private IndexService service;
 	private Ingester ingester;
 
-    private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
-    private final Gson gson = new Gson();
+	private final RestTemplate restTemplate = new RestTemplate(Utils.getRequestFactory());
+	private final Gson gson = new Gson();
 
     private boolean autoDynamic;
     private String autoDynamicIndex;
