@@ -7,25 +7,24 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URLDecoder;
-import java.sql.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class AcKeywordPreProcess implements PreProcess {
     private static final Logger logger = LoggerFactory.getLogger(AcKeywordPreProcess.class);
     private Job job;
     private Map<String, Object> payload;
-    private final String[] SUFFIX_CONTAIN_BLACKLIST = {
-        "건마"
-    };
-    private final String[] INFIX_CONTAIN_BLACKLIST = {
-        "조개젓","출장맛사지","출장마사지","출장안마","재팬섹스","제펜섹스","섹시vr","성인vr"
-    };
-    private final String[] INFIX_EQUALS_BLACKLIST = {
-        "성인용 전신인형 리얼돌 섹스돌", "보지", "섹스리스","섹스 여성","강간","윤간","성추행","성폭행","비트카지노","mini✌✌카지노","m카지노 【","온라인카지노게임"
-    };
+    private HashMap<String, List<String>> exceptMap = new HashMap<>();
 
     public AcKeywordPreProcess(Job job) {
         this.job = job;
@@ -53,6 +52,11 @@ public class AcKeywordPreProcess implements PreProcess {
         String fastcatSavePath = (String) payload.getOrDefault("fastcatSavePath", "");
 //        /data/product/export/text/ACKEYWORD/AutoCompleteKeyword.json
         String elasticSavePath = (String) payload.getOrDefault("elasticSavePath", "");
+        String exceptKeywordPath = (String) payload.getOrDefault("exceptKeywordPath", "");
+
+        if(!"".equals(exceptKeywordPath)){
+            loadExceptKeyword(Paths.get(exceptKeywordPath));
+        }
 
         // 잠깐 주석
         Map<String, String[]> accKeywordResultMap = getAccureNewKeyword_n(statisticsPath, outputFilePath, getAccureKeyword(acKeywordTxtFilePath));
@@ -506,30 +510,39 @@ public class AcKeywordPreProcess implements PreProcess {
 
         return map;
     }
-    // 제외 키워드 검사
-    // 각 단계에서 통과 못할경우 break & return
+    // 블랙리스트 방식으로 제외 키워드 검사
     public boolean findAtBlacklist(String keyword){
-        boolean isBlacklisted = false;
-        // 1. 단어의 끝이 해당 제외 키워드로 끝나는 경우
-        // 이모지 제거 후 검사를 수행한다.
-        for(String suffixItem : SUFFIX_CONTAIN_BLACKLIST){
-            if (removeEmoji(keyword).endsWith(suffixItem)) {
-                isBlacklisted = true;
-                break;
+        boolean isBlacklisted = isEmojiKeyword(keyword);
+        // 1. 단어가 해당 제외 키워드로 시작하는 경우
+        if(!isBlacklisted) {
+            for (String prefixItem : exceptMap.get("prefix_contain_blacklist")) {
+                if (keyword.startsWith(prefixItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
             }
         }
-        // 2. 제외 키워드 포함 검사
+        // 2. 단어가 해당 제외 키워드로 끝나는 경우
         if(!isBlacklisted) {
-            for (String containItem : INFIX_CONTAIN_BLACKLIST) {
+            for (String suffixItem : exceptMap.get("suffix_contain_blacklist")) {
+                if (keyword.endsWith(suffixItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        // 3. 포함 단어 제외
+        if(!isBlacklisted) {
+            for (String containItem : exceptMap.get("infix_contain_blacklist")) {
                 if (keyword.contains(containItem)) {
                     isBlacklisted = true;
                     break;
                 }
             }
         }
-        // 3. 제외 키워드 완전일치 검사
+        // 4. 일치 단어 제외
         if(!isBlacklisted){
-            for(String equalItem : INFIX_EQUALS_BLACKLIST) {
+            for(String equalItem : exceptMap.get("infix_equals_blacklist")) {
                 if (equalItem.equalsIgnoreCase(keyword)) {
                     isBlacklisted = true;
                     break;
@@ -635,6 +648,25 @@ public class AcKeywordPreProcess implements PreProcess {
         } catch (IOException e) {
             logger.error("", e);
 //            sms.sendSMS(e.getMessage());
+        }
+    }
+
+    // 제외 키워드 파일 로딩
+    private void loadExceptKeyword(Path exceptKeywordPath) {
+        String[] exceptTargets = {"prefix_contain_blacklist", "suffix_contain_blacklist", "infix_contain_blacklist", "infix_equals_blacklist"};
+
+        for (String exceptTarget : exceptTargets) {
+            List<String> tempList = new ArrayList<>();
+            Path path = Paths.get(exceptKeywordPath + exceptTarget + ".txt");
+            try(final Stream<String> excludeLines = Files.lines(path)){
+                Iterator<String> itr = excludeLines.iterator();
+                while( itr.hasNext() ) {
+                    tempList.add(itr.next());
+                }
+                exceptMap.put(exceptTarget, tempList);
+            } catch (IOException e){
+                logger.error("", e);
+            }
         }
     }
 
@@ -800,9 +832,13 @@ public class AcKeywordPreProcess implements PreProcess {
         return candidate.toString();
     }
 
-    // 이모지 제거 처리함수
-    public String removeEmoji(String keyword){
+    // 이모지 구별 함수
+    public boolean isEmojiKeyword(String keyword){
         String emojiFilter = "[^\\p{L}\\p{N}\\p{P}\\p{Z}]";
-        return keyword.replaceAll(emojiFilter,"");
+        int keywordLength = keyword.length();
+        int filteredLength = keyword.replaceAll(emojiFilter,"").length();
+
+        // 이모지 제거 전/후가 다르다면 이모지 키워드로 판별
+        return keywordLength != filteredLength;
     }
 }
