@@ -703,7 +703,7 @@ public class AcKeywordPreProcess implements PreProcess {
 
         for (String exceptTarget : exceptTargets) {
             List<String> tempList = new ArrayList<>();
-            Path path = Paths.get(exceptKeywordPath + exceptTarget + ".txt");
+            Path path = Paths.get(exceptKeywordPath + "/" + exceptTarget + ".txt");
             try(final Stream<String> excludeLines = Files.lines(path)){
                 logger.info("{} Loaded", path);
                 Iterator<String> itr = excludeLines.iterator();
