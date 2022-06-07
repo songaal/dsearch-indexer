@@ -510,6 +510,7 @@ public class AcKeywordPreProcess implements PreProcess {
 
         return map;
     }
+
     // 블랙리스트 방식으로 제외 키워드 검사
     public boolean findAtBlacklist(String keyword){
         boolean isBlacklisted = isEmojiKeyword(keyword);
@@ -551,6 +552,51 @@ public class AcKeywordPreProcess implements PreProcess {
         }
         return isBlacklisted;
     }
+
+    // 블랙리스트 방식으로 제외 키워드 검사, 패스 직접 입력시
+    public boolean findAtBlacklist(String path, String keyword){
+        loadExceptKeyword(Paths.get(path));
+
+        boolean isBlacklisted = isEmojiKeyword(keyword);
+        // 1. 단어가 해당 제외 키워드로 시작하는 경우
+        if(!isBlacklisted) {
+            for (String prefixItem : exceptMap.get("prefix_contain_blacklist")) {
+                if (keyword.startsWith(prefixItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        // 2. 단어가 해당 제외 키워드로 끝나는 경우
+        if(!isBlacklisted) {
+            for (String suffixItem : exceptMap.get("suffix_contain_blacklist")) {
+                if (keyword.endsWith(suffixItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        // 3. 포함 단어 제외
+        if(!isBlacklisted) {
+            for (String containItem : exceptMap.get("infix_contain_blacklist")) {
+                if (keyword.contains(containItem)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        // 4. 일치 단어 제외
+        if(!isBlacklisted){
+            for(String equalItem : exceptMap.get("infix_equals_blacklist")) {
+                if (equalItem.equalsIgnoreCase(keyword)) {
+                    isBlacklisted = true;
+                    break;
+                }
+            }
+        }
+        return isBlacklisted;
+    }
+
     /*
      * 태그방식의 DUMP 파일 생성 기준상품명 부터 데이타 생성 누적키워드는 기준상품명 이후 생성되게 하여 색인시 PK 중복제거를 통해
      * 제거되도록 한다 누적키워드 생성시 키워드별 카운트5개 이상인 항목만 생성한다. 기준상품은 MAP에 있는 모든데이타 생성 정렬에 필요한

@@ -433,9 +433,11 @@ public class PreProcessTest {
             testWords.add("김툰코");
             testWords.add("카톡문의 ☏");
             testWords.add("☃카톡");
+            testWords.add("건마⇊수지");
+            testWords.add("웹툰코리아");
 
             for (String testWord : testWords) {
-                boolean result = new AcKeywordPreProcess(new Job()).findAtBlacklist(testWord);
+                boolean result = new AcKeywordPreProcess(new Job()).findAtBlacklist("D:/", testWord);
                 logger.info(testWord + "{}", result ? " 제외됨" : " 제외안됨");
             }
 
