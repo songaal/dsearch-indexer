@@ -571,7 +571,9 @@ public class IndexJobRunner implements Runnable {
 				}
 			}
 
-			if (threadSize > 1) {
+			if(type.equals("reindex")){
+				service.reindex(payload, index, job);
+			} else if (threadSize > 1) {
 				service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
 			} else {
 				service.index(finalIngester, index, bulkSize, filter, job, pipeLine);
