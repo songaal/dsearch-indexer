@@ -297,6 +297,7 @@ public class IndexService {
                 while (isTaskDone(client, taskId)) {
                     if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
+                        cancelReindex(client, taskId);
                         throw new StopSignalException();
                     }
 
@@ -360,6 +361,22 @@ public class IndexService {
             return taskId;
         } catch (Exception e) {
             logger.error("", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void cancelReindex(RestHighLevelClient client, String taskId) {
+        try{
+            RestClient restClient = client.getLowLevelClient();
+            Request request = new Request(
+                    "POST",
+                    "_tasks/" + taskId +"/_cancel");
+            Response response = restClient.performRequest(request);
+            String responseBody = EntityUtils.toString(response.getEntity());
+            JSONObject jsonObj = new JSONObject(responseBody);
+            logger.info("REINDEX_CANCEL : {}, TASK_ID : {}", jsonObj, taskId);
+        } catch (Exception e) {
+            logger.error("Reindex Cancel Error : ", e);
             throw new RuntimeException(e);
         }
     }
