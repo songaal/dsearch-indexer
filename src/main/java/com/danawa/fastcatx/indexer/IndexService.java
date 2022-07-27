@@ -293,6 +293,9 @@ public class IndexService {
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             long start = System.currentTimeMillis();
             try {
+                // 대상 인덱스 replica 셋팅 0으로 변경
+                modifyReplica(client, destIndex, "0");
+
                 // reindex 작업 시작
                 String taskId = excuteReindex(client, sourceIndex, destIndex, slices);
 
@@ -308,7 +311,7 @@ public class IndexService {
                 }
 
                 // 레플리카 생성 시작
-                createReplica(client, destIndex);
+                modifyReplica(client, destIndex, "1");
 
                 // 레플리카 생성 후 잠깐 대기 10초
                 Thread.sleep(10000);
@@ -388,7 +391,7 @@ public class IndexService {
         }
     }
 
-    private void createReplica(RestHighLevelClient client, String destIndex) {
+    private void modifyReplica(RestHighLevelClient client, String destIndex, String size) {
         try{
             RestClient restClient = client.getLowLevelClient();
             Request request = new Request(
@@ -396,7 +399,7 @@ public class IndexService {
                     "/" + destIndex + "/_settings");
             String entity = "{\n" +
                     "  \"index\": {\n" +
-                    "    \"number_of_replicas\": \"1\"\n" +
+                    "    \"number_of_replicas\": \"" + size + "\"\n" +
                     "  } \n" +
                     "}";
             request.setJsonEntity(entity);
