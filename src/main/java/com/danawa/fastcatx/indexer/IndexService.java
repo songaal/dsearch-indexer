@@ -283,9 +283,9 @@ public class IndexService {
     /*
     * reindex 전체색인을 위한 메소드
      */
-    public void reindex(Map<String, Object> payload, String sourceIndex, Job job) throws Exception {
-        // a -> b, b -> a 교체
-        String destIndex = sourceIndex.endsWith("a") ? sourceIndex.replace("-a", "-b") : sourceIndex.replace("-b", "-a"); // 목적지 인덱스
+    public void reindex(Map<String, Object> payload, String destIndex, Job job) throws Exception {
+        // dest로 source를 구함
+        String sourceIndex = destIndex.endsWith("a") ? destIndex.replace("-a", "-b") : destIndex.replace("-b", "-a"); // 목적지 인덱스
         String slices = (String) payload.get("slices");
         String reindexCheckMs = (String) payload.get("reindexCheckIntervalMs");
         String replicaCheckMs = (String) payload.get("replicaCheckIntervalMs");
