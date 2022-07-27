@@ -280,12 +280,15 @@ public class IndexService {
         }
     }
 
-    public void reindex(Map<String, Object> payload, String index, Job job) throws Exception {
-        String sourceIndex = (String) payload.get("sourceIndex"); // 대상 인덱스
-        String destIndex = (String) payload.get("destIndex"); // 생성 인덱스
+    /*
+    * reindex 전체색인을 위한 메소드
+     */
+    public void reindex(Map<String, Object> payload, String sourceIndex, Job job) throws Exception {
+        // a -> b, b -> a 교체
+        String destIndex = sourceIndex.endsWith("a") ? sourceIndex.replace("-a", "-b") : sourceIndex.replace("-b", "-a"); // 목적지 인덱스
         String slices = (String) payload.get("slices");
-        String reindexCheckMs = (String) payload.get("reindexCheckMs");
-        String replicaCheckMs = (String) payload.get("replicaCheckMs");
+        String reindexCheckMs = (String) payload.get("reindexCheckIntervalMs");
+        String replicaCheckMs = (String) payload.get("replicaCheckIntervalMs");
 
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             long start = System.currentTimeMillis();
@@ -294,10 +297,10 @@ public class IndexService {
                 String taskId = excuteReindex(client, sourceIndex, destIndex, slices);
 
                 // reindex가 끝났는지 반복 확인
-                while (isTaskDone(client, taskId)) {
+                while (!isTaskDone(client, taskId)) {
                     if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
-                        cancelReindex(client, taskId);
+                        cancelReindexTask(client, taskId);
                         throw new StopSignalException();
                     }
 
@@ -311,7 +314,7 @@ public class IndexService {
                 Thread.sleep(10000);
 
                 // 레플리카 생성이 끝났는지 반복 확인
-                while (isIndexGreen(client, destIndex)) {
+                while (!isIndexGreen(client, destIndex)) {
                     if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                         logger.info("Stop Signal");
                         throw new StopSignalException();
@@ -329,15 +332,18 @@ public class IndexService {
             }
 
             long totalTime = System.currentTimeMillis() - start;
-            logger.info("index:[{}] reindex Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
+            logger.info("index:[{}] reindex Finished! doc[{}] elapsed[{}m]", destIndex, count, totalTime / 1000 / 60);
         }
     }
 
+    // reindex API
     private String excuteReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) {
         try{
             String taskId = null;
             RestClient restClient = client.getLowLevelClient();
-            Request request = new Request(
+
+           // reindex API 호출
+           Request request = new Request(
                     "POST",
                     "/_reindex");
             request.addParameter("wait_for_completion", "false");
@@ -365,7 +371,8 @@ public class IndexService {
         }
     }
 
-    private void cancelReindex(RestHighLevelClient client, String taskId) {
+    // reindex cancel API
+    private void cancelReindexTask(RestHighLevelClient client, String taskId) {
         try{
             RestClient restClient = client.getLowLevelClient();
             Request request = new Request(
@@ -403,38 +410,48 @@ public class IndexService {
         }
     }
 
-    private boolean isIndexGreen(RestHighLevelClient client, String index) throws IOException, JSONException {
-        JSONObject jsonObj = null;
-        boolean processing = true;
-        if(index != null){
-            RestClient restClient = client.getLowLevelClient();
-            Request request = new Request(
-                    "GET",
-                    "/"+ index + "/_shard_stores/");
-            Response response = restClient.performRequest(request);
-            String responseBody = EntityUtils.toString(response.getEntity());
-            jsonObj = new JSONObject(responseBody);
+    private boolean isIndexGreen(RestHighLevelClient client, String index) throws IOException {
+        try {
+            JSONObject jsonObj = null;
+            boolean processing = true;
+            if(index != null){
+                RestClient restClient = client.getLowLevelClient();
+                Request request = new Request(
+                        "GET",
+                        "/"+ index + "/_shard_stores/");
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+                jsonObj = new JSONObject(responseBody);
 
-            // 결과값이 없을때 Green 상태 processing false.
-            processing = !jsonObj.getString("indices").equals("{}");
+                // 결과값이 없을때 Green 상태 processing false.
+                processing = jsonObj.getString("indices").equals("{}");
+            }
+            return processing;
+        } catch (JSONException e) {
+            logger.error("JSONException : ", e);
+            return false;
         }
-        return processing;
     }
 
-    private boolean isTaskDone(RestHighLevelClient client, String taskId) throws IOException, JSONException {
-        JSONObject jsonObj = null;
-        boolean processing = true;
-        if(taskId != null){
-            RestClient restClient = client.getLowLevelClient();
-            Request request = new Request(
-                    "GET",
-                    "/_tasks/" + taskId);
-            Response response = restClient.performRequest(request);
-            String responseBody = EntityUtils.toString(response.getEntity());
-            jsonObj = new JSONObject(responseBody);
-            processing = !((boolean) jsonObj.get("completed"));
+    private boolean isTaskDone(RestHighLevelClient client, String taskId) throws IOException {
+        try {
+            JSONObject jsonObj = null;
+            boolean processing = true;
+            if(taskId != null){
+                RestClient restClient = client.getLowLevelClient();
+                Request request = new Request(
+                        "GET",
+                        "/_tasks/" + taskId);
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+                jsonObj = new JSONObject(responseBody);
+                processing = ((boolean) jsonObj.get("completed"));
+            }
+            return processing;
+        } catch (JSONException e){
+            logger.error("JSONException : ", e);
+            return false;
         }
-        return processing;
     }
 
     class Worker implements Callable {

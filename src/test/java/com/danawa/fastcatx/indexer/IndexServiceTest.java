@@ -84,11 +84,9 @@ public class IndexServiceTest {
         String index = "analysis-product-name";
 
         Map<String, Object> payload = new HashMap<>();
-        payload.put("sourceIndex", ".kibana_1");
-        payload.put("destIndex", ".kibana_1");
         payload.put("slices", "1");
-        payload.put("reindexCheckMs", "1000");
-        payload.put("replicaCheckMs", "1000");
+        payload.put("reindexCheckIntervalMs", "1000");
+        payload.put("replicaCheckIntervalMs", "1000");
 
         IndexService indexService = new IndexService(host, port, scheme, "elastic", "changeme");
         indexService.reindex(payload, index, null);
