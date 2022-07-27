@@ -406,7 +406,7 @@ public class IndexService {
             Response response = restClient.performRequest(request);
             String responseBody = EntityUtils.toString(response.getEntity());
             JSONObject jsonObj = new JSONObject(responseBody);
-            logger.info("Create Replica : {}, TARGET_INDEX : {}", jsonObj, destIndex);
+            logger.info("Modify Replica : {}, TARGET_INDEX : {}, SIZE : {}", jsonObj, destIndex, size);
         } catch (Exception e) {
             logger.error("", e);
             throw new RuntimeException(e);
