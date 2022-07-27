@@ -413,7 +413,7 @@ public class IndexService {
     private boolean isIndexGreen(RestHighLevelClient client, String index) throws IOException {
         try {
             JSONObject jsonObj = null;
-            boolean processing = true;
+            boolean result = false;
             if(index != null){
                 RestClient restClient = client.getLowLevelClient();
                 Request request = new Request(
@@ -424,9 +424,9 @@ public class IndexService {
                 jsonObj = new JSONObject(responseBody);
 
                 // 결과값이 없을때 Green 상태 processing false.
-                processing = jsonObj.getString("indices").equals("{}");
+                result = jsonObj.getString("indices").equals("{}");
             }
-            return processing;
+            return result;
         } catch (JSONException e) {
             logger.error("JSONException : ", e);
             return false;
@@ -436,7 +436,7 @@ public class IndexService {
     private boolean isTaskDone(RestHighLevelClient client, String taskId) throws IOException {
         try {
             JSONObject jsonObj = null;
-            boolean processing = true;
+            boolean result = false;
             if(taskId != null){
                 RestClient restClient = client.getLowLevelClient();
                 Request request = new Request(
@@ -445,9 +445,9 @@ public class IndexService {
                 Response response = restClient.performRequest(request);
                 String responseBody = EntityUtils.toString(response.getEntity());
                 jsonObj = new JSONObject(responseBody);
-                processing = ((boolean) jsonObj.get("completed"));
+                result = ((boolean) jsonObj.get("completed"));
             }
-            return processing;
+            return result;
         } catch (JSONException e){
             logger.error("JSONException : ", e);
             return false;
