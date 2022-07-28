@@ -297,7 +297,7 @@ public class IndexService {
                 modifyReplica(client, destIndex, "0");
 
                 // reindex 작업 시작
-                String taskId = excuteReindex(client, sourceIndex, destIndex, slices);
+                String taskId = executeReindex(client, sourceIndex, destIndex, slices);
 
                 // reindex가 끝났는지 반복 확인
                 while (!isTaskDone(client, taskId)) {
@@ -340,7 +340,7 @@ public class IndexService {
     }
 
     // reindex API
-    private String excuteReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) {
+    private String executeReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) {
         try{
             String taskId = null;
             RestClient restClient = client.getLowLevelClient();
