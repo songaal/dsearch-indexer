@@ -356,7 +356,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
+                logger.error("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
                 try {
                     // 재시도하기 전에 1초 동안 휴면
                     Thread.sleep(RETRY_INTERVAL_MS);
@@ -402,7 +402,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("EXECUTE_REINDEX_FAIL. {} RETRY : {}", e, i);
+                logger.error("EXECUTE_REINDEX_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
@@ -429,7 +429,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("CANCEL_REINDEX_FAIL. {} RETRY : {}", e, i);
+                logger.error("CANCEL_REINDEX_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
@@ -460,7 +460,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("MODIFY_REPLICA_FAIL. {} RETRY : {}", e, i);
+                logger.error("MODIFY_REPLICA_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
@@ -490,7 +490,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
+                logger.error("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
@@ -519,7 +519,7 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("TASK_CHECK_FAIL. {} RETRY : {}", e, i);
+                logger.error("TASK_CHECK_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
