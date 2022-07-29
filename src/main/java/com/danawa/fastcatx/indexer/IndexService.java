@@ -356,12 +356,12 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn("GET SETTING FAIL ERROR : ",    e);
+                logger.warn("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("", e);
+                    logger.error("GET_SETTING_FAIL_ERROR", e);
                     throw new RuntimeException(e);
                 }
             }
@@ -370,7 +370,7 @@ public class IndexService {
     }
 
     // reindex API
-    private String executeReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) throws InterruptedException {
+    private String executeReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) throws Exception {
         String taskId = null;
         for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
             try{
@@ -401,13 +401,12 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn(e.getMessage());
+                logger.warn("EXECUTE_REINDEX_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("REINDEX FAIL : ", e);
-                    throw new RuntimeException(e);
+                    throw new Exception("REINDEX_EXECUTE_ERROR : ", e);
                 }
             }
         }
@@ -415,7 +414,7 @@ public class IndexService {
     }
 
     // reindex cancel API
-    private void cancelReindexTask(RestHighLevelClient client, String taskId) throws InterruptedException {
+    private void cancelReindexTask(RestHighLevelClient client, String taskId) throws Exception {
         for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
             try{
                 RestClient restClient = client.getLowLevelClient();
@@ -429,19 +428,18 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn(e.getMessage());
+                logger.warn("CANCEL_REINDEX_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("Reindex Cancel Error : ", e);
-                    throw new RuntimeException(e);
+                    throw new Exception("REINDEX_CANCEL_ERROR : ", e);
                 }
             }
         }
     }
 
-    private void modifyReplica(RestHighLevelClient client, String destIndex, int size) throws InterruptedException {
+    private void modifyReplica(RestHighLevelClient client, String destIndex, int size) throws Exception {
         for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
             try{
                 RestClient restClient = client.getLowLevelClient();
@@ -461,13 +459,12 @@ public class IndexService {
                 break;
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn(e.getMessage());
+                logger.warn("MODIFY_REPLICA_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("", e);
-                    throw new RuntimeException(e);
+                    throw new Exception("MODIFY_REPLICA_ERROR : ", e);
                 }
             }
         }
@@ -490,17 +487,14 @@ public class IndexService {
                     result = jsonObj.getString("indices").equals("{}");
                 }
                 break;
-            } catch (JSONException e) {
-                logger.error("JSONException : ", e);
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn(e.getMessage());
+                logger.warn("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("", e);
-                    throw new Exception(e);
+                    throw new Exception("CHECK_INDEX_GREEN_ERROR : ", e);
                 }
             }
         }
@@ -522,17 +516,14 @@ public class IndexService {
                     result = ((boolean) jsonObj.get("completed"));
                 }
                 break;
-            } catch (JSONException e) {
-                logger.error("JSONException : ", e);
             } catch (Exception e) {
                 // 예외 처리
-                logger.warn(e.getMessage());
+                logger.warn("TASK_CHECK_FAIL. {} RETRY : {}", e, i);
                 // 재시도하기 전에 1초 동안 휴면
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("JSONException : ", e);
-                    throw new Exception(e);
+                    throw new Exception("TASK_CHECK_FAIL ERROR : ",  e);
                 }
             }
         }
