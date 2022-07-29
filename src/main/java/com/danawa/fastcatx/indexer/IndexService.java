@@ -484,6 +484,8 @@ public class IndexService {
                     String responseBody = EntityUtils.toString(response.getEntity());
                     JSONObject jsonObj = new JSONObject(responseBody);
 
+                    logger.info("what the json : {}", jsonObj);
+
                     // 결과값이 없을때 Green 상태 processing false.
                     result = jsonObj.getString("indices").equals("{}");
                 }
