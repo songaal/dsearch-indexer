@@ -286,6 +286,7 @@ public class IndexService {
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             long start = System.currentTimeMillis();
             try {
+                // 레플리카를 0으로 바꾸기 전 셋팅 가져오기
                 int replicaCount = getIndexReplicaSetting(client, destIndex);
 
                 // 대상 인덱스 replica 셋팅 0으로 변경
@@ -334,8 +335,7 @@ public class IndexService {
         }
     }
 
-    // 레플리카를 0으로 바꾸기 전 셋팅 가져오기
-    private int getIndexReplicaSetting(RestHighLevelClient client, String index) throws InterruptedException {
+    private int getIndexReplicaSetting(RestHighLevelClient client, String index) {
         int count = 0;
         for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
             try{
@@ -352,17 +352,18 @@ public class IndexService {
                 JSONObject settings = targetIndex.getJSONObject("settings");
                 JSONObject config = settings.getJSONObject("index");
                 count = config.getInt("number_of_replicas");
-                logger.info("TARGET_INDEX_SETTINGS : {}", jsonObj);
+                logger.info("TARGET_INDEX_REPLICA_COUNT : {}", count);
                 break;
             } catch (Exception e) {
                 // 예외 처리
                 logger.warn("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
-                // 재시도하기 전에 1초 동안 휴면
-                Thread.sleep(RETRY_INTERVAL_MS);
+                try {
+                    // 재시도하기 전에 1초 동안 휴면
+                    Thread.sleep(RETRY_INTERVAL_MS);
+                } catch (Exception ignore){}
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    logger.error("GET_SETTING_FAIL_ERROR", e);
-                    throw new RuntimeException(e);
+                    throw new RuntimeException("GET_SETTING_FAIL_ERROR", e);
                 }
             }
         }
@@ -406,7 +407,7 @@ public class IndexService {
                 Thread.sleep(RETRY_INTERVAL_MS);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
-                    throw new Exception("REINDEX_EXECUTE_ERROR : ", e);
+                    throw new RuntimeException("REINDEX_EXECUTE_ERROR : ", e);
                 }
             }
         }
