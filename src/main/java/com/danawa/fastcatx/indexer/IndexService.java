@@ -7,15 +7,13 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.conn.ConnectionKeepAliveStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.action.ActionListener;
+import org.apache.http.util.EntityUtils;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.*;
 import org.elasticsearch.client.enrich.StatsRequest;
@@ -24,17 +22,14 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.rest.RestStatus;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class IndexService {
 
@@ -42,6 +37,8 @@ public class IndexService {
 
     final int SOCKET_TIMEOUT = 10 * 60 * 1000;
     final int CONNECTION_TIMEOUT = 40 * 1000;
+    final int MAX_RETRIES_COUNT = 5;
+    final int RETRY_INTERVAL_MS = 1000;
 
     // 몇건 색인중인지.
     private int count;
@@ -274,6 +271,264 @@ public class IndexService {
                 logger.info("index:[{}] Flush Finished! doc[{}] elapsed[{}m]", index, count, totalTime / 1000 / 60);
             }
         }
+    }
+
+    /*
+    * reindex 전체색인을 위한 메소드
+     */
+    public void reindex(Map<String, Object> payload, String destIndex, Job job) throws Exception {
+        // dest로 source를 구함
+        String sourceIndex = destIndex.endsWith("-a") ? destIndex.replace("-a", "-b") : destIndex.replace("-b", "-a"); // 목적지 인덱스
+        String slices = (String) payload.get("slices");
+        String reindexCheckMs = (String) payload.get("reindexCheckIntervalMs");
+        String replicaCheckMs = (String) payload.get("replicaCheckIntervalMs");
+
+        try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
+            long start = System.currentTimeMillis();
+            try {
+                // 레플리카를 0으로 바꾸기 전 셋팅 가져오기
+                int replicaCount = getIndexReplicaSetting(client, destIndex);
+
+                // 대상 인덱스 replica 셋팅 0으로 변경
+                modifyReplica(client, destIndex, 0);
+
+                // reindex 작업 시작
+                String taskId = executeReindex(client, sourceIndex, destIndex, slices);
+
+                // reindex가 끝났는지 반복 확인
+                while (!isTaskDone(client, taskId)) {
+                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                        logger.info("Stop Signal");
+                        cancelReindexTask(client, taskId);
+                        throw new StopSignalException();
+                    }
+
+                    Thread.sleep(Long.parseLong(reindexCheckMs));
+                }
+
+                // 레플리카 생성 시작
+                modifyReplica(client, destIndex, replicaCount);
+
+                // 레플리카 생성 후 잠깐 대기 10초
+                Thread.sleep(10000);
+
+                // 레플리카 생성이 끝났는지 반복 확인
+                while (!isIndexGreen(client, destIndex)) {
+                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                        logger.info("Stop Signal");
+                        throw new StopSignalException();
+                    }
+
+                    Thread.sleep(Long.parseLong(replicaCheckMs));
+                }
+
+            } catch (StopSignalException e) {
+                logger.error("Process Stop! => ", e);
+                throw e;
+            } catch (Exception e) {
+                logger.error("Error occur! => ", e);
+                throw e;
+            }
+
+            long totalTime = System.currentTimeMillis() - start;
+            logger.info("index:[{}] reindex Finished! doc[{}] elapsed[{}m]", destIndex, count, totalTime / 1000 / 60);
+        }
+    }
+
+    private int getIndexReplicaSetting(RestHighLevelClient client, String index) {
+        int count = 0;
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                RestClient restClient = client.getLowLevelClient();
+                Request request = new Request(
+                        "GET",
+                        index + "/_settings");
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+
+                // 다중으로 존재하므로 아래와 같이 파싱..
+                JSONObject jsonObj = new JSONObject(responseBody);
+                JSONObject targetIndex = jsonObj.getJSONObject(index);
+                JSONObject settings = targetIndex.getJSONObject("settings");
+                JSONObject config = settings.getJSONObject("index");
+                count = config.getInt("number_of_replicas");
+                logger.info("TARGET_INDEX_REPLICA_COUNT : {}", count);
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
+                try {
+                    // 재시도하기 전에 1초 동안 휴면
+                    Thread.sleep(RETRY_INTERVAL_MS);
+                } catch (Exception ignore){}
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new RuntimeException("GET_SETTING_FAIL_ERROR", e);
+                }
+            }
+        }
+        return count;
+    }
+
+    // reindex API
+    private String executeReindex(RestHighLevelClient client, String sourceIndex, String destIndex, String slices) throws Exception {
+        String taskId = null;
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                RestClient restClient = client.getLowLevelClient();
+
+                // reindex API 호출
+                Request request = new Request(
+                        "POST",
+                        "/_reindex");
+                request.addParameter("wait_for_completion", "false");
+                request.addParameter("slices", slices);
+                String entity = "{\n" +
+                        "  \"source\": {\n" +
+                        "    \"index\": \"" + sourceIndex + "\"\n" +
+                        "  }, \n" +
+                        "  \"dest\": {\n" +
+                        "    \"index\": \"" + destIndex + "\"\n" +
+                        "  } \n" +
+                        "}";
+                request.setJsonEntity(entity);
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+                JSONObject jsonObj = new JSONObject(responseBody);
+                logger.info("REINDEX_START : {}, SOURCE_INDEX : {}, DEST_INDEX : {}, SLICES : {}", jsonObj, sourceIndex, destIndex, slices);
+                if(jsonObj.get("task") != null){
+                    taskId = (String) jsonObj.get("task");
+                }
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("EXECUTE_REINDEX_FAIL. {} RETRY : {}", e, i);
+                // 재시도하기 전에 1초 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS);
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new RuntimeException("REINDEX_EXECUTE_ERROR : ", e);
+                }
+            }
+        }
+        return taskId;
+    }
+
+    // reindex cancel API
+    private void cancelReindexTask(RestHighLevelClient client, String taskId) throws Exception {
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                RestClient restClient = client.getLowLevelClient();
+                Request request = new Request(
+                        "POST",
+                        "_tasks/" + taskId +"/_cancel");
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+                JSONObject jsonObj = new JSONObject(responseBody);
+                logger.info("REINDEX_CANCEL : {}, TASK_ID : {}", jsonObj, taskId);
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("CANCEL_REINDEX_FAIL. {} RETRY : {}", e, i);
+                // 재시도하기 전에 1초 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS);
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new Exception("REINDEX_CANCEL_ERROR : ", e);
+                }
+            }
+        }
+    }
+
+    private void modifyReplica(RestHighLevelClient client, String destIndex, int size) throws Exception {
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                RestClient restClient = client.getLowLevelClient();
+                Request request = new Request(
+                        "PUT",
+                        "/" + destIndex + "/_settings");
+                String entity = "{\n" +
+                        "  \"index\": {\n" +
+                        "    \"number_of_replicas\": \"" + size + "\"\n" +
+                        "  } \n" +
+                        "}";
+                request.setJsonEntity(entity);
+                Response response = restClient.performRequest(request);
+                String responseBody = EntityUtils.toString(response.getEntity());
+                JSONObject jsonObj = new JSONObject(responseBody);
+                logger.info("Modify Replica : {}, TARGET_INDEX : {}, SIZE : {}", jsonObj, destIndex, size);
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("MODIFY_REPLICA_FAIL. {} RETRY : {}", e, i);
+                // 재시도하기 전에 1초 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS);
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new Exception("MODIFY_REPLICA_ERROR : ", e);
+                }
+            }
+        }
+    }
+
+    private boolean isIndexGreen(RestHighLevelClient client, String index) throws Exception {
+        boolean result = false;
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                if(index != null){
+                    RestClient restClient = client.getLowLevelClient();
+                    Request request = new Request(
+                            "GET",
+                            "/"+ index + "/_shard_stores/");
+                    Response response = restClient.performRequest(request);
+                    String responseBody = EntityUtils.toString(response.getEntity());
+                    JSONObject jsonObj = new JSONObject(responseBody);
+
+                    // 결과값이 없을때 Green 상태 processing false.
+                    result = jsonObj.get("indices").toString().equals("{}");
+                }
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
+                // 재시도하기 전에 1초 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS);
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new Exception("CHECK_INDEX_GREEN_ERROR : ", e);
+                }
+            }
+        }
+        return result;
+    }
+
+    private boolean isTaskDone(RestHighLevelClient client, String taskId) throws Exception {
+        boolean result = false;
+        for (int i = 0; i <= MAX_RETRIES_COUNT; i++) {
+            try{
+                if(taskId != null){
+                    RestClient restClient = client.getLowLevelClient();
+                    Request request = new Request(
+                            "GET",
+                            "/_tasks/" + taskId);
+                    Response response = restClient.performRequest(request);
+                    String responseBody = EntityUtils.toString(response.getEntity());
+                    JSONObject jsonObj = new JSONObject(responseBody);
+                    result = ((boolean) jsonObj.get("completed"));
+                }
+                break;
+            } catch (Exception e) {
+                // 예외 처리
+                logger.error("TASK_CHECK_FAIL. {} RETRY : {}", e, i);
+                // 재시도하기 전에 1초 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS);
+                // 마지막 재시도가 실패하면 예외를 던진다.
+                if (i == MAX_RETRIES_COUNT) {
+                    throw new Exception("TASK_CHECK_FAIL ERROR : ",  e);
+                }
+            }
+        }
+        return result;
     }
 
     class Worker implements Callable {
@@ -565,5 +820,9 @@ public class IndexService {
             Thread.sleep(500);
         }
         return result;
+    }
+
+    public RestClientBuilder getRestClientBuilder() {
+        return this.restClientBuilder;
     }
 }

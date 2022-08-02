@@ -3,13 +3,12 @@ package com.danawa.fastcatx.indexer.preProcess;
 import com.danawa.fastcatx.indexer.IndexJobRunner;
 import com.danawa.fastcatx.indexer.entity.Job;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.scheduling.support.CronTrigger;
 
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -417,4 +416,48 @@ public class PreProcessTest {
     }
 
 
+    @Test
+    public void ackeywordTest() {
+        try {
+            // 단어 테스트
+            logger.info("자동완성 전처리 테스트 시작");
+
+            ArrayList<String> testWords = new ArrayList<>();
+            testWords.add("노트북");
+            testWords.add("온라인카지노게임");
+            testWords.add("건마");
+            testWords.add("a 광주");
+            testWords.add("a광주");
+            testWords.add("op");
+            testWords.add("툰코");
+            testWords.add("김툰코");
+            testWords.add("카톡문의 ☏");
+            testWords.add("☃카톡");
+            testWords.add("건마⇊수지");
+            testWords.add("웹툰코리아");
+
+            for (String testWord : testWords) {
+                boolean result = new AcKeywordPreProcess(new Job()).findAtBlacklist("D:/", testWord);
+                logger.info(testWord + "{}", result ? " 제외됨" : " 제외안됨");
+            }
+
+// 사용 테스트
+//            Job job = new Job();
+//            Map<String, Object> payload  = new HashMap<>();
+//
+//            payload.put("exceptKeywordPath", "D:/");
+//
+//            job.setStartTime(System.currentTimeMillis());
+//            job.setId(UUID.randomUUID());
+//            job.setAction(IndexJobRunner.STATUS.READY.name());
+//            job.setRequest(payload);
+//
+//            new AcKeywordPreProcess(job).start();
+//        } catch (Exception e){
+//            logger.error("", e);
+//        }
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+    }
 }
