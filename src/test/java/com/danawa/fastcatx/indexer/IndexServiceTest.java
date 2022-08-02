@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class IndexServiceTest {
 
@@ -72,6 +74,22 @@ public class IndexServiceTest {
         JDBCIngester ingester = new JDBCIngester(driver, url, user, password, bulkSize, fetchSize, maxRows, false, sqlList);
         IndexService indexService = new IndexService(host, port, scheme);
         indexService.index(ingester, index, bulkSize, null, null);
+    }
+
+    @Test
+    public void testReindex() throws Exception {
+        String host = "localhost";
+        Integer port = 9200;
+        String scheme = "http";
+        String index = "analysis-product-name";
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("slices", "1");
+        payload.put("reindexCheckIntervalMs", "1000");
+        payload.put("replicaCheckIntervalMs", "1000");
+
+        IndexService indexService = new IndexService(host, port, scheme, "elastic", "changeme");
+        indexService.reindex(payload, index, null);
     }
 
     public void testStorageSize() {
