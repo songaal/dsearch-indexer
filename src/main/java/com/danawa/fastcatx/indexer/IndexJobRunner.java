@@ -37,6 +37,7 @@ public class IndexJobRunner implements Runnable {
 	private String autoDynamicCheckUrl;
 	private String autoDynamicQueueIndexUrl;
 	private int autoDynamicQueueIndexConsumeCount = 1;
+	private boolean preProcess;
 
 	boolean enableRemoteCmd;
 	String remoteCmdUrl;
@@ -84,9 +85,14 @@ public class IndexJobRunner implements Runnable {
 			logger.debug("{}", gson.toJson(payload));
 
 			// 전처리 컬렉션인지 체크
-			Boolean preProcess = (Boolean) payload.getOrDefault("preProcess", false);
+			preProcess = (Boolean) payload.getOrDefault("preProcess", false);
+			// 전처리 컬렉션 일때
 			if (preProcess) {
-				// 전처리 컬렉션 일때
+				// 전처리시 동적색인 ON/OFF 처리
+				autoDynamic = (Boolean) payload.getOrDefault("autoDynamic",false);
+				if(autoDynamic) {
+					disableAutoDynamic(payload);
+				}
 				PreProcess process = new PreProcess.EmptyPreProcess();
 				process.starter(job);
 				return;
@@ -145,32 +151,7 @@ public class IndexJobRunner implements Runnable {
 
 			if (autoDynamic) {
 				//                    자동으로 동적색인 필수 파라미터
-				autoDynamicIndex = index;
-				autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
-				autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
-				autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
-				try {
-					autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
-				} catch (Exception ignore) {
-					autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
-				}
-				// 큐 이름이 여러개 일 경우.
-				if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-					// 멀티 MQ
-					for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-						String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-						String queueName = autoDynamicQueueNames.get(i);
-						updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
-						Thread.sleep(1000);
-					}
-				} else {
-					// 싱글 MQ
-					for (String autoDynamicQueueName : autoDynamicQueueNames) {
-						updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
-						Thread.sleep(1000);
-					}
-				}
-				logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicIndex);
+				disableAutoDynamic(payload);
 			}
 
 			boolean dryRun = (Boolean) payload.getOrDefault("dryRun",false); // rsync 스킵 여부
@@ -395,11 +376,11 @@ public class IndexJobRunner implements Runnable {
 				//            원격 호출 URL (패스트캣 임시로직)
 				remoteCmdUrl = (String) payload.getOrDefault("remoteCmdUrl","");
 
-                // 오피스es 링크상품 전체색인 전파
-                boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob", false);
-                String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
+				// 오피스es 링크상품 전체색인 전파
+				boolean enableOfficeIndexingJob = (Boolean) payload.getOrDefault("enableOfficeIndexingJob", false);
+				String officeFullIndexUrl = (String) payload.getOrDefault("officeFullIndexUrl","");
 
-                String[] groupSeqLists = groupSeqs.split(",");
+				String[] groupSeqLists = groupSeqs.split(",");
 
 				// 1. groupSeqLists 수 만큼 프로시저 호출
 				// 2. 체크
@@ -407,9 +388,9 @@ public class IndexJobRunner implements Runnable {
 				StringBuffer sb = new StringBuffer();
 				Map<String, Boolean> procedureMap = new HashMap<>();
 
-                if (enableRemoteCmd) {
-                    remoteCmd("CLOSE", 10);
-                }
+				if (enableRemoteCmd) {
+					remoteCmd("CLOSE", 10);
+				}
 
 				if(procedureSkip == false) {
 					logger.info("Call Procedure");
@@ -447,13 +428,13 @@ public class IndexJobRunner implements Runnable {
 
 //                프로시저 -> multiThread
 //                rsync ->  singleThread -> 1개 씩
-                if (enableRemoteCmd) {
-                    remoteCmd("INDEX", 10);
-                }
+				if (enableRemoteCmd) {
+					remoteCmd("INDEX", 10);
+				}
 
-                if (enableOfficeIndexingJob) {
-                    officeLinkIndexing(officeFullIndexUrl, groupSeqs);
-                }
+				if (enableOfficeIndexingJob) {
+					officeLinkIndexing(officeFullIndexUrl, groupSeqs);
+				}
 
 				if(rsyncSkip == false){
 					ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(procedureThreads));
@@ -590,113 +571,86 @@ public class IndexJobRunner implements Runnable {
 				}
 			}
 
-			if (threadSize > 1) {
-				service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+			if(type.equals("reindex")){
+				service.reindex(payload, index, job);
 			} else {
-				service.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+				// reindex가 아닌 경우 기존 로직과 동일
+				if (threadSize > 1) {
+					service.indexParallel(finalIngester, index, bulkSize, filter, threadSize, job, pipeLine);
+				} else {
+					service.index(finalIngester, index, bulkSize, filter, job, pipeLine);
+				}
 			}
 
-            job.setStatus(STATUS.SUCCESS.name());
-        } catch (StopSignalException e) {
-            job.setStatus(STATUS.STOP.name());
-        } catch (FileNotFoundException e){
-            job.setStatus(STATUS.STOP.name());
-            job.setError(e.getMessage());
-            logger.error("error .... ", e);
-        } catch (CircuitBreakerException e){
-			job.setStatus(STATUS.ERROR.name());
+			job.setStatus(STATUS.SUCCESS.name());
+		} catch (StopSignalException e) {
+			job.setStatus(STATUS.STOP.name());
+		} catch (FileNotFoundException e){
+			job.setStatus(STATUS.STOP.name());
 			job.setError(e.getMessage());
 			logger.error("error .... ", e);
 		} catch (Exception e) {
-            job.setStatus(STATUS.ERROR.name());
-            job.setError(e.getMessage());
-            logger.error("error .... ", e);
-        } finally {
-            job.setEndTime(System.currentTimeMillis() / 1000);
-            if (autoDynamic) {
-                new Thread(() -> {
-                    int r = 20;
-                    logger.info("create success check thread");
-                    while (true) {
-                        try {
-//                            색인 취소 체크. 동적색인 on
-							logger.info("{}", job);
-                            if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                                logger.info("STOP SIGNAL");
-                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-                                    // 멀티 MQ
-                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-                                        String queueName = autoDynamicQueueNames.get(i);
-                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-                                        Thread.sleep(1000);
-                                    }
-                                } else {
-                                    // 싱글 MQ
-                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-                                        Thread.sleep(1000);
-                                    }
-                                }
-                                break;
-                            }
+			job.setStatus(STATUS.ERROR.name());
+			job.setError(e.getMessage());
+			logger.error("error .... ", e);
+		} finally {
+			job.setEndTime(System.currentTimeMillis() / 1000);
+			if (autoDynamic) {
+				new Thread(() -> {
+					int r = 20;
+					logger.info("create success check thread");
+					while (true) {
+						try {
+//                            색인 취소 체크. 또는 전처리시 동적색인 ON
+							if ((job != null && job.getStopSignal() != null && job.getStopSignal())
+									|| (job != null && preProcess)) {
+								logger.info(job != null && job.getStopSignal() != null && job.getStopSignal() ? "STOP SIGNAL" : "PREPROCESS DONE");
+								enableAutoDynamic();
+								break;
+							}
 //                            색인 완료 여부 체크
-                            logger.info("상테 체크 URL: {}", autoDynamicCheckUrl);
-                            ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
-                                    HttpMethod.GET,
-                                    new HttpEntity(new HashMap<String, Object>()),
-                                    String.class
-                            );
-                            String status = null;
-                            try {
-                                Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
-                                Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
-                                status = String.valueOf(info.get("status"));
-                            }catch (Exception ignore) {}
+							logger.info("상태 체크 URL: {}", autoDynamicCheckUrl);
+							ResponseEntity<String> searchCheckResponse = restTemplate.exchange(autoDynamicCheckUrl,
+									HttpMethod.GET,
+									new HttpEntity(new HashMap<String, Object>()),
+									String.class
+							);
+							String status = null;
+							try {
+								Map<String, Object> body = gson.fromJson(searchCheckResponse.getBody(), Map.class);
+								Map<String, Object> info = gson.fromJson(gson.toJson(body.get("info")), Map.class);
+								status = String.valueOf(info.get("status"));
+							}catch (Exception ignore) {}
 //                            색인이 완료라면 동적색인 ON
-                            if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status) || "STOP".equalsIgnoreCase(status)) {
-                                if (autoDynamicQueueIndexUrl.split(",").length != 1) {
-                                    // 멀티 MQ
-                                    for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
-                                        String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
-                                        String queueName = autoDynamicQueueNames.get(i);
-                                        updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
-                                        Thread.sleep(1000);
-                                    }
-                                } else {
-                                    // 싱글 MQ
-                                    for (String autoDynamicQueueName : autoDynamicQueueNames) {
-                                        updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
-                                        Thread.sleep(1000);
-                                    }
-                                }
-                                logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
-                                break;
-                            }
-                            r --;
-                            if (r == 0) {
-                                logger.warn("max retry!!!!");
-                                break;
-                            }
-                            Thread.sleep(60 * 1000);
-                        } catch (Exception e) {
-                            logger.error("", e);
-                            r --;
-                            if (r == 0) {
-                                logger.warn("max retry!!!!");
-                                break;
-                            } else {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException ignore) {}
-                            }
-                        }
-                    }
-                    logger.info("success check Thread terminate");
-                }).start();
-            }
-        }
-    }
+							if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+								enableAutoDynamic();
+								logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
+								break;
+							}
+							r --;
+							if (r == 0) {
+								logger.warn("max retry!!!!");
+								break;
+							}
+							Thread.sleep(60 * 1000);
+						} catch (Exception e) {
+							logger.error("", e);
+							r --;
+							if (r == 0) {
+								logger.warn("max retry!!!!");
+								break;
+							} else {
+								try {
+									Thread.sleep(1000);
+								} catch (InterruptedException ignore) {}
+							}
+						}
+					}
+					logger.info("success check Thread terminate");
+				}).start();
+			}
+		}
+	}
 
 	public void updateQueueIndexerConsume(boolean dryRun, String queueIndexerUrl, String queueName, int consumeCount) {
 		Map<String, Object> body = new HashMap<>();
@@ -713,6 +667,53 @@ public class IndexJobRunner implements Runnable {
 		} else {
 			logger.info("[DRY_RUN] queue indexer request skip");
 		}
+	}
+	// 동적색인 ON
+	public void enableAutoDynamic() throws InterruptedException {
+		if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+			// 멀티 MQ
+			for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+				String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+				String queueName = autoDynamicQueueNames.get(i);
+				updateQueueIndexerConsume(false, queueIndexUrl, queueName, autoDynamicQueueIndexConsumeCount);
+				Thread.sleep(1000);
+			}
+		} else {
+			// 싱글 MQ
+			for (String autoDynamicQueueName : autoDynamicQueueNames) {
+				updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, autoDynamicQueueIndexConsumeCount);
+				Thread.sleep(1000);
+			}
+		}
+	}
+
+	// 동적색인 OFF
+	public void disableAutoDynamic(Map<String, Object> payload) throws InterruptedException {
+		autoDynamicQueueNames = Arrays.asList(((String) payload.getOrDefault("autoDynamicQueueNames","")).split(","));
+		autoDynamicCheckUrl = (String) payload.getOrDefault("autoDynamicCheckUrl","");
+		autoDynamicQueueIndexUrl = (String) payload.getOrDefault("autoDynamicQueueIndexUrl","");
+		try {
+			autoDynamicQueueIndexConsumeCount = (int) payload.getOrDefault("autoDynamicQueueIndexConsumeCount",1);
+		} catch (Exception ignore) {
+			autoDynamicQueueIndexConsumeCount = Integer.parseInt((String) payload.getOrDefault("autoDynamicQueueIndexConsumeCount","1"));
+		}
+		// 큐 이름이 여러개 일 경우.
+		if (autoDynamicQueueIndexUrl.split(",").length != 1) {
+			// 멀티 MQ
+			for (int i = 0; i < autoDynamicQueueIndexUrl.split(",").length; i++) {
+				String queueIndexUrl = autoDynamicQueueIndexUrl.split(",")[i];
+				String queueName = autoDynamicQueueNames.get(i);
+				updateQueueIndexerConsume(false, queueIndexUrl, queueName, 0);
+				Thread.sleep(1000);
+			}
+		} else {
+			// 싱글 MQ
+			for (String autoDynamicQueueName : autoDynamicQueueNames) {
+				updateQueueIndexerConsume(false, autoDynamicQueueIndexUrl, autoDynamicQueueName, 0);
+				Thread.sleep(1000);
+			}
+		}
+		logger.info("[{}] autoDynamic >>> Close <<<", autoDynamicQueueNames);
 	}
 
 	//      FIXME 20210618 김준우 - 패스트캣 운영에서 제외대면 remoteCmd 제거 예정 (임시 기능 )
@@ -734,16 +735,16 @@ public class IndexJobRunner implements Runnable {
 		}
 	}
 
-    private void officeLinkIndexing(String url, String groupSeqStr) {
-        logger.info("office-link indexing start");
-        url += "&action=all";
-        url += "&groupSeq=" + groupSeqStr;
-        try {
-            logger.info("office-link indexing start - {}", url);
-            restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
-        } catch (Exception e) {
-            logger.error("", e);
-        }
-    }
+	private void officeLinkIndexing(String url, String groupSeqStr) {
+		logger.info("office-link indexing start");
+		url += "&action=all";
+		url += "&groupSeq=" + groupSeqStr;
+		try {
+			logger.info("office-link indexing start - {}", url);
+			restTemplate.exchange(url, HttpMethod.GET, new HttpEntity(new HashMap<>()), String.class);
+		} catch (Exception e) {
+			logger.error("", e);
+		}
+	}
 
 }
