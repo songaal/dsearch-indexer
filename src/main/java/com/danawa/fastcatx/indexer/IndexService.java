@@ -490,8 +490,8 @@ public class IndexService {
             } catch (Exception e) {
                 // 예외 처리
                 logger.error("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
-                // 재시도하기 전에 1초 동안 휴면
-                Thread.sleep(RETRY_INTERVAL_MS);
+                // 재시도하기 전에 3분 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS * 180);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
                     throw new Exception("CHECK_INDEX_GREEN_ERROR : ", e);
