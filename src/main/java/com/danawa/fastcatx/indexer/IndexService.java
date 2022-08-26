@@ -307,7 +307,7 @@ public class IndexService {
                 }
 
                 // reindex 후 대기 시간
-                logger.info("reindex Finished! wait [{}m]", Long.parseLong(reindexFinishAndWaitMs) / 100 / 60);
+                logger.info("reindex Finished! wait [{}m]", Long.parseLong(reindexFinishAndWaitMs) / 1000 / 60);
 
                 Thread.sleep(Long.parseLong(reindexFinishAndWaitMs));
 
