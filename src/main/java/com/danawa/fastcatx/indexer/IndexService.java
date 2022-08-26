@@ -281,6 +281,7 @@ public class IndexService {
         String slices = (String) payload.get("slices");
         String reindexCheckMs = (String) payload.get("reindexCheckIntervalMs");
         String replicaCheckMs = (String) payload.get("replicaCheckIntervalMs");
+        String reindexFinishAndWaitMs = (String) payload.get("reindexFinishAndWaitMs");
 
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             long start = System.currentTimeMillis();
@@ -304,6 +305,11 @@ public class IndexService {
 
                     Thread.sleep(Long.parseLong(reindexCheckMs));
                 }
+
+                // reindex 후 대기 시간
+                logger.info("reindex Finished! wait [{}m]", Long.parseLong(reindexFinishAndWaitMs) / 100 / 60);
+
+                Thread.sleep(Long.parseLong(reindexFinishAndWaitMs));
 
                 // 레플리카 생성 시작
                 modifyReplica(client, destIndex, replicaCount);
