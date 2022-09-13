@@ -288,9 +288,9 @@ public class PopularityScorePreProcess_unlink implements PreProcess {
                  * 초기화면 0점으로 업데이트
                  */
                 if(type.equals("init")) {
-                    doc.put("popularityScore", 0);
+                    doc.put("popularityScore", "0");
                 }else{
-                    doc.put("popularityScore", scoreSet.getValue());
+                    doc.put("popularityScore", String.valueOf(scoreSet.getValue()));
                 }
 
                 UpdateRequest updateRequest = new UpdateRequest().index(index);
