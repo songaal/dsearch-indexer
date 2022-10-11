@@ -22,7 +22,6 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.rest.RestStatus;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -282,6 +281,7 @@ public class IndexService {
         String slices = (String) payload.get("slices");
         String reindexCheckMs = (String) payload.get("reindexCheckIntervalMs");
         String replicaCheckMs = (String) payload.get("replicaCheckIntervalMs");
+        String reindexFinishAndWaitMs = (String) payload.get("reindexFinishAndWaitMs");
 
         try (RestHighLevelClient client = new RestHighLevelClient(restClientBuilder)) {
             long start = System.currentTimeMillis();
@@ -305,6 +305,11 @@ public class IndexService {
 
                     Thread.sleep(Long.parseLong(reindexCheckMs));
                 }
+
+                // reindex 후 대기 시간
+                logger.info("reindex Finished! wait [{}m]", Long.parseLong(reindexFinishAndWaitMs) / 1000 / 60);
+
+                Thread.sleep(Long.parseLong(reindexFinishAndWaitMs));
 
                 // 레플리카 생성 시작
                 modifyReplica(client, destIndex, replicaCount);
@@ -358,8 +363,8 @@ public class IndexService {
                 // 예외 처리
                 logger.error("GET_REPLICA_SETTING_FAIL. {} RETRY : {}", e, i);
                 try {
-                    // 재시도하기 전에 1초 동안 휴면
-                    Thread.sleep(RETRY_INTERVAL_MS);
+                    // 재시도하기 전에 3분 동안 휴면
+                    Thread.sleep(RETRY_INTERVAL_MS * 180);
                 } catch (Exception ignore){}
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
@@ -491,8 +496,8 @@ public class IndexService {
             } catch (Exception e) {
                 // 예외 처리
                 logger.error("CHECK_INDEX_GREEN_FAIL. {} RETRY : {}", e, i);
-                // 재시도하기 전에 1초 동안 휴면
-                Thread.sleep(RETRY_INTERVAL_MS);
+                // 재시도하기 전에 3분 동안 휴면
+                Thread.sleep(RETRY_INTERVAL_MS * 180);
                 // 마지막 재시도가 실패하면 예외를 던진다.
                 if (i == MAX_RETRIES_COUNT) {
                     throw new Exception("CHECK_INDEX_GREEN_ERROR : ", e);
