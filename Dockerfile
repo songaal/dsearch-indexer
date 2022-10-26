@@ -1,6 +1,6 @@
 FROM dcr.danawa.io/alpine-k8s-java:8
 
-ARG JAVA_OPTS
+ENV JAVA_OPTS
 ARG VERSION
 
 RUN yum -y update && yum install -y wget rsync
