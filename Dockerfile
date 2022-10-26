@@ -26,7 +26,6 @@ WORKDIR /app
 ENV PATH=$PATH:${JAVA_HOME}/bin
 ENV spring_logging_level=debug
 ENV LANG=ko_KR.euckr
-ENV VERSION=1.1.0
 
 COPY lib/Altibase.jar .
 
