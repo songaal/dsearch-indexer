@@ -1,5 +1,8 @@
 FROM dcr.danawa.io/alpine-k8s-java:8
 
+ARG JAVA_OPTS
+ARG VERSION
+
 RUN yum -y update && yum install -y wget rsync
 
 RUN useradd danawa
@@ -31,5 +34,7 @@ EXPOSE 9350
 EXPOSE 8080
 EXPOSE 9100
 
-#COPY target/* .
-#CMD ["java", "-classpath", "indexer-1.1.0.jar:Altibase.jar", "org.springframework.boot.loader.JarLauncher"]
+COPY branch-desc.txt/ .
+COPY target/indexer-${VERSION}.jar indexer.jar
+
+CMD /bin/bash -c "java ${JAVA_OPTS} -Dlogback.configurationFile=logback-prod.xml -Dfile.encoding=utf-8 -classpath indexer.jar:lib/Altibase.jar org.springframework.boot.loader.JarLauncher"
