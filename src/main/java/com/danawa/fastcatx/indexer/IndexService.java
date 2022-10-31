@@ -22,6 +22,7 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.rest.RestStatus;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -296,14 +297,20 @@ public class IndexService {
                 String taskId = executeReindex(client, sourceIndex, destIndex, slices);
 
                 // reindex가 끝났는지 반복 확인
-                while (!isTaskDone(client, taskId)) {
-                    if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
-                        logger.info("Stop Signal");
-                        cancelReindexTask(client, taskId);
-                        throw new StopSignalException();
-                    }
+                try {
+                    while (!isTaskDone(client, taskId)) {
+                        if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
+                            logger.info("Stop Signal");
+                            cancelReindexTask(client, taskId);
+                            throw new StopSignalException();
+                        }
 
-                    Thread.sleep(Long.parseLong(reindexCheckMs));
+                        Thread.sleep(Long.parseLong(reindexCheckMs));
+                    }
+                } catch (Exception e) {
+                    // 에러 발생 시 작업을 취소한다
+                    cancelReindexTask(client, taskId);
+                    throw e;
                 }
 
                 // reindex 후 대기 시간
@@ -519,6 +526,16 @@ public class IndexService {
                     Response response = restClient.performRequest(request);
                     String responseBody = EntityUtils.toString(response.getEntity());
                     JSONObject jsonObj = new JSONObject(responseBody);
+
+                    // 한건이라도 실패하면 작업 중단
+                    if(jsonObj.opt("response") != null){
+                        JSONObject res = (JSONObject)jsonObj.get("response");
+                        JSONArray failures  = (JSONArray)res.get("failures");
+                        if(failures.length() > 0){
+                            throw new Exception("Reindex Failure ERROR");
+                        }
+                    }
+
                     result = ((boolean) jsonObj.get("completed"));
                 }
                 break;
