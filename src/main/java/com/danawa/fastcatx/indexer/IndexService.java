@@ -307,6 +307,8 @@ public class IndexService {
 
                         Thread.sleep(Long.parseLong(reindexCheckMs));
                     }
+                } catch (StopSignalException e) {
+                    throw e;
                 } catch (Exception e) {
                     // 에러 발생 시 작업을 취소한다
                     cancelReindexTask(client, taskId);
