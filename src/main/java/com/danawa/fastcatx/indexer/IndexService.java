@@ -301,14 +301,11 @@ public class IndexService {
                     while (!isTaskDone(client, taskId)) {
                         if (job != null && job.getStopSignal() != null && job.getStopSignal()) {
                             logger.info("Stop Signal");
-                            cancelReindexTask(client, taskId);
                             throw new StopSignalException();
                         }
 
                         Thread.sleep(Long.parseLong(reindexCheckMs));
                     }
-                } catch (StopSignalException e) {
-                    throw e;
                 } catch (Exception e) {
                     // 에러 발생 시 작업을 취소한다
                     cancelReindexTask(client, taskId);
