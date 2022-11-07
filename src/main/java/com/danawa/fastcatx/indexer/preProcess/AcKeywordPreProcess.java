@@ -40,6 +40,8 @@ public class AcKeywordPreProcess implements PreProcess {
         String statisticsPath = (String) payload.getOrDefault("statisticsPath", "");
 //        /data/product/export/text/ACKEYWORD/Ackeyword.txt
         String outputFilePath = (String) payload.getOrDefault("outputFilePath", "");
+//        /data/product/export/text/ACKEYWORD/searchKeyword.txt
+        String searchKeywordFilePath = (String) payload.getOrDefault("searchKeywordFilePath", "");
 //        gather_AC.sql
         String selectSql = (String) payload.getOrDefault("selectSql", "");
         String searchDBDriver = (String) payload.getOrDefault("searchDBDriver", "");
@@ -60,6 +62,29 @@ public class AcKeywordPreProcess implements PreProcess {
 
         // 잠깐 주석
         Map<String, String[]> accKeywordResultMap = getAccureNewKeyword_n(statisticsPath, outputFilePath, getAccureKeyword(acKeywordTxtFilePath));
+
+        FileWriter fileWriter = null;
+        BufferedWriter bufferedWriter = null;
+
+        try {
+            // 제안검색어를 위한 사용자 검색 키워드 파일 추출
+            fileWriter = new FileWriter(searchKeywordFilePath);
+            bufferedWriter = new BufferedWriter(fileWriter);
+            Iterator<Map.Entry<String, String[]>> accKeyword = accKeywordResultMap.entrySet().iterator();
+            while (accKeyword.hasNext()) {
+                Map.Entry<String, String[]> entry = accKeyword.next();
+                bufferedWriter.write(entry.getValue()[2]);
+                bufferedWriter.newLine();
+            }
+            bufferedWriter.flush();
+            fileWriter.flush();
+            logger.info("사용자 검색 키워드 추출 개수 : " + accKeywordResultMap.size());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+        } finally {
+            bufferedWriter.close();
+            fileWriter.close();
+        }
 
         DatabaseConnector databaseConnector = new DatabaseConnector();
         databaseConnector.addConn(searchDBDriver, searchDBAddress, searchDBUsername, searchDBPassword);
