@@ -28,7 +28,6 @@ ENV spring_logging_level=debug
 ENV LANG=ko_KR.euckr
 
 COPY lib/Altibase.jar .
-COPY lib/convert-category-0.0.1.jar .
 
 EXPOSE 9350
 EXPOSE 8080
