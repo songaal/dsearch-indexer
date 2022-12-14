@@ -605,6 +605,8 @@ public class IndexJobRunner implements Runnable {
 							if ((job != null && job.getStopSignal() != null && job.getStopSignal())
 									|| (job != null && preProcess)) {
 								logger.info(job != null && job.getStopSignal() != null && job.getStopSignal() ? "STOP SIGNAL" : "PREPROCESS DONE");
+								logger.info("인덱스 교체 대기... 10s");
+								Thread.sleep(10 * 1000);
 								enableAutoDynamic();
 								break;
 							}
@@ -623,6 +625,8 @@ public class IndexJobRunner implements Runnable {
 							}catch (Exception ignore) {}
 //                            색인이 완료라면 동적색인 ON
 							if ("SUCCESS".equalsIgnoreCase(status) || "NOT_STARTED".equalsIgnoreCase(status)) {
+								logger.info("인덱스 교체 대기... 10s");
+								Thread.sleep(10 * 1000);
 								enableAutoDynamic();
 								logger.info("[{}] autoDynamic >>> Open <<<", autoDynamicIndex);
 								break;
