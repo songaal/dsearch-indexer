@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.danawa.fastcatx</groupId>
     <artifactId>indexer</artifactId>
-    <version>1.6.0</version>
+    <version>1.9.0</version>
     <name>Indexer</name>
     <description>FastcatX Indexer</description>
 
@@ -87,15 +87,9 @@
 
         <!--제거 예정 -->
         <dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <version>3.1.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-            <version>3.1.0</version>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.16</version>
         </dependency>
 
         <dependency>
