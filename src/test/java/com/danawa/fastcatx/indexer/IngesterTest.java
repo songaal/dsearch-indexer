@@ -84,9 +84,9 @@ public class IngesterTest {
     @Test
     public void testAlitibaseJDBCRead() throws IOException, SQLException {
         String driver = "Altibase.jdbc.driver.AltibaseDriver";
-        String url = "jdbc:Altibase://112.175.252.198:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
-        String user = "DBLINKDATA_1";
-        String password = "fldzmepdlxj**(";
+        String url = System.getProperty("jdbc.url");
+        String user = System.getProperty("jdbc.username");
+        String password = System.getProperty("jdbc.password");
         String dataSQL = "SELECT CATE_C FROM TCATE limit 1";
         int bulkSize = 1000;
         int fetchSize = 1000;
@@ -120,9 +120,9 @@ public class IngesterTest {
     @Test
     public void testProcedureRead() throws IOException, InterruptedException {
         String driver = "Altibase.jdbc.driver.AltibaseDriver";
-        String url = "jdbc:Altibase://112.175.252.198:20300/DNWALTI?ConnectionRetryCount=3&ConnectionRetryDelay=1&LoadBalance=off";
-        String user = "DBLINKDATA_1";
-        String password = "fldzmepdlxj**(";
+        String url = System.getProperty("jdbc.url");
+        String user = System.getProperty("jdbc.username");
+        String password = System.getProperty("jdbc.password");
         String procedureName = "search";
         String rsyncPah = "";
         Integer groupSeq = 0;
