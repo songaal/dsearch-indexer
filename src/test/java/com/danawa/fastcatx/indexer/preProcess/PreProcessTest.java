@@ -78,7 +78,8 @@ public class PreProcessTest {
             job.setAction(IndexJobRunner.STATUS.READY.name());
             job.setRequest(payload);
 
-            new NTourPreProcess(job).start();
+            PreProcess.startProcess(PreProcess.TYPE.NTOUR.name(), job);
+//            new NTourPreProcess(job).start();
         } catch (Exception e) {
             logger.error("", e);
         }
@@ -239,7 +240,8 @@ public class PreProcessTest {
             job.setAction(IndexJobRunner.STATUS.READY.name());
             job.setRequest(payload);
 
-            new CategoryKeywordPreProcess(job).start();
+            PreProcess.startProcess(PreProcess.TYPE.CATEGORY_KEYWORD.name(), job);
+//            new CategoryKeywordPreProcess(job).start();
         } catch (Exception e) {
             logger.error("", e);
         }
@@ -293,7 +295,8 @@ public class PreProcessTest {
             job.setAction(IndexJobRunner.STATUS.READY.name());
             job.setRequest(payload);
 
-            new CategoryPreProcess(job).start();
+//            new CategoryPreProcess(job).start();
+            PreProcess.startProcess(PreProcess.TYPE.CATEGORY.name(), job);
         } catch (Exception e) {
             logger.error("", e);
         }
@@ -346,7 +349,9 @@ public class PreProcessTest {
             job.setAction(IndexJobRunner.STATUS.READY.name());
             job.setRequest(payload);
 
-            new VmFirstMakeDatePreProcess(job).start();
+//            new VmFirstMakeDatePreProcess(job).start();
+            PreProcess.startProcess(PreProcess.TYPE.VM_FIRSTMAKE_DATE.name(), job);
+
         } catch (Exception e) {
             logger.error("", e);
         }
@@ -408,7 +413,9 @@ public class PreProcessTest {
             job.setAction(IndexJobRunner.STATUS.READY.name());
             job.setRequest(payload);
 
-            new VmKeywordPreProcess(job).start();
+//            new VmKeywordPreProcess(job).start();
+            PreProcess.startProcess(PreProcess.TYPE.VM_KEYWORD.name(), job);
+
         } catch (Exception e) {
             logger.error("", e);
         }
@@ -437,8 +444,9 @@ public class PreProcessTest {
             testWords.add("웹툰코리아");
 
             for (String testWord : testWords) {
-                boolean result = new AcKeywordPreProcess(new Job()).findAtBlacklist("D:/", testWord);
-                logger.info(testWord + "{}", result ? " 제외됨" : " 제외안됨");
+//                boolean result = new AcKeywordPreProcess(new Job()).findAtBlacklist("D:/", testWord);
+
+//                logger.info(testWord + "{}", result ? " 제외됨" : " 제외안됨");
             }
 
 // 사용 테스트
