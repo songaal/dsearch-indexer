@@ -36,4 +36,7 @@ EXPOSE 9100
 COPY branch-desc.txt/ .
 COPY target/indexer-${VERSION}.jar indexer.jar
 
-CMD /bin/bash -c "java ${JAVA_OPTS} -Dlogback.configurationFile=logback-prod.xml -Dfile.encoding=utf-8 -classpath indexer.jar:lib/Altibase.jar org.springframework.boot.loader.JarLauncher"
+
+CMD /bin/bash -c "java ${JAVA_OPTS} -Dlogback.configurationFile=logback-prod.xml -Dfile.encoding=utf-8 -classpath
+indexer.jar:lib/Altibase.jar:lib/indexer-extension.jar org.springframework.boot.loader.JarLauncher"
+
