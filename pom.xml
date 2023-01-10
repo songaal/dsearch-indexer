@@ -104,20 +104,6 @@
             <version>2.10.4</version>
         </dependency>
 
-        <!--        <dependency>-->
-        <!--            <groupId>danawa</groupId>-->
-        <!--            <artifactId>danawa-product</artifactId>-->
-        <!--            <version>1.1.1</version>-->
-        <!--            <scope>system</scope>-->
-        <!--            <systemPath>${project.basedir}/lib/danawa-product-1.1.1.jar</systemPath>-->
-        <!--            <exclusions>-->
-        <!--                <exclusion>-->
-        <!--                    <groupId>org.springframework.boot</groupId>-->
-        <!--                    <artifactId>spring-boot-starter-logging</artifactId>-->
-        <!--                </exclusion>-->
-        <!--            </exclusions>-->
-        <!--        </dependency>-->
-
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>
@@ -170,6 +156,14 @@
         </dependency>
 
         <dependency>
+            <groupId>com.danawa.fastcatx</groupId>
+            <artifactId>indexer-extension</artifactId>
+            <version>1.11.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/indexer-extension-1.11.0.jar</systemPath>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-dbcp2</artifactId>
             <version>2.7.0</version>
@@ -204,7 +198,7 @@
                 <artifactId>maven-install-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>install-Transformation lib</id>
+                        <id>install-Transformation altibase lib</id>
                         <phase>clean</phase>
                         <configuration>
                             <file>${project.basedir}/lib/Altibase.jar</file>
@@ -212,6 +206,23 @@
                             <groupId>Altibase</groupId>
                             <artifactId>Altibase</artifactId>
                             <version>1.0.0</version>
+                            <packaging>jar</packaging>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                    </execution>
+
+                    <execution>
+                        <id>install-Transformation indexer extension lib</id>
+                        <phase>clean</phase>
+                        <configuration>
+                            <file>${project.lib.path}/indexer-extension-1.11.0.jar</file>
+                            <repositoryLayout>default</repositoryLayout>
+                            <groupId>com.danawa.fastcatx</groupId>
+                            <artifactId>indexer-extension</artifactId>
+                            <version>1.11.0</version>
                             <packaging>jar</packaging>
                             <generatePom>true</generatePom>
                         </configuration>
