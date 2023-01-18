@@ -25,6 +25,7 @@
     <properties>
         <java.version>1.8</java.version>
         <elasticsearch.version>7.8.1</elasticsearch.version>
+        <indexer.extension.lib.version>1.11.0</indexer.extension.lib.version>
     </properties>
 
     <dependencies>
@@ -158,9 +159,9 @@
         <dependency>
             <groupId>com.danawa.fastcatx</groupId>
             <artifactId>indexer-extension</artifactId>
-            <version>1.11.0</version>
+            <version>${indexer.extension.lib.version}</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/lib/indexer-extension.jar</systemPath>
+            <systemPath>${project.basedir}/lib/indexer-extension-${indexer.extension.lib.version}.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -218,11 +219,11 @@
                         <id>install-Transformation indexer extension lib</id>
                         <phase>clean</phase>
                         <configuration>
-                            <file>${project.basedir}/lib/indexer-extension.jar</file>
+                            <file>${project.basedir}/lib/indexer-extension-${indexer.extension.lib.version}.jar</file>
                             <repositoryLayout>default</repositoryLayout>
                             <groupId>com.danawa.fastcatx</groupId>
                             <artifactId>indexer-extension</artifactId>
-                            <version>1.11.0</version>
+                            <version>${indexer.extension.lib.version}</version>
                             <packaging>jar</packaging>
                             <generatePom>true</generatePom>
                         </configuration>
